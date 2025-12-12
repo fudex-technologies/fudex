@@ -15,11 +15,11 @@ const CategorySelectionCard = ({
 			href={link || '#'}
 			className='border bg-muted text-muted-foreground flex flex-col gap-2 w-[100px] p-3 rounded-md'>
 			<p className=''>{category}</p>
-			<div className='relative w-full aspect-square'>
+			<div className='relative w-full'>
 				<ImageWithFallback
 					src={image}
 					alt={category}
-					className='object-contain w-full h-full'
+					className='object-contain w-full aspect-square'
 				/>
 			</div>
 		</Link>
