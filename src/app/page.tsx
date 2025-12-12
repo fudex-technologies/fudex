@@ -9,7 +9,7 @@ import SearchInput from '@/components/SearchInput';
 import { Button } from '@/components/ui/button';
 import PageWrapper from '@/components/wrapers/PageWrapper';
 import SectionWrapper from '@/components/wrapers/SectionWrapper';
-import { SlidersHorizontal } from 'lucide-react';
+import { PiSlidersHorizontalFill } from "react-icons/pi";
 
 export default function Home() {
 	return (
@@ -17,28 +17,22 @@ export default function Home() {
 			<SectionWrapper className='w-full flex items-center gap-5'>
 				<LocationDropdown />
 				<Button>
-					<SlidersHorizontal />
+					<PiSlidersHorizontalFill />
 					Filter
 				</Button>
 			</SectionWrapper>
-
 			<SectionWrapper>
 				<SearchInput />
 			</SectionWrapper>
-
 			<CategorySelectionSection />
-
 			<PromoSection
 				textLine1='Make 3 Orders, and get'
 				textLine2='1 Free Delivery'
 				image='/assets/promo.png'
 				buttonLabel='Order Now!'
 			/>
-
 			<PopularRestaurantsSection />
-
 			<RestaurantsListSection title='Available Food Spots' />
-			<div className='mb-[110px]' />
 			<MobileBottomNav />
 		</PageWrapper>
 	);

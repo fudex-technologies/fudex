@@ -9,15 +9,15 @@ export const restaurantsDDummyData = [
 	},
 	{
 		image: '/assets/restaurants/restaurant2.png',
-		name: 'Bukolarry',
-		rating: 4.2,
-		numberFoRatings: 234,
-		deliveryPrice: 600,
-		deliveryTime: '25 - 30minss',
+		name: 'Folly Fem',
+		rating: 4.0,
+		numberFoRatings: 34,
+		deliveryPrice: 500,
+		deliveryTime: '15 - 30minss',
 	},
 	{
 		image: '/assets/restaurants/restaurant3.png',
-		name: 'Bukolarry',
+		name: 'Korede spag',
 		rating: 4.2,
 		numberFoRatings: 234,
 		deliveryPrice: 600,
@@ -25,7 +25,7 @@ export const restaurantsDDummyData = [
 	},
 	{
 		image: '/assets/restaurants/restaurant4.png',
-		name: 'Bukolarry',
+		name: 'Amala Palace',
 		rating: 4.2,
 		numberFoRatings: 234,
 		deliveryPrice: 600,
@@ -33,7 +33,7 @@ export const restaurantsDDummyData = [
 	},
 	{
 		image: '/assets/restaurants/restaurant5.png',
-		name: 'Bukolarry',
+		name: 'Sharwama spot',
 		rating: 4.2,
 		numberFoRatings: 234,
 		deliveryPrice: 600,
@@ -41,7 +41,7 @@ export const restaurantsDDummyData = [
 	},
 	{
 		image: '/assets/restaurants/restaurant6.png',
-		name: 'Bukolarry',
+		name: 'Ice Cream Spot',
 		rating: 4.2,
 		numberFoRatings: 234,
 		deliveryPrice: 600,
