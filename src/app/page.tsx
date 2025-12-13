@@ -1,8 +1,7 @@
 import CategorySelectionSection from '@/component-sections/CategorySelectionSection';
 import PopularRestaurantsSection from '@/component-sections/PopularRestaurantsSection.tsx';
 import PromoSection from '@/component-sections/PromoSection';
-import Frame from '@/component-sections/PromoSection/Frame';
-import RestaurantsListSection from '@/component-sections/RestaurantsListSection';
+import VendorListSection from '@/component-sections/VendorListSection';
 import LocationDropdown from '@/components/LocationDropdown';
 import MobileBottomNav from '@/components/navigation-components/MobileBottomNav';
 import SearchInput from '@/components/SearchInput';
@@ -14,7 +13,7 @@ import { PiSlidersHorizontalFill } from "react-icons/pi";
 export default function Home() {
 	return (
 		<PageWrapper>
-			<SectionWrapper className='w-full flex items-center gap-5'>
+			<SectionWrapper className='w-full flex items-center gap-5 justify-between'>
 				<LocationDropdown />
 				<Button>
 					<PiSlidersHorizontalFill />
@@ -32,7 +31,7 @@ export default function Home() {
 				buttonLabel='Order Now!'
 			/>
 			<PopularRestaurantsSection />
-			<RestaurantsListSection title='Available Food Spots' />
+			<VendorListSection title='Available Food Spots' />
 			<MobileBottomNav />
 		</PageWrapper>
 	);

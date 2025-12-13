@@ -123,8 +123,13 @@
 }
 
 body {
+  -webkit-tap-highlight-color: transparent;
   width: 100vw;
   overflow-x: hidden
+}
+
+html {
+  font-size: var(--font-size);
 }
 
 @layer base {
@@ -212,8 +217,4 @@ body {
       line-height: 1.5;
     }
   }
-}
-
-html {
-  font-size: var(--font-size);
 }

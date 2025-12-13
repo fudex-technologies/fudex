@@ -1,4 +1,4 @@
-import RestaurantCard from '@/components/RestaurantCard';
+import RestaurantCard from '@/components/VendorCard';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { restaurantsDDummyData } from '@/lib/dummyData';
 
@@ -9,8 +9,8 @@ const PopularRestaurantsSection = () => {
 			<ScrollArea className='w-screen whitespace-nowrap'>
 				<div className='flex w-max space-x-4 mx-5'>
 					{restaurantsDDummyData.map((restaurant, index) => (
-						<div className='w-[250px]'>
-							<RestaurantCard {...restaurant} key={index} />
+						<div className='w-[250px]' key={index}>
+							<RestaurantCard {...restaurant}  />
 						</div>
 					))}
 				</div>

@@ -14,7 +14,7 @@ const PromoSection = ({
 	buttonLabel: string;
 }) => {
 	return (
-		<SectionWrapper className='w-full'>
+		<SectionWrapper className='w-full max-w-md'>
 			<div
 				className='noise-effect w-full rounded-xl h-[165px] overflow-hidden flex items-center p-0'
 				style={{
@@ -37,7 +37,7 @@ const PromoSection = ({
 					<div className='relative w-full aspect-square'>
 						<ImageWithFallback
 							src={image}
-							className='w-full h-full'
+							className='w-full h-full object-top '
 							alt='promo'
 						/>
 					</div>

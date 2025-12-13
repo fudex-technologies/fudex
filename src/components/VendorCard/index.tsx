@@ -2,6 +2,8 @@ import { ImageWithFallback } from '../ui/ImageWithFallback';
 import { FaStar } from 'react-icons/fa6';
 import { FaBicycle } from 'react-icons/fa';
 import { GoHeart } from 'react-icons/go';
+import Link from 'next/link';
+import { PAGES_DATA } from '@/data/pagesData';
 
 interface Props {
 	image: string;
@@ -11,7 +13,7 @@ interface Props {
 	deliveryPrice: number;
 	deliveryTime?: string;
 }
-const RestaurantCard = ({
+const VendorCard = ({
 	deliveryPrice,
 	image,
 	name,
@@ -20,7 +22,7 @@ const RestaurantCard = ({
 	deliveryTime,
 }: Props) => {
 	return (
-		<div className='w-full flex flex-col shrink-0 space-y-1'>
+		<Link href={PAGES_DATA.single_vendor_page("1")} className='w-full flex flex-col shrink-0 space-y-1'>
 			<div className='relative h-[150px] w-full'>
 				<GoHeart
 					width={25}
@@ -60,8 +62,8 @@ const RestaurantCard = ({
 				<p>From #{deliveryPrice}</p>
 				{deliveryTime && <p>{deliveryTime}</p>}
 			</div>
-		</div>
+		</Link>
 	);
 };
 
-export default RestaurantCard;
+export default VendorCard;
