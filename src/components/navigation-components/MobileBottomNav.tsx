@@ -1,7 +1,6 @@
 'use client';
 
 import { GoHome } from 'react-icons/go';
-import { GoSearch } from 'react-icons/go';
 import { GoPackage } from 'react-icons/go';
 import { FaRegUser } from 'react-icons/fa';
 import Link from 'next/link';
@@ -9,6 +8,11 @@ import { usePathname } from 'next/navigation';
 import { ClassNameValue } from 'tailwind-merge';
 import { cn } from '@/lib/utils';
 import { PAGES_DATA } from '@/data/pagesData';
+import { RiSearchLine } from 'react-icons/ri';
+import { RiSearchFill } from 'react-icons/ri';
+import { GoHomeFill } from 'react-icons/go';
+import { RiUser3Line } from 'react-icons/ri';
+import { RiUser3Fill } from 'react-icons/ri';
 
 const MobileBottomNav = () => {
 	const pathname = usePathname();
@@ -48,7 +52,19 @@ const MobileBottomNav = () => {
 						'flex flex-1 flex-col justify-center items-center',
 						activeStyle(PAGES_DATA.home_page)
 					)}>
-					<GoHome width={20} height={20} className={cn('w-5 h-5', isActive(PAGES_DATA.home_page) && "invert")} />
+					{isActive(PAGES_DATA.home_page) ? (
+						<GoHomeFill
+							width={20}
+							height={20}
+							className={cn('w-5 h-5')}
+						/>
+					) : (
+						<GoHome
+							width={20}
+							height={20}
+							className={cn('w-5 h-5')}
+						/>
+					)}
 					<p className=''>Home</p>
 				</Link>
 				<Link
@@ -57,7 +73,20 @@ const MobileBottomNav = () => {
 						'flex flex-1 flex-col justify-center items-center',
 						activeStyle(PAGES_DATA.search_page)
 					)}>
-					<GoSearch width={20} height={20} fill='red' className={cn('w-5 h-5', isActive(PAGES_DATA.search_page) && "invert")} />
+					{isActive(PAGES_DATA.search_page) ? (
+						<RiSearchFill
+							width={20}
+							height={20}
+							className={cn('w-5 h-5')}
+						/>
+					) : (
+						<RiSearchLine
+							width={20}
+							height={20}
+							className={cn('w-5 h-5')}
+						/>
+					)}
+
 					<p className=''>Search</p>
 				</Link>
 				<Link
@@ -66,7 +95,11 @@ const MobileBottomNav = () => {
 						'flex flex-1 flex-col justify-center items-center',
 						activeStyle(PAGES_DATA.orders_page)
 					)}>
-					<GoPackage width={20} height={20} className={cn('w-5 h-5', isActive(PAGES_DATA.orders_page) && "invert")} />
+					<GoPackage
+						width={20}
+						height={20}
+						className={cn('w-5 h-5')}
+					/>
 					<p className=''>Orders</p>
 				</Link>
 				<Link
@@ -75,7 +108,20 @@ const MobileBottomNav = () => {
 						'flex flex-1 flex-col justify-center items-center',
 						activeStyle(PAGES_DATA.profile_page)
 					)}>
-					<FaRegUser width={20} height={20} className={cn('w-5 h-5', isActive(PAGES_DATA.profile_page) && "invert")} />
+					{isActive(PAGES_DATA.profile_page) ? (
+						<RiUser3Fill
+							width={20}
+							height={20}
+							className={cn('w-5 h-5')}
+						/>
+					) : (
+						<RiUser3Line
+							width={20}
+							height={20}
+							className={cn('w-5 h-5')}
+						/>
+					)}
+
 					<p className=''>Profile</p>
 				</Link>
 			</div>

@@ -31,7 +31,7 @@ const CategorySelectionSection = () => {
 	return (
 		<div className='w-full flex flex-col gap-3'>
 			<h2 className='text-lg font-semibold px-5'>Categories</h2>
-			<ScrollArea className='w-screen whitespace-nowrap'>
+			<ScrollArea className='w-screen max-w-[1400px] whitespace-nowrap'>
 				<div className='flex w-max space-x-4 mx-5'>
 					{demoData.map((category, index) => (
 						<CategorySelectionCard

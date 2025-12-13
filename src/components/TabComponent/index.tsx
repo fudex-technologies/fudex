@@ -81,7 +81,7 @@ const TabComponent: React.FC<TabComponentProps> = ({
 	return (
 		<div className={`w-full flex flex-col gap-5 my-3 ${className}`}>
 			<div className='w-full border-b border-muted'>
-				<ScrollArea className='w-full h-12 whitespace-nowrap '>
+				<ScrollArea className='w-full max-w-[1400px] h-12 whitespace-nowrap '>
 					<div className='relative flex w-max space-x-4 mx-5 justify-between '>
 						{tabs.map((tab, index) => (
 							<button
