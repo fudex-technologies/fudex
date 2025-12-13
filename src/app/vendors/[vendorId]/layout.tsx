@@ -11,7 +11,7 @@ export default async function VendorLayout({ params, children }: Props) {
 	const { vendorId } = await params;
 
 	return (
-		<PageWrapper className={'pt-0'}>
+		<PageWrapper className={'pt-0 relative'}>
 			<SingleVendorTopSection />
 			{children}
 			{/* <MobileBottomNav /> */}

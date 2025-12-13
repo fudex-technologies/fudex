@@ -12,7 +12,6 @@ export default async function SingleVendorPage({ params }: Props) {
 		<>
 			<VendorDetailsSection />
 			<VendorProductsTabSection />
-			{/* <MobileBottomNav /> */}
 		</>
 	);
 }

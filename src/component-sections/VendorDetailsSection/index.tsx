@@ -7,7 +7,7 @@ const VendorDetailsSection = () => {
 	return (
 		<SectionWrapper className='space-y-5'>
 			<div className=''>
-				<h1 className='text-lg font-bold'>Bukolarry</h1>
+				<h1 className='text-2xl font-bold'>Bukolarry</h1>
 				<div className='flex gap-5'>
 					<div className='flex items-center gap-1'>
 						<FaStar

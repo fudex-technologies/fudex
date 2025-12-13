@@ -36,9 +36,9 @@ const VendorProductsTabSection = () => {
 					},
 				]}
 			/>
-			<div className='w-full grid-cols-1 md:grid-cols-2 lg:grid-cols-3'>
+			<div className='w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3'>
 				{productsDummyData[activeTab].map((product, index) => (
-					<div key={index} className='border-b border-muted'>
+					<div key={index} className='w-full border-b border-muted'>
 						<ProductListItem {...product} />
 					</div>
 				))}
