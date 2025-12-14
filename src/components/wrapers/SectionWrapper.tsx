@@ -10,7 +10,7 @@ const SectionWrapper = ({
 	className?: ClassNameValue;
 }) => {
 	return (
-		<section className={cn('w-full px-5', className)}>{children}</section>
+		<section className={cn(className, 'w-full px-5')}>{children}</section>
 	);
 };
 
