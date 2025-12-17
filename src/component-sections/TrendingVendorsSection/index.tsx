@@ -9,27 +9,26 @@ const TrendingVendorsSection = () => {
 				<ImageWithFallback src={'/assets/trendingIcon.svg'} />
 				<p className='text-xl font-semibold'>Trending Vendors</p>
 			</div>
-			<ul className='my-5 text-lg'>
+			<ul className='my-5 text-[14px]]'>
 				<li className='flex gap-2 items-center py-3'>
-					<span className='w-3 h-3 rounded-full bg-muted' />
-					<p className='text-lg'> Bukolarries</p>
+					<span className='w-3 h-3 rounded-full bg-border' />
+					<p className=''> Bukolarries</p>
 				</li>
 				<Separator orientation='horizontal' className='w-full' />
 				<li className='flex gap-2 items-center py-3'>
-					<span className='w-3 h-3 rounded-full bg-muted' />
-					<p className='text-lg'> Bukolarries</p>
+					<span className='w-3 h-3 rounded-full bg-border' />
+					<p className=''> Bukolarries</p>
 				</li>
 				<Separator orientation='horizontal' className='w-full' />
 				<li className='flex gap-2 items-center py-3'>
-					<span className='w-3 h-3 rounded-full bg-muted' />
-					<p className='text-lg'> Bukolarries</p>
+					<span className='w-3 h-3 rounded-full bg-border' />
+					<p className=''> Bukolarries</p>
 				</li>
 				<Separator orientation='horizontal' className='w-full' />
 				<li className='flex gap-2 items-center py-3'>
-					<span className='w-3 h-3 rounded-full bg-muted' />
-					<p className='text-lg'> Bukolarries</p>
+					<span className='w-3 h-3 rounded-full bg-border' />
+					<p className=''> Bukolarries</p>
 				</li>
-				<Separator orientation='horizontal' className='w-full' />
 			</ul>
 		</SectionWrapper>
 	);

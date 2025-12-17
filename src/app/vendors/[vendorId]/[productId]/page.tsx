@@ -1,9 +1,5 @@
 import ProductDetailsSelectionSection from '@/component-sections/ProductDetailsSelectionSection';
-import CounterComponent from '@/components/CounterComponent';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { formatCurency } from '@/lib/commonFunctions';
 
 interface Props {
@@ -35,10 +31,7 @@ export default async function VendorSingleProductPage({ params }: Props) {
 								{formatCurency(1500)}
 							</p>
 						</div>
-						<Button
-							variant={'game'}
-							size={'lg'}
-							className=''>
+						<Button variant={'game'} size={'lg'} className=''>
 							Add to tray
 						</Button>
 					</div>

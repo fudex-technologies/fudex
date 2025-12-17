@@ -12,7 +12,7 @@ const ProductDetailsSelectionSection = () => {
 	const [numberOfItems, setNumberOfItems] = useState(1);
 	return (
 		<div className='space-y-5'>
-			<div className='w-full bg-muted  flex items-center gap-3 p-5 text-lg'>
+			<div className='w-full bg-muted flex items-center gap-3 p-5 text-lg'>
 				<p>Select Size</p>{' '}
 				<Badge
 					variant={'outline'}
