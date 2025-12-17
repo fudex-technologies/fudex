@@ -125,11 +125,18 @@
 body {
   -webkit-tap-highlight-color: transparent;
   width: 100vw;
-  overflow-x: hidden
+  overflow-x: hidden;
+
 }
 
 html {
   font-size: var(--font-size);
+}
+
+* {
+  -webkit-scrollbar: none;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 @layer base {

@@ -8,7 +8,7 @@ const VendorDetailsSection = () => {
 		<SectionWrapper className='space-y-5'>
 			<div className=''>
 				<h1 className='text-2xl font-bold'>Bukolarry</h1>
-				<div className='flex gap-5'>
+				<div className='flex gap-5 text-[14px]'>
 					<div className='flex items-center gap-1'>
 						<FaStar
 							width={15}
@@ -24,33 +24,30 @@ const VendorDetailsSection = () => {
 				</div>
 			</div>
 
-			<div className='py-5 flex justify-between border-t border-b gap-2'>
-				<div className='flex-1 flex flex-col items-center justify-center gap-2'>
-					<div className='w-10 h-10 rounded-full flex justify-center items-center  bg-secondary/10 text-secondary'>
-						<GrAlarm width={15} height={15} />
+			<div className='flex flex-col '>
+				<Separator orientation={'horizontal'} className='w-full' />
+				<div className='w-full flex flex-1 justify-between gap-2 py-5'>
+					<div className='flex-1 flex flex-col items-center justify-center gap-2 border-r'>
+						<div className='w-10 h-10 rounded-full flex justify-center items-center  bg-secondary/10 text-secondary'>
+							<GrAlarm width={15} height={15} />
+						</div>
+						<p className=''>25 - 30mins</p>
 					</div>
-					<p className=''>25 - 30mins</p>
-				</div>
-				<Separator
-					orientation='vertical'
-					className='h-[80%] text-muted'
-				/>
-				<div className='flex-1 flex flex-col items-center justify-center gap-2'>
-					<div className='w-10 h-10 rounded-full flex justify-center items-center  bg-secondary/10 text-secondary'>
-						<FaBicycle />
+					<div className='flex-1 flex flex-col items-center justify-center gap-2'>
+						<div className='w-10 h-10 rounded-full flex justify-center items-center  bg-secondary/10 text-secondary'>
+							<FaBicycle />
+						</div>
+						<p className=''>#600</p>
 					</div>
-					<p className=''>#600</p>
-				</div>
-				<Separator
-					orientation='vertical'
-					className='h-[80%] text-muted'
-				/>
-				<div className='flex-1 flex flex-col items-center justify-center gap-2'>
-					<div className='w-10 h-10 rounded-full flex justify-center items-center  bg-secondary/10 text-secondary'>
-						<FaBoltLightning />
+					<div className='flex-1 flex flex-col items-center justify-center gap-2 border-l'>
+						<div className='w-10 h-10 rounded-full flex justify-center items-center  bg-secondary/10 text-secondary'>
+							<FaBoltLightning />
+						</div>
+						<p className=''>25 - 30mins</p>
 					</div>
-					<p className=''>25 - 30mins</p>
 				</div>
+
+				<Separator orientation={'horizontal'} className='w-full' />
 			</div>
 		</SectionWrapper>
 	);

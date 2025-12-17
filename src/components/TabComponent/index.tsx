@@ -79,8 +79,8 @@ const TabComponent: React.FC<TabComponentProps> = ({
 	const activeContent = activeTabData?.content;
 
 	return (
-		<div className={`w-full flex flex-col gap-5 my-3 ${className}`}>
-			<div className='w-full border-b border-muted'>
+		<div className={`w-full flex flex-col gap-5 ${className}`}>
+			<div className='w-full'>
 				<ScrollArea className='w-full max-w-[1400px] h-12 whitespace-nowrap '>
 					<div className='relative flex w-max space-x-4 mx-5 justify-between '>
 						{tabs.map((tab, index) => (
@@ -144,7 +144,7 @@ const TabComponent: React.FC<TabComponentProps> = ({
 							}}
 						/>
 					</div>
-					<ScrollBar orientation='horizontal' className='invisible' />
+					<ScrollBar orientation='horizontal' hidden />
 				</ScrollArea>
 			</div>
 

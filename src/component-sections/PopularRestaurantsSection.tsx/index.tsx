@@ -10,11 +10,11 @@ const PopularRestaurantsSection = () => {
 				<div className='flex w-max space-x-4 mx-5'>
 					{restaurantsDDummyData.map((restaurant, index) => (
 						<div className='w-[250px]' key={index}>
-							<RestaurantCard {...restaurant}  />
+							<RestaurantCard {...restaurant} />
 						</div>
 					))}
 				</div>
-				<ScrollBar orientation='horizontal' />
+				<ScrollBar orientation='horizontal' hidden />
 			</ScrollArea>
 		</div>
 	);

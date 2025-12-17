@@ -4,6 +4,8 @@ import { FaBicycle } from 'react-icons/fa';
 import { GoHeart } from 'react-icons/go';
 import Link from 'next/link';
 import { PAGES_DATA } from '@/data/pagesData';
+import { Separator } from '../ui/separator';
+import { formatCurency } from '@/lib/commonFunctions';
 
 interface Props {
 	image: string;
@@ -22,7 +24,9 @@ const VendorCard = ({
 	deliveryTime,
 }: Props) => {
 	return (
-		<Link href={PAGES_DATA.single_vendor_page("1")} className='w-full flex flex-col shrink-0 space-y-1'>
+		<Link
+			href={PAGES_DATA.single_vendor_page('1')}
+			className='w-full flex flex-col shrink-0 space-y-1'>
 			<div className='relative h-[150px] w-full'>
 				<GoHeart
 					width={25}
@@ -57,10 +61,17 @@ const VendorCard = ({
 				)}
 			</div>
 
-			<div className='flex items-center gap-3 text-sm text-foreground/60'>
-				<FaBicycle />
-				<p>From #{deliveryPrice}</p>
-				{deliveryTime && <p>{deliveryTime}</p>}
+			<div className='flex items-center text-[14px] text-foreground/50'>
+				<div className='flex items-center gap-1'>
+					<FaBicycle />
+					<p>From {formatCurency(deliveryPrice)}</p>
+				</div>
+				{deliveryTime && (
+					<>
+						<Separator orientation='vertical' className='h-full mx-2' />
+						<p>{deliveryTime}</p>
+					</>
+				)}
 			</div>
 		</Link>
 	);

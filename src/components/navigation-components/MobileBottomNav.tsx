@@ -45,11 +45,11 @@ const MobileBottomNav = () => {
 	return (
 		<>
 			<div className='mb-[110px]' />
-			<div className='fixed flex md:hidden bottom-0 left-0 w-screen bg-background border-t border-t-[#85858540] h-[100px] text-[#858585]'>
+			<div className='fixed flex  md:hidden bottom-0 left-0 w-screen bg-background border-t h-20 text-[#858585]'>
 				<Link
 					href={PAGES_DATA.home_page}
 					className={cn(
-						'flex flex-1 flex-col justify-center items-center',
+						'flex flex-1 flex-col justify-start pt-3 pb-5 items-center',
 						activeStyle(PAGES_DATA.home_page)
 					)}>
 					{isActive(PAGES_DATA.home_page) ? (
@@ -70,7 +70,7 @@ const MobileBottomNav = () => {
 				<Link
 					href={PAGES_DATA.search_page}
 					className={cn(
-						'flex flex-1 flex-col justify-center items-center',
+						'flex flex-1 flex-col justify-start pt-3 pb-5 items-center',
 						activeStyle(PAGES_DATA.search_page)
 					)}>
 					{isActive(PAGES_DATA.search_page) ? (
@@ -92,7 +92,7 @@ const MobileBottomNav = () => {
 				<Link
 					href={PAGES_DATA.orders_page}
 					className={cn(
-						'flex flex-1 flex-col justify-center items-center',
+						'flex flex-1 flex-col justify-start pt-3 pb-5 items-center',
 						activeStyle(PAGES_DATA.orders_page)
 					)}>
 					<GoPackage
@@ -105,7 +105,7 @@ const MobileBottomNav = () => {
 				<Link
 					href={PAGES_DATA.profile_page}
 					className={cn(
-						'flex flex-1 flex-col justify-center items-center',
+						'flex flex-1 flex-col justify-start pt-3 pb-5 items-center',
 						activeStyle(PAGES_DATA.profile_page)
 					)}>
 					{isActive(PAGES_DATA.profile_page) ? (

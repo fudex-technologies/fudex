@@ -1,19 +1,46 @@
+'use client';
+
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
-import Link from 'next/link';
+import { PAGES_DATA } from '@/data/pagesData';
+import { cn } from '@/lib/utils';
+import { useSearchQueries } from '@/nuqs-hooks/useSearchQueries';
+import { useRouter } from 'next/navigation';
 
 const CategorySelectionCard = ({
 	image,
 	category,
-	link,
 }: {
 	image: string;
 	category: string;
-	link?: string;
 }) => {
+	const [search, setSearch] = useSearchQueries();
+	const router = useRouter();
+
+	const handleCatClick = () => {
+		const isRemoving = search.cat.includes(category);
+		const newCats = isRemoving
+			? search.cat.filter((cat) => cat !== category)
+			: [...search.cat, category];
+		const maybePromise = setSearch({ cat: newCats });
+		Promise.resolve(maybePromise)
+			.then(() => {
+				router.push(`${PAGES_DATA.search_page}?cat=${newCats}`);
+			})
+			.catch(() => {
+				router.push(`${PAGES_DATA.search_page}?cat=${newCats}`);
+			});
+	};
+
+	const isActive = search.cat.includes(category);
 	return (
-		<Link
-			href={link || '#'}
-			className='border bg-muted text-muted-foreground flex flex-col gap-2 w-[100px] p-3 rounded-md'>
+		<div
+			// href={"/search"}
+			onClick={handleCatClick}
+			className={cn(
+				'border bg-muted text-muted-foreground flex flex-col gap-2 w-[100px] p-3 rounded-md',
+				isActive &&
+					'bg-secondary text-secondary-foreground transition-colors ease-linear'
+			)}>
 			<p className=''>{category}</p>
 			<div className='relative w-full'>
 				<ImageWithFallback
@@ -22,7 +49,7 @@ const CategorySelectionCard = ({
 					className='object-contain w-full aspect-square'
 				/>
 			</div>
-		</Link>
+		</div>
 	);
 };
 

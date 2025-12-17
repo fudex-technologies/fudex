@@ -38,11 +38,10 @@ const CategorySelectionSection = () => {
 							key={index}
 							category={category.category}
 							image={category.image}
-							link={`/categories/${category.category}`}
 						/>
 					))}
 				</div>
-				<ScrollBar orientation='horizontal' />
+				<ScrollBar orientation='horizontal' hidden />
 			</ScrollArea>
 		</div>
 	);
