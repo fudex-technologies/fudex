@@ -1,6 +1,7 @@
 'use client';
 
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
+import { Skeleton } from '@/components/ui/skeleton';
 import { PAGES_DATA } from '@/data/pagesData';
 import { cn } from '@/lib/utils';
 import { useSearchQueries } from '@/nuqs-hooks/useSearchQueries';
@@ -54,3 +55,15 @@ const CategorySelectionCard = ({
 };
 
 export default CategorySelectionCard;
+
+
+export const CategorySelectionCardSkeleton = () => {
+	return (
+		<div className='flex flex-col gap-2 w-[100px] p-3 rounded-md'>
+			<Skeleton className='h-4 w-3/4' />
+			<div className='relative w-full'>
+				<Skeleton className='w-full aspect-square' />
+			</div>
+		</div>
+	);
+};

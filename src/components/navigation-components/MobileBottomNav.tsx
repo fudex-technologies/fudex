@@ -2,7 +2,6 @@
 
 import { GoHome } from 'react-icons/go';
 import { GoPackage } from 'react-icons/go';
-import { FaRegUser } from 'react-icons/fa';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ClassNameValue } from 'tailwind-merge';

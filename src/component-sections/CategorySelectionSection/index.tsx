@@ -1,5 +1,8 @@
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import CategorySelectionCard from './CategorySelectionCard';
+import { Suspense } from 'react';
+import CategorySelectionCard, {
+	CategorySelectionCardSkeleton,
+} from './CategorySelectionCard';
 
 const demoData = [
 	{
@@ -34,11 +37,13 @@ const CategorySelectionSection = () => {
 			<ScrollArea className='w-screen max-w-[1400px] whitespace-nowrap'>
 				<div className='flex w-max space-x-4 mx-5'>
 					{demoData.map((category, index) => (
-						<CategorySelectionCard
-							key={index}
-							category={category.category}
-							image={category.image}
-						/>
+						<Suspense fallback={<CategorySelectionCardSkeleton />}>
+							<CategorySelectionCard
+								key={index}
+								category={category.category}
+								image={category.image}
+							/>
+						</Suspense>
 					))}
 				</div>
 				<ScrollBar orientation='horizontal' hidden />
