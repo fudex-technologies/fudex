@@ -4,6 +4,7 @@ import CounterComponent from '@/components/CounterComponent';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Separator } from '@/components/ui/separator';
 import { formatCurency } from '@/lib/commonFunctions';
 import { useState } from 'react';
 
@@ -23,11 +24,13 @@ const ProductDetailsSelectionSection = () => {
 			<div className='px-5 space-y-2'>
 				<p className='text-lg text-foreground/50'>SELECT 1</p>
 				<RadioGroup defaultValue='big_pack' className='w-full max-w-sm'>
-					<div className='flex gap-3 w-full  items-center justify-between'>
+					<div className='flex gap-3 w-full items-center justify-between'>
 						<Label htmlFor='r1' className='flex-1'>
-							<div className='font-normal'>
+							<div className=''>
 								<p className='text-lg '>Big Pack</p>
-								<p className='text-sm'>{formatCurency(1500)}</p>
+								<p className='text-foreground/50'>
+									{formatCurency(1500)}
+								</p>
 							</div>
 						</Label>
 						<RadioGroupItem
@@ -36,11 +39,14 @@ const ProductDetailsSelectionSection = () => {
 							className='w-6 h-6'
 						/>
 					</div>
-					<div className='flex gap-3 w-full  items-center justify-between'>
+					<Separator />
+					<div className='flex gap-3 w-full items-center justify-between'>
 						<Label htmlFor='r2' className='flex-1'>
-							<div className='font-normal'>
+							<div className=''>
 								<p className='text-lg '>Small Pack</p>
-								<p className='text-sm'>{formatCurency(1000)}</p>
+								<p className='text-foreground/50'>
+									{formatCurency(1000)}
+								</p>
 							</div>
 						</Label>
 						<RadioGroupItem

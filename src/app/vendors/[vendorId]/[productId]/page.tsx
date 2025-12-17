@@ -17,7 +17,7 @@ export default async function VendorSingleProductPage({ params }: Props) {
 		<>
 			<div className='flex flex-col gap-2 px-5'>
 				<h1 className='font-semibold text-2xl'>Special Fried Rice </h1>
-				<p className='text-foreground/50 text-sm'>
+				<p className='text-foreground/50'>
 					Flavorful basmatic fried rice with veggies{' '}
 				</p>
 				<p className='text-foreground/70'>From #1200.00</p>
@@ -31,7 +31,7 @@ export default async function VendorSingleProductPage({ params }: Props) {
 					<div className='w-full h-full flex items-center justify-between max-w-[1400px]'>
 						<div className=''>
 							<p className='text-sm text-foreground/50'>Total</p>
-							<p className='text-xl font-semibold'>
+							<p className='text-xl font-semibold text-foreground'>
 								{formatCurency(1500)}
 							</p>
 						</div>
