@@ -38,7 +38,7 @@ const CategorySelectionCard = ({
 			// href={"/search"}
 			onClick={handleCatClick}
 			className={cn(
-				'border bg-muted text-muted-foreground flex flex-col gap-2 w-[100px] p-3 rounded-md',
+				'bg-muted text-muted-foreground flex flex-col gap-2 w-[100px] p-3 rounded-md',
 				isActive &&
 					'bg-secondary text-secondary-foreground transition-colors ease-linear'
 			)}>
