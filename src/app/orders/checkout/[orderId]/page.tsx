@@ -12,7 +12,7 @@ export default async function CheckoutPage({ params }: Props) {
 	const { orderId } = await params;
 	return (
 		<PageWrapper>
-			<div className='flex w-full items-center justify-center gap-10 p-5 relative'>
+			<div className='flex w-full items-center justify-center gap-10 px-5 relative'>
 				<Link
 					href={PAGES_DATA.order_summary_page(orderId)}
 					className='absolute left-5'>
