@@ -12,6 +12,8 @@ import { RiSearchFill } from 'react-icons/ri';
 import { GoHomeFill } from 'react-icons/go';
 import { RiUser3Line } from 'react-icons/ri';
 import { RiUser3Fill } from 'react-icons/ri';
+import { RiShoppingBag2Line } from 'react-icons/ri';
+import { RiShoppingBag2Fill } from 'react-icons/ri';
 
 const MobileBottomNav = () => {
 	const pathname = usePathname();
@@ -25,7 +27,7 @@ const MobileBottomNav = () => {
 		) {
 			return 'text-primary';
 		} else {
-			return 'text-foreground';
+			return 'text-[#858585]';
 		}
 	};
 	const isActive = (baseUrl: string) => {
@@ -62,6 +64,7 @@ const MobileBottomNav = () => {
 							width={20}
 							height={20}
 							className={cn('w-5 h-5')}
+							color='#858585'
 						/>
 					)}
 					<p className=''>Home</p>
@@ -83,22 +86,33 @@ const MobileBottomNav = () => {
 							width={20}
 							height={20}
 							className={cn('w-5 h-5')}
+							color='#858585'
 						/>
 					)}
 
 					<p className=''>Search</p>
 				</Link>
 				<Link
-					href={PAGES_DATA.orders_page}
+					href={PAGES_DATA.tray_page}
 					className={cn(
 						'flex flex-1 flex-col justify-start pt-3 pb-5 items-center',
 						activeStyle(PAGES_DATA.orders_page)
 					)}>
-					<GoPackage
-						width={20}
-						height={20}
-						className={cn('w-5 h-5')}
-					/>
+					{isActive(PAGES_DATA.orders_page) ? (
+						<RiShoppingBag2Fill
+							width={20}
+							height={20}
+							className={cn('w-5 h-5')}
+						/>
+					) : (
+						<RiShoppingBag2Line
+							width={20}
+							height={20}
+							className={cn('w-5 h-5')}
+							color='#858585'
+						/>
+					)}
+
 					<p className=''>Orders</p>
 				</Link>
 				<Link
@@ -118,6 +132,7 @@ const MobileBottomNav = () => {
 							width={20}
 							height={20}
 							className={cn('w-5 h-5')}
+							color='#858585'
 						/>
 					)}
 

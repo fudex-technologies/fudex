@@ -8,21 +8,42 @@ interface Props {
 	className?: ClassNameValue;
 	count: number;
 	setCount: Dispatch<SetStateAction<number>>;
+	countChangeEffect?: (newCount: number) => void;
 }
 
-const CounterComponent = ({ className, count, setCount }: Props) => {
+const CounterComponent = ({
+	className,
+	count,
+	setCount,
+	countChangeEffect,
+}: Props) => {
 	const increaseCount = () => {
-		setCount((prev) => prev + 1);
+		const maybePromise = setCount((prev) => prev + 1);
+		Promise.resolve(maybePromise)
+			.then(() => {
+				countChangeEffect && countChangeEffect(count);
+			})
+			.catch(() => {
+				countChangeEffect && countChangeEffect(count);
+			});
 	};
+
 	const decreaseCount = () => {
-		setCount((prev) => prev - 1);
+		const maybePromise = setCount((prev) => prev - 1);
+		Promise.resolve(maybePromise)
+			.then(() => {
+				countChangeEffect && countChangeEffect(count);
+			})
+			.catch(() => {
+				countChangeEffect && countChangeEffect(count);
+			});
 	};
 
 	return (
 		<div
 			className={cn(
-				className,
-				'p-5 w-full max-w-xs bg-muted text-foreground rounded-full flex text-lg font-semibold'
+				'p-5 w-full max-w-xs bg-muted text-foreground rounded-full flex text-lg font-semibold',
+				className
 			)}>
 			<div
 				onClick={decreaseCount}

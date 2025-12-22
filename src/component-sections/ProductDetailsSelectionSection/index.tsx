@@ -2,6 +2,7 @@
 
 import CounterComponent from '@/components/CounterComponent';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
@@ -11,61 +12,82 @@ import { useState } from 'react';
 const ProductDetailsSelectionSection = () => {
 	const [numberOfItems, setNumberOfItems] = useState(1);
 	return (
-		<div className='space-y-5'>
-			<div className='w-full bg-muted flex items-center gap-3 p-5 text-lg'>
-				<p>Select Size</p>{' '}
-				<Badge
-					variant={'outline'}
-					className='border-destructive text-destructive'>
-					Required
-				</Badge>
+		<>
+			<div className='space-y-5'>
+				<div className='w-full bg-muted flex items-center gap-3 p-5 text-lg'>
+					<p>Select Size</p>{' '}
+					<Badge
+						variant={'outline'}
+						className='border-destructive text-destructive'>
+						Required
+					</Badge>
+				</div>
+
+				<div className='px-5 space-y-2'>
+					<p className='text-lg text-foreground/50'>SELECT 1</p>
+					<RadioGroup
+						defaultValue='big_pack'
+						className='w-full max-w-sm'>
+						<div className='flex gap-3 w-full items-center justify-between'>
+							<Label htmlFor='r1' className='flex-1'>
+								<div className=''>
+									<p className='text-lg '>Big Pack</p>
+									<p className='text-foreground/50'>
+										{formatCurency(1500)}
+									</p>
+								</div>
+							</Label>
+							<RadioGroupItem
+								value='big_pack'
+								id='r1'
+								className='w-6 h-6'
+							/>
+						</div>
+						<Separator />
+						<div className='flex gap-3 w-full items-center justify-between'>
+							<Label htmlFor='r2' className='flex-1'>
+								<div className=''>
+									<p className='text-lg '>Small Pack</p>
+									<p className='text-foreground/50'>
+										{formatCurency(1000)}
+									</p>
+								</div>
+							</Label>
+							<RadioGroupItem
+								value='small_pack'
+								id='r2'
+								className='w-6 h-6'
+							/>
+						</div>
+					</RadioGroup>
+				</div>
+
+				<div className='p-5 space-y-2'>
+					<p className='text-lg'>Number Of Orders</p>
+					<CounterComponent
+						count={numberOfItems}
+						setCount={setNumberOfItems}
+					/>
+				</div>
 			</div>
 
-			<div className='px-5 space-y-2'>
-				<p className='text-lg text-foreground/50'>SELECT 1</p>
-				<RadioGroup defaultValue='big_pack' className='w-full max-w-sm'>
-					<div className='flex gap-3 w-full items-center justify-between'>
-						<Label htmlFor='r1' className='flex-1'>
-							<div className=''>
-								<p className='text-lg '>Big Pack</p>
-								<p className='text-foreground/50'>
-									{formatCurency(1500)}
-								</p>
-							</div>
-						</Label>
-						<RadioGroupItem
-							value='big_pack'
-							id='r1'
-							className='w-6 h-6'
-						/>
+			<>
+				<div className='mb-[110px]' />
+				<div className='fixed bottom-0 left-0 w-screen bg-background border-t border-t-[#85858540] h-[100px] text-[#858585] px-5 flex justify-center'>
+					<div className='w-full h-full flex items-center justify-between max-w-[1400px]'>
+						<div className=''>
+							<p className='text-sm text-foreground/50'>Total</p>
+							<p className='text-xl font-semibold text-foreground'>
+								{formatCurency(1500)}
+							</p>
+						</div>
+						<Button variant={'game'} size={'lg'} className=''>
+							Add to tray
+						</Button>
 					</div>
-					<Separator />
-					<div className='flex gap-3 w-full items-center justify-between'>
-						<Label htmlFor='r2' className='flex-1'>
-							<div className=''>
-								<p className='text-lg '>Small Pack</p>
-								<p className='text-foreground/50'>
-									{formatCurency(1000)}
-								</p>
-							</div>
-						</Label>
-						<RadioGroupItem
-							value='small_pack'
-							id='r2'
-							className='w-6 h-6'
-						/>
-					</div>
-				</RadioGroup>
-			</div>
-
-			<div className='p-5 space-y-2'>
-				<p className='text-lg'>Number Of Orders</p>
-				<CounterComponent
-					count={numberOfItems}
-					setCount={setNumberOfItems}
-				/>
-			</div>
-		</div>
+				</div>
+			</>
+		</>
 	);
 };
 

@@ -20,23 +20,6 @@ export default async function VendorSingleProductPage({ params }: Props) {
 			</div>
 
 			<ProductDetailsSelectionSection />
-
-			<>
-				<div className='mb-[110px]' />
-				<div className='fixed bottom-0 left-0 w-screen bg-background border-t border-t-[#85858540] h-[100px] text-[#858585] px-5 flex justify-center'>
-					<div className='w-full h-full flex items-center justify-between max-w-[1400px]'>
-						<div className=''>
-							<p className='text-sm text-foreground/50'>Total</p>
-							<p className='text-xl font-semibold text-foreground'>
-								{formatCurency(1500)}
-							</p>
-						</div>
-						<Button variant={'game'} size={'lg'} className=''>
-							Add to tray
-						</Button>
-					</div>
-				</div>
-			</>
 		</>
 	);
 }
