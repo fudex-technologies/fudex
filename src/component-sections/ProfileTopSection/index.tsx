@@ -18,10 +18,10 @@ const ProfileTopSection = () => {
 
 			<div className='mt-10 space-y-3 text-center'>
 				<h1 className='font-bold text-lg'>Olaide Igotun</h1>
-				<div className='px-5 py-3 flex items-center justify-center gap-2 border rounded-full'>
+				<div className='px-5 py-3 flex items-center justify-center gap-1 border rounded-full'>
 					<ImageWithFallback
 						src={'/icons/FUDEX_2t.png'}
-						className='w-5 h-auto object-contain'
+						className='w-10 h-auto object-contain'
 					/>
 					<p className='text-lg'>2</p>
 				</div>
