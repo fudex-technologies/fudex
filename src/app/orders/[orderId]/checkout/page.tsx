@@ -1,9 +1,6 @@
 import CheckoutDetailsSection from '@/component-sections/CheckoutDetailsSection';
 import GoBackButton from '@/components/GoBackButton';
 import PageWrapper from '@/components/wrapers/PageWrapper';
-import { PAGES_DATA } from '@/data/pagesData';
-import { ChevronLeft } from 'lucide-react';
-import Link from 'next/link';
 
 interface Props {
 	params: Promise<{ orderId: string }>;
