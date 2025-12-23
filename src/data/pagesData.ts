@@ -15,4 +15,10 @@ export const PAGES_DATA = {
     order_summary_page: (orderId: string) => `/orders/${orderId}/order-summary`,
     order_info_page: (orderId: string) => `/orders/${orderId}/order-info`,
     checkout_page: (orderId: string) => `/orders/${orderId}/checkout`,
+
+    profile_account_page: `/profile/account`,
+    profile_addresses_page: `/profile/addresses`,
+    profile_favorites_page: `/profile/favorites`,
+    profile_notifications_page: `/profile/notifications`,
+    profile_faqs_page: `/profile/faqs`,
 }
