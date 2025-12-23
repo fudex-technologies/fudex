@@ -37,7 +37,7 @@ const MenuListComponent = ({
 						return (
 							<div
 								key={index}
-								className='w-full p-5 flex items-center justify-between'
+								className='w-full p-5 flex items-center justify-between cursor-pointer'
 								onClick={() => {
 									item.onClick && item.onClick();
 								}}>
