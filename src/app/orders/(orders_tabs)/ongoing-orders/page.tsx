@@ -1,10 +1,6 @@
 import OngoingOrderItem from '@/components/order-components/OngoingOrderItem';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
-import { Separator } from '@/components/ui/separator';
-import { cn } from '@/lib/utils';
-import { ChevronRight } from 'lucide-react';
 
 export default function OngoingOrdersPage() {
 	const isEmpty = false;
