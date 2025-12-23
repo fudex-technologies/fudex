@@ -12,6 +12,7 @@ export const PAGES_DATA = {
     ongoing_orders_page: '/orders/ongoing-orders',
     completed_orders_page: '/orders/completed-orders',
 
-    order_summary_page: (orderId: string) => `/orders/order-summary/${orderId}`,
-    checkout_page: (orderId: string) => `/orders/checkout/${orderId}`,
+    order_summary_page: (orderId: string) => `/orders/${orderId}/order-summary`,
+    order_info_page: (orderId: string) => `/orders/${orderId}/order-info`,
+    checkout_page: (orderId: string) => `/orders/${orderId}/checkout`,
 }
