@@ -11,7 +11,7 @@ const GoBackButton = ({ className }: { className?: ClassNameValue }) => {
 		<div
 			onClick={() => router.back()}
 			className={cn(
-				'w-10 aspect-square flex justify-center items-center  rounded-full bg-foreground/10',
+				'w-10 aspect-square flex justify-center items-center  rounded-full bg-foreground/5',
 				className
 			)}>
 			<ChevronLeft className='text-current' width={20} height={20} />

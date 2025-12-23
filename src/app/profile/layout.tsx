@@ -7,7 +7,7 @@ export default function ProfileLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<PageWrapper className={'p-0 max-w-screen relative bg-foreground/5'}>
+		<PageWrapper className={'p-0 max-w-screen relative'}>
 			{children}
 			<MobileBottomNav />
 		</PageWrapper>
