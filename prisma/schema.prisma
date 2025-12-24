@@ -13,19 +13,66 @@ datasource db {
   provider = "postgresql"
 }
 
+// --- Roles / Authorization ---
+enum Role {
+  CUSTOMER
+  VENDOR
+  OPERATOR
+  RIDER
+  SUPER_ADMIN
+}
+
+// Global order/payment states (keeps room for future expansion)
+enum OrderStatus {
+  PENDING
+  PAID
+  PREPARING
+  ASSIGNED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+// --- Core / Auth (existing `User` preserved by auth provider) ---
 model User {
-  id            String    @id
+  id            String   @id @default(uuid())
   name          String
   email         String
-  emailVerified Boolean   @default(false)
+  emailVerified Boolean  @default(false)
   image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  sessions      Session[]
-  accounts      Account[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // relations
+  sessions  Session[]
+  accounts  Account[]
+  addresses Address[]
+  vendors   Vendor[]   @relation("VendorOwner")
+  orders    Order[]
+  payments  Payment[]
+  operator  Operator? // if user is an operator, link record
+  roles     UserRole[]
 
   @@unique([email])
   @@map("user")
+}
+
+model UserRole {
+  id         String   @id @default(uuid())
+  userId     String
+  role       Role
+  assignedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role])
+  @@index([userId, role])
 }
 
 model Session {
@@ -74,4 +121,186 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+// --- Geography / Areas ---
+model Area {
+  id        String     @id @default(uuid())
+  name      String // e.g., "Ikeja East"
+  state     String // e.g., "Lagos"
+  meta      Json? // optional geojson / metadata
+  operators Operator[]
+  createdAt DateTime   @default(now())
+
+  @@unique([name, state])
+  @@index([state])
+}
+
+// --- Operators & Riders (operators are users; riders are DB-only for now) ---
+model Operator {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  areaId    String? // operator works in an area
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  area   Area?   @relation(fields: [areaId], references: [id])
+  riders Rider[]
+  orders Order[]
+
+  @@index([areaId])
+}
+
+model Rider {
+  id         String   @id @default(uuid())
+  operatorId String? // managed by operator
+  name       String
+  phone      String?
+  isActive   Boolean  @default(true)
+  notes      String?
+  createdAt  DateTime @default(now())
+
+  operator Operator? @relation(fields: [operatorId], references: [id], onDelete: SetNull)
+  orders   Order[]
+
+  @@index([operatorId])
+  @@index([isActive])
+}
+
+// --- Addresses ---
+model Address {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label      String? // Home, Work
+  line1      String
+  line2      String?
+  city       String
+  state      String?
+  postalCode String?
+  country    String   @default("NG")
+  lat        Float?
+  lng        Float?
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  orders     Order[]
+
+  @@index([userId])
+}
+
+// --- Vendors / Products (kept generic for future non-food use) ---
+model Vendor {
+  id          String   @id @default(uuid())
+  ownerId     String? // user who manages this vendor (may be null for platform-created vendors)
+  name        String
+  slug        String   @unique
+  description String?
+  phone       String?
+  email       String?
+  address     String?
+  city        String?
+  country     String?
+  coverImage  String? // external URL (Vercel blob etc.)
+  createdAt   DateTime @default(now())
+
+  owner        User?         @relation("VendorOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  products     Product[]
+  productItems ProductItem[]
+  orders       Order[] // orders placed to this vendor
+
+  @@index([name])
+  @@index([city])
+}
+
+model Product {
+  id          String        @id @default(uuid())
+  vendorId    String
+  vendor      Vendor        @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  createdAt   DateTime      @default(now())
+  items       ProductItem[]
+
+  @@index([vendorId])
+}
+
+model ProductItem {
+  id          String      @id @default(uuid())
+  vendorId    String
+  vendor      Vendor      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  productId   String?
+  product     Product?    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name        String
+  slug        String      @unique
+  description String?
+  price       Float
+  currency    String      @default("NGN")
+  images      String[]    @default([]) // store URLs only
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  orderItems  OrderItem[]
+
+  @@index([vendorId])
+  @@index([price])
+}
+
+// --- Orders, Items, Payments ---
+model Order {
+  id              String      @id @default(uuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendorId        String? // vendor fulfilling the order (nullable for general marketplace orders)
+  vendor          Vendor?     @relation(fields: [vendorId], references: [id])
+  addressId       String
+  address         Address     @relation(fields: [addressId], references: [id])
+  operatorId      String? // operator overseeing this order (if assigned)
+  operator        Operator?   @relation(fields: [operatorId], references: [id])
+  assignedRiderId String? // optional rider assignment
+  assignedRider   Rider?      @relation(fields: [assignedRiderId], references: [id])
+  status          OrderStatus @default(PENDING)
+  totalAmount     Float
+  currency        String      @default("NGN")
+  notes           String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  items           OrderItem[]
+  payment         Payment?
+
+  @@index([userId])
+  @@index([vendorId])
+  @@index([operatorId])
+  @@index([status])
+}
+
+model OrderItem {
+  id            String      @id @default(uuid())
+  orderId       String
+  order         Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productItemId String
+  productItem   ProductItem @relation(fields: [productItemId], references: [id])
+  quantity      Int         @default(1)
+  unitPrice     Float
+  totalPrice    Float
+
+  @@index([orderId])
+  @@index([productItemId])
+}
+
+model Payment {
+  id          String        @id @default(uuid())
+  orderId     String        @unique
+  order       Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  amount      Float
+  currency    String        @default("NGN")
+  provider    String        @default("paystack")
+  providerRef String // payment reference from provider
+  status      PaymentStatus @default(PENDING)
+  paidAt      DateTime?
+  createdAt   DateTime      @default(now())
+
+  @@index([userId])
+  @@index([providerRef])
 }

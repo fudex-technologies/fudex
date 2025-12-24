@@ -40,19 +40,28 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
   });
 });
 
-export const adminProcedure = t.procedure.use(({ ctx, next }) => {
-  if (!ctx.session || !ctx.user) {
-    throw new Error("Unauthorized");
-  }
-  // if (ctx.user.role !== "ADMIN") {
-  //   throw new Error("Unauthorized: Only admin can access this router");
-  // }
+export const operatorProcedure = t.procedure.use(async ({ ctx, next }) => {
+  if (!ctx.session || !ctx.user) throw new Error("Unauthorized");
+  const userId = ctx.user.id;
+  const isSuper = await ctx.prisma.userRole.findFirst({ where: { userId, role: "SUPER_ADMIN" } });
+  const isOperator = await ctx.prisma.userRole.findFirst({ where: { userId, role: "OPERATOR" } });
+  if (!isOperator && !isSuper) throw new Error("Forbidden: operator role required");
+  return next({ ctx });
+});
 
-  return next({
-    ctx: {
-      ...ctx,
-      session: ctx.session,
-      user: ctx.user,
-    },
-  });
+export const vendorProcedure = t.procedure.use(async ({ ctx, next }) => {
+  if (!ctx.session || !ctx.user) throw new Error("Unauthorized");
+  const userId = ctx.user.id;
+  const isSuper = await ctx.prisma.userRole.findFirst({ where: { userId, role: "SUPER_ADMIN" } });
+  const isVendor = await ctx.prisma.userRole.findFirst({ where: { userId, role: "VENDOR" } });
+  if (!isVendor && !isSuper) throw new Error("Forbidden: vendor role required");
+  return next({ ctx });
+});
+
+export const adminProcedure = t.procedure.use(async ({ ctx, next }) => {
+  if (!ctx.session || !ctx.user) throw new Error("Unauthorized");
+  const userId = ctx.user.id;
+  const isSuper = await ctx.prisma.userRole.findFirst({ where: { userId, role: "SUPER_ADMIN" } });
+  if (!isSuper) throw new Error("Forbidden: super admin required");
+  return next({ ctx });
 });
