@@ -39,7 +39,7 @@ export const paymentRouter = createTRPCRouter({
             providerRef: z.string(),
             status: z.nativeEnum(require("@prisma/client").PaymentStatus).optional()
         })).mutation(async ({ ctx, input }) => {
-            const payment = await ctx.prisma.payment.findUnique({
+            const payment = await ctx.prisma.payment.findFirst({
                 where: { providerRef: input.providerRef }
             });
             if (!payment) throw new Error("Payment not found");
