@@ -16,7 +16,7 @@ export default function LoginPage() {
 				<div className='w-full space-y-2 text-center'>
 					<h1 className='font-bold text-xl'>Log in</h1>
 					<p className='font-light text-foreground/50'>
-						Hi welcome back Olaide. You can log back into your
+						Hi welcome back. You can log back into your
 						account using your phone number.
 					</p>
 				</div>
