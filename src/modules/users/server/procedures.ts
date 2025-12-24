@@ -6,15 +6,19 @@ export const userRouter = createTRPCRouter({
     session: publicProcedure.query(({ ctx }) => ctx.session),
 
     // Profile: read own profile and compute DiceBear avatar URL (no upload)
-    profile: protectedProcedure.query(({ ctx }) => {
-        const user = ctx.user!;
-        // DiceBear avatar URL using user id as seed (no image upload)
-        const avatarUrl = `https://api.dicebear.com/8.x/identicon/svg?seed=${encodeURIComponent(user.id)}`;
+    profile: protectedProcedure.query(async ({ ctx }) => {
+        const sessionUser = ctx.user!;
+        const user = await ctx.prisma.user.findUnique({ where: { id: sessionUser.id } });
+        const avatarUrl = `https://api.dicebear.com/8.x/identicon/svg?seed=${encodeURIComponent(sessionUser.id)}`;
         return {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            image: user.image ?? avatarUrl,
+            id: sessionUser.id,
+            name: user?.name ?? sessionUser.name,
+            firstName: user?.firstName ?? null,
+            lastName: user?.lastName ?? null,
+            email: user?.email ?? sessionUser.email,
+            phone: user?.phone ?? null,
+            phoneVerified: user?.phoneVerified ?? false,
+            image: user?.image ?? sessionUser.image ?? avatarUrl,
             avatarUrl,
         };
     }),
@@ -23,14 +27,20 @@ export const userRouter = createTRPCRouter({
         .input(
             z.object({
                 name: z.string().min(1).optional(),
+                firstName: z.string().optional(),
+                lastName: z.string().optional(),
                 image: z.string().url().optional(),
+                phone: z.string().optional(),
             })
         )
         .mutation(async ({ ctx, input }) => {
             const userId = ctx.user!.id;
             const data: any = {};
             if (input.name) data.name = input.name;
+            if (input.firstName) data.firstName = input.firstName;
+            if (input.lastName) data.lastName = input.lastName;
             if (input.image) data.image = input.image;
+            if (input.phone) data.phone = input.phone;
             const updated = await ctx.prisma.user.update({ where: { id: userId }, data });
             return updated;
         }),

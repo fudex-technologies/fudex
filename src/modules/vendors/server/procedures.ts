@@ -44,6 +44,73 @@ export const vendorRouter = createTRPCRouter({
             return ctx.prisma.productItem.findMany({ where: { vendorId: input.vendorId, isActive: true }, take: input.take, orderBy: { createdAt: "desc" } });
         }),
 
+    // Combined search for vendors and product items
+    search: publicProcedure
+        .input(z.object({
+            q: z.string().optional(),
+            categoryId: z.string().optional(),
+            take: z.number().optional().default(20),
+            skip: z.number().optional().default(0),
+        }))
+        .query(async ({ ctx, input }) => {
+            const vendorWhere: any = {};
+            if (input.q) {
+                vendorWhere.OR = [
+                    { name: { contains: input.q, mode: "insensitive" } },
+                    { description: { contains: input.q, mode: "insensitive" } },
+                ];
+            }
+            if (input.categoryId) {
+                vendorWhere.vendorCategories = { some: { categoryId: input.categoryId } };
+            }
+
+            const productWhere: any = { isActive: true };
+            if (input.q) {
+                productWhere.OR = [
+                    { name: { contains: input.q, mode: "insensitive" } },
+                    { description: { contains: input.q, mode: "insensitive" } },
+                ];
+            }
+            if (input.categoryId) {
+                productWhere.categories = { some: { categoryId: input.categoryId } };
+            }
+
+            const [vendors, products] = await Promise.all([
+                ctx.prisma.vendor.findMany({ where: vendorWhere, take: input.take, skip: input.skip, orderBy: { createdAt: "desc" } }),
+                ctx.prisma.productItem.findMany({ where: productWhere, take: input.take, skip: input.skip, orderBy: { createdAt: "desc" } }),
+            ]);
+
+            return { vendors, products };
+        }),
+
+    // List vendors by approximate area using lat/lng bounding box
+    byArea: publicProcedure
+        .input(z.object({
+            lat: z.number(),
+            lng: z.number(),
+            radiusKm: z.number().optional().default(5),
+            take: z.number().optional().default(50),
+            skip: z.number().optional().default(0),
+        }))
+        .query(({ ctx, input }) => {
+            const delta = input.radiusKm / 111; // ~degrees per km
+            const latMin = input.lat - delta;
+            const latMax = input.lat + delta;
+            const lngMin = input.lng - delta;
+            const lngMax = input.lng + delta;
+
+            return ctx.prisma.vendor.findMany({
+                where: {
+                    lat: { gte: latMin, lte: latMax },
+                    lng: { gte: lngMin, lte: lngMax },
+                    // only active vendors assumed
+                },
+                take: input.take,
+                skip: input.skip,
+                orderBy: { createdAt: "desc" },
+            });
+        }),
+
     // Create vendor - restricted (admin or vendors). Kept simple for now.
     createVendor: operatorProcedure
         .input(z.object({

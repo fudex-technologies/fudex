@@ -43,7 +43,11 @@ enum PaymentStatus {
 model User {
   id            String   @id @default(uuid())
   name          String
+  firstName     String?
+  lastName      String?
   email         String
+  phone         String?  @unique
+  phoneVerified Boolean  @default(false)
   emailVerified Boolean  @default(false)
   image         String?
   createdAt     DateTime @default(now())
@@ -58,6 +62,8 @@ model User {
   payments  Payment[]
   operator  Operator? // if user is an operator, link record
   roles     UserRole[]
+  reviews   Review[]
+
 
   @@unique([email])
   @@map("user")
@@ -202,15 +208,21 @@ model Vendor {
   city        String?
   country     String?
   coverImage  String? // external URL (Vercel blob etc.)
+  lat         Float?
+  lng         Float?
   createdAt   DateTime @default(now())
 
-  owner        User?         @relation("VendorOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-  products     Product[]
-  productItems ProductItem[]
-  orders       Order[] // orders placed to this vendor
+  owner            User?               @relation("VendorOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  products         Product[]
+  productItems     ProductItem[]
+  orders           Order[] // orders placed to this vendor
+  reviews          Review[]
+  vendorCategories VendorCategory[]
 
   @@index([name])
   @@index([city])
+  @@index([name, description])
+  @@index([lat, lng])
 }
 
 model Product {
@@ -240,9 +252,63 @@ model ProductItem {
   isActive    Boolean     @default(true)
   createdAt   DateTime    @default(now())
   orderItems  OrderItem[]
+  categories  ProductItemCategory[]
 
   @@index([vendorId])
   @@index([price])
+  @@index([name, description])
+}
+
+// Categories and many-to-many relations with ProductItem and Vendor
+model Category {
+  id        String                    @id @default(uuid())
+  name      String                    @unique
+  slug      String                    @unique
+  createdAt DateTime                  @default(now())
+  items     ProductItemCategory[]
+  vendors   VendorCategory[]
+
+  @@index([name])
+}
+
+model ProductItemCategory {
+  id            String      @id @default(uuid())
+  productItemId String
+  categoryId    String
+  productItem   ProductItem @relation(fields: [productItemId], references: [id], onDelete: Cascade)
+  category      Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([productItemId, categoryId])
+  @@index([categoryId])
+  @@index([productItemId])
+}
+
+model VendorCategory {
+  id         String   @id @default(uuid())
+  vendorId   String
+  categoryId String
+  vendor     Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([vendorId, categoryId])
+  @@index([categoryId])
+  @@index([vendorId])
+}
+
+// Reviews / Ratings for vendors
+model Review {
+  id        String   @id @default(uuid())
+  userId    String
+  vendorId  String
+  rating    Int      @default(5)
+  comment   String?
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+  @@index([userId])
 }
 
 // --- Orders, Items, Payments ---

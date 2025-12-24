@@ -1,7 +1,6 @@
 'use client';
 
 import { GoHome } from 'react-icons/go';
-import { GoPackage } from 'react-icons/go';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ClassNameValue } from 'tailwind-merge';
@@ -14,9 +13,13 @@ import { RiUser3Line } from 'react-icons/ri';
 import { RiUser3Fill } from 'react-icons/ri';
 import { RiShoppingBag2Line } from 'react-icons/ri';
 import { RiShoppingBag2Fill } from 'react-icons/ri';
+import { useSession } from '@/lib/auth-client';
 
 const MobileBottomNav = () => {
 	const pathname = usePathname();
+	const { data: session } = useSession();
+	console.log(session);
+	
 
 	const activeStyle = (baseUrl: string): ClassNameValue => {
 		if (baseUrl !== PAGES_DATA.home_page && pathname.startsWith(baseUrl)) {
@@ -116,7 +119,11 @@ const MobileBottomNav = () => {
 					<p className=''>Orders</p>
 				</Link>
 				<Link
-					href={PAGES_DATA.profile_page}
+					href={
+						session
+							? PAGES_DATA.profile_page
+							: PAGES_DATA.onboarding_step_one_page
+					}
 					className={cn(
 						'flex flex-1 flex-col justify-start pt-3 pb-5 items-center',
 						activeStyle(PAGES_DATA.profile_page)

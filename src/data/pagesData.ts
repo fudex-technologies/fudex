@@ -21,4 +21,12 @@ export const PAGES_DATA = {
     profile_favorites_page: `/profile/favorites`,
     profile_notifications_page: `/profile/notifications`,
     profile_faqs_page: `/profile/faqs`,
+
+    // auth pages
+    onboarding_step_one_page: `/onboarding/step-1`,
+    onboarding_step_two_page: `/onboarding/step-2`,
+    onboarding_step_three_page: `/onboarding/step-3`,
+
+    onboarding_signup_page: `/onboarding`,
+    login_page: `/sign-in`,
 }
