@@ -18,8 +18,6 @@ import { useSession } from '@/lib/auth-client';
 const MobileBottomNav = () => {
 	const pathname = usePathname();
 	const { data: session } = useSession();
-	console.log(session);
-	
 
 	const activeStyle = (baseUrl: string): ClassNameValue => {
 		if (baseUrl !== PAGES_DATA.home_page && pathname.startsWith(baseUrl)) {
