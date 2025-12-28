@@ -14,12 +14,9 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTRPC } from '@/trpc/client';
 import { localStorageStrings } from '@/constants/localStorageStrings';
 import { useAuthActions } from '@/api-hooks/useAuthActions';
 import { useSession } from '@/lib/auth-client';
-import { useMutation } from '@tanstack/react-query';
-import { toast } from 'sonner';
 
 export default function VerifyPhonePage() {
 	const router = useRouter();
@@ -29,33 +26,14 @@ export default function VerifyPhonePage() {
 	const [isCounting, setIsCounting] = useState(true);
 
 	const { verifyPhoneOtp, requestPhoneOtp } = useAuthActions();
-	const trpc = useTRPC();
 	const { data: session } = useSession();
 
-	const attachPhoneMut = useMutation(
-		trpc.phoneAuth.attachVerifiedPhone.mutationOptions({
-			onSuccess: () => {
-				toast.success('Phone attached');
-				router.replace(PAGES_DATA.profile_page);
-			},
-			onError: (err: unknown) => {
-				toast.error('Failed to attach phone', {
-					description: err instanceof Error ? err.message : 'Something went wrong',
-				});
-			},
-			retry: false,
-		})
-	);
 
 	const { mutate: verifyOtpMutate, isPending: verifyOtpLoading } =
 		verifyPhoneOtp({
 			silent: false,
-			onSuccess: (data) => {
-				// data.token is the verification token
-				if (session) {
-					// user is signed in via Google — attach the verified phone
-					attachPhoneMut.mutate({ token: data?.token });
-				} else {
+			onSuccess: () => {
+				if (!session) {
 					router.push(PAGES_DATA.onboarding_create_password_page);
 				}
 			},

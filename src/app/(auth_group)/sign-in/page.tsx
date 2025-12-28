@@ -134,7 +134,7 @@ export default function LoginPage() {
 						type='submit'
 						variant={'game'}
 						className='w-full py-5'
-						disabled={loginLoading}>
+						disabled={loginLoading || !isFormValid}>
 						{loginLoading ? 'Logging in...' : 'Continue'}
 					</Button>
 				</form>

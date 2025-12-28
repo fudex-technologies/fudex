@@ -7,11 +7,14 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { UseAPICallerOptions } from "./api-hook-types";
 import { localStorageStrings } from "@/constants/localStorageStrings";
+import { useSession } from "@/lib/auth-client";
 
 
 export function useAuthActions() {
     const router = useRouter();
     const trpc = useTRPC();
+    const { data: session } = useSession();
+
 
     const login = (options?: UseAPICallerOptions) => {
         return useMutation(
@@ -62,6 +65,12 @@ export function useAuthActions() {
         return useMutation(
             trpc.phoneAuth.verifyOtp.mutationOptions({
                 onSuccess: async (data) => {
+                    // data.token is the verification token
+                    if (session) {
+                        // user is signed in via Google — attach the verified phone
+                        attachPhoneMut.mutate({ token: data?.token });
+                        return;
+                    }
                     localStorage.setItem(
                         localStorageStrings.onboardingVerificationToken,
                         data?.token
@@ -103,6 +112,25 @@ export function useAuthActions() {
             })
         )
     }
+
+    // for users that login through google
+    const attachPhoneMut = useMutation(
+        trpc.phoneAuth.attachVerifiedPhone.mutationOptions({
+            onSuccess: () => {
+                toast.success('Phone attached');
+                router.replace(PAGES_DATA.home_page);
+            },
+            onError: (err: unknown) => {
+                toast.error('Failed to attach phone', {
+                    description:
+                        err instanceof Error
+                            ? err.message
+                            : 'Something went wrong',
+                });
+            },
+            retry: false,
+        })
+    );
 
     return {
         login,
