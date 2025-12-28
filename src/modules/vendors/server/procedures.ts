@@ -1,5 +1,4 @@
-import { VendorWhereInput } from "@/generated/prisma/models";
-import { createTRPCRouter, publicProcedure, adminProcedure, operatorProcedure } from "@/trpc/init";
+import { createTRPCRouter, publicProcedure, operatorProcedure } from "@/trpc/init";
 import { z } from "zod";
 
 export const vendorRouter = createTRPCRouter({
@@ -11,7 +10,7 @@ export const vendorRouter = createTRPCRouter({
             skip: z.number().optional().default(0)
         }))
         .query(({ ctx, input }) => {
-            const where: VendorWhereInput = input.q ? {
+            const where: any = input.q ? {
                 OR: [{
                     name: { contains: input.q, mode: "insensitive" }
                 },
