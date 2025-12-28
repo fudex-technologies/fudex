@@ -8,14 +8,18 @@ export const userRouter = createTRPCRouter({
     // Profile: read own profile and compute DiceBear avatar URL (no upload)
     profile: protectedProcedure.query(async ({ ctx }) => {
         const sessionUser = ctx.user!;
-        const user = await ctx.prisma.user.findUnique({ where: { id: sessionUser.id } });
+        const user = await ctx.prisma.user.findUnique({
+            where: { id: sessionUser.id }
+        });
         const avatarUrl = `https://api.dicebear.com/8.x/identicon/svg?seed=${encodeURIComponent(sessionUser.id)}`;
+
         return {
             id: sessionUser.id,
             name: user?.name ?? sessionUser.name,
             firstName: user?.firstName ?? null,
             lastName: user?.lastName ?? null,
             email: user?.email ?? sessionUser.email,
+            emailVerified: user?.emailVerified ?? sessionUser.emailVerified,
             phone: user?.phone ?? null,
             phoneVerified: user?.phoneVerified ?? false,
             image: user?.image ?? sessionUser.image ?? avatarUrl,

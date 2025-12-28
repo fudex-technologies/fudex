@@ -1,3 +1,6 @@
+import crypto from "crypto";
+import bcrypt from "bcryptjs";
+
 
 
 export const formatCurency = (price: number) => {
@@ -137,10 +140,46 @@ export const getRelativeTime = (timestamp: string): string => {
 };
 
 export const fileToBase64 = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = error => reject(error);
-  });
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = error => reject(error);
+    });
 };
+
+
+export function normalizePhoneNumber(phone: string) {
+    let cleaned = phone.replace(/\D/g, "");
+
+    if (cleaned.startsWith("234")) {
+        cleaned = cleaned.slice(3);
+    }
+
+    if (cleaned.startsWith("0")) {
+        cleaned = cleaned.slice(1);
+    }
+
+    // Nigerian numbers must be exactly 10 digits after cleanup
+    if (cleaned.length !== 10) {
+        throw new Error("Invalid Nigerian phone number");
+    }
+
+    return `234${cleaned}`;
+}
+
+export function generateOTP() {
+    return crypto.randomInt(100000, 999999).toString();
+}
+
+export async function hashOTP(otp: string) {
+    return bcrypt.hash(otp, 10);
+}
+
+export async function compareOTP(otp: string, hash: string) {
+    return bcrypt.compare(otp, hash);
+}
+
+export const validateEmailRegex = (email: string) => /\S+@\S+\.\S+/.test(email);
+export const validatePhoneNumberRegex = (phone: string) => /^(\+234|234|0)?[789]\d{9}$/.test(phone);
+export const validatepasswordRegex = (password: string) => /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(password);

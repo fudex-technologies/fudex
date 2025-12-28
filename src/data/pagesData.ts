@@ -27,6 +27,11 @@ export const PAGES_DATA = {
     onboarding_step_two_page: `/onboarding/step-2`,
     onboarding_step_three_page: `/onboarding/step-3`,
 
+    onboarding_verify_number_page: `/onboarding/verify-number`,
+    onboarding_create_password_page: `/onboarding/create-password`,
+    onboarding_set_address_page: `/onboarding/address`,
+
     onboarding_signup_page: `/onboarding`,
     login_page: `/sign-in`,
+    auth_status_page: `/auth-status`,
 }

@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import {
 	Select,
 	SelectContent,
@@ -7,11 +6,17 @@ import {
 	SelectValue,
 } from '../ui/select';
 import { ImageWithFallback } from '../ui/ImageWithFallback';
+import { ClassNameValue } from 'tailwind-merge';
+import { cn } from '@/lib/utils';
 
-const LocationDropdown = () => {
+const LocationDropdown = ({ className }: { className?: ClassNameValue }) => {
 	return (
 		<Select>
-			<SelectTrigger className='min-w-[180px] max-w-sm w-full border-0 shadow-none p-0'>
+			<SelectTrigger
+				className={cn(
+					'min-w-[180px] max-w-sm w-full border-0 shadow-none p-0',
+					className
+				)}>
 				<div className='flex items-center justify-start gap-2'>
 					<ImageWithFallback
 						src={'/assets/locationIcon.svg'}
@@ -19,7 +24,8 @@ const LocationDropdown = () => {
 						height={20}
 						alt='Location'
 					/>
-					<SelectValue placeholder='Road 5, Iworoko rd, Ekiti' />
+					{/* <SelectValue placeholder='Road 5, Iworoko rd, Ekiti' /> */}
+					<SelectValue placeholder='Select Address' />
 				</div>
 			</SelectTrigger>
 			<SelectContent>

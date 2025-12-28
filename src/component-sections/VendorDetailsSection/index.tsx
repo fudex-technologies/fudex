@@ -1,5 +1,6 @@
 import { Separator } from '@/components/ui/separator';
 import SectionWrapper from '@/components/wrapers/SectionWrapper';
+import { formatCurency } from '@/lib/commonFunctions';
 import { FaBicycle, FaBoltLightning, FaStar } from 'react-icons/fa6';
 import { GrAlarm } from 'react-icons/gr';
 
@@ -37,7 +38,7 @@ const VendorDetailsSection = () => {
 						<div className='w-10 h-10 rounded-full flex justify-center items-center  bg-secondary/10 text-secondary'>
 							<FaBicycle />
 						</div>
-						<p className=''>#600</p>
+						<p className=''>{formatCurency(500)} - {formatCurency(1000)}</p>
 					</div>
 					<div className='flex-1 flex flex-col items-center justify-center gap-2 border-l'>
 						<div className='w-10 h-10 rounded-full flex justify-center items-center  bg-secondary/10 text-secondary'>

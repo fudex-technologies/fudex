@@ -2,6 +2,7 @@ import PWAUpdateToast from '@/components/pwa/PwaUpdateToaster';
 import { Toaster } from 'sonner';
 import { TRPCReactProvider } from '@/trpc/client';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
+import RequirePhoneModal from '@/components/RequirePhoneModal/RequirePhoneModal';
 
 export default function Providers({
 	children,
@@ -11,10 +12,10 @@ export default function Providers({
 	return (
 		<TRPCReactProvider>
 			<NuqsAdapter>
-				{' '}
 				{children}
+				<RequirePhoneModal />
 				<PWAUpdateToast />
-				<Toaster />
+				<Toaster position="top-center" />
 			</NuqsAdapter>
 		</TRPCReactProvider>
 	);

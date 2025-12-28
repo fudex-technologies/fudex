@@ -5,11 +5,17 @@ import { ChevronLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ClassNameValue } from 'tailwind-merge';
 
-const GoBackButton = ({ className }: { className?: ClassNameValue }) => {
+const GoBackButton = ({
+	className,
+	link,
+}: {
+	className?: ClassNameValue;
+	link?: string;
+}) => {
 	const router = useRouter();
 	return (
 		<div
-			onClick={() => router.back()}
+			onClick={() => (link ? router.replace(link) : router.back())}
 			className={cn(
 				'w-10 aspect-square flex justify-center items-center  rounded-full bg-foreground/5',
 				className

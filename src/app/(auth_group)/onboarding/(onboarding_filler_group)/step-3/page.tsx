@@ -12,7 +12,7 @@ export default function OnboardingStepThreePage() {
 			<div className='flex flex-col items-center max-w-lg w-full gap-5'>
 				<ImageWithFallback
 					src={'/assets/payment-illustration.png'}
-					className='w-full h-auto object-contain'
+					className='w-full max-w-sm h-auto object-contain'
 					alt='plate of food'
 				/>
 				<div className='w-full space-y-2 text-center'>

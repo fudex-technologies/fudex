@@ -3,6 +3,7 @@
 import MenuListComponent from '@/components/MenuListComponnt';
 import SectionWrapper from '@/components/wrapers/SectionWrapper';
 import { PAGES_DATA } from '@/data/pagesData';
+import { signOut } from '@/lib/auth-client';
 import {
 	Bell,
 	CircleQuestionMark,
@@ -13,8 +14,22 @@ import {
 	Trash,
 	User,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 const ProfileMenusSection = () => {
+	const router = useRouter();
+
+	const logoutandler = async () => {
+		await signOut({
+			fetchOptions: {
+				onSuccess: () => {
+					toast.success('Logged out');
+					router.push(PAGES_DATA.home_page); // redirect to login page
+				},
+			},
+		});
+	};
 	return (
 		<SectionWrapper className='flex flex-col items-center'>
 			<div className='max-w-lg w-full space-y-5'>
@@ -65,7 +80,9 @@ const ProfileMenusSection = () => {
 						{
 							icon: <LogOut />,
 							title: 'Log Out',
-							onClick: () => {},
+							onClick: () => {
+								logoutandler();
+							},
 						},
 						{
 							icon: <Trash />,

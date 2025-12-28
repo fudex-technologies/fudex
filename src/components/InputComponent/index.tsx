@@ -91,7 +91,11 @@ const InputField: React.FC<InputFieldProps> = ({
 						onClick={toggleShowPassword}
 						className='text-xs font-light absolute top-10 right-3 cursor-pointer'>
 						{/* {showPassword ? 'Hide' : 'Show'} */}
-						{showPassword ? <RiEyeOffLine className='text-foreground/50 w-[18px]' /> : <RiEyeLine className='text-foreground/50 w-[18px]' />}
+						{showPassword ? (
+							<RiEyeOffLine className='text-foreground/50 w-[18px]' />
+						) : (
+							<RiEyeLine className='text-foreground/50 w-[18px]' />
+						)}
 					</Button>
 				)}
 			</div>
@@ -115,7 +119,7 @@ const InputField: React.FC<InputFieldProps> = ({
 				<p className='text-xs text-gray-400 mt-1'>{hint}</p>
 			)}
 			{error && (
-				<p className='text-xs text-red-500 mt-1'>
+				<p className='text-xs text-red-500 mt-1 flex items-center gap-2'>
 					<FaInfoCircle color='red' className='w-3 h-3' /> {error}
 				</p>
 			)}
