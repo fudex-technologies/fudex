@@ -2,49 +2,135 @@ import { createTRPCRouter, protectedProcedure, publicProcedure, adminProcedure }
 import { z } from "zod";
 
 export const orderRouter = createTRPCRouter({
-    // Create an order: items contain productItemId and quantity
+    // Create an order: supports item-level addons and optional grouping (groupKey) for "packs".
+    // Input items: { productItemId, quantity, groupKey?: string, addons?: [{ addonProductItemId, quantity }] }
     createOrder: protectedProcedure
         .input(
             z.object({
                 addressId: z.string(),
-                items: z.array(z.object({ productItemId: z.string(), quantity: z.number().min(1) })),
+                items: z.array(
+                    z.object({
+                        productItemId: z.string(),
+                        quantity: z.number().min(1),
+                        groupKey: z.string().optional(),
+                        addons: z.array(z.object({ addonProductItemId: z.string(), quantity: z.number().min(1) })).optional(),
+                    })
+                ),
                 notes: z.string().optional(),
             })
         )
         .mutation(async ({ ctx, input }) => {
             const userId = ctx.user!.id;
-            // Load product items to compute prices
-            const productItemIds = input.items.map((i) => i.productItemId);
-            const productItems = await ctx.prisma.productItem.findMany({ where: { id: { in: productItemIds } } });
-            const priceMap: Record<string, number> = {};
-            for (const pi of productItems) priceMap[pi.id] = pi.price;
 
-            let total = 0;
-            const orderItemsData = input.items.map((it) => {
-                const unit = priceMap[it.productItemId] ?? 0;
-                const totalPrice = unit * it.quantity;
-                total += totalPrice;
-                return {
+            // Collect all productItem ids (main items + addons) to load and validate
+            const mainIds = input.items.map((i) => i.productItemId);
+            const addonIds = input.items.flatMap((i) => (i.addons ?? []).map((a) => a.addonProductItemId));
+            const allIds = Array.from(new Set([...mainIds, ...addonIds]));
+
+            // Load product items from DB
+            const productItems = await ctx.prisma.productItem.findMany({ where: { id: { in: allIds } } });
+            const piMap: Record<string, any> = {};
+            for (const pi of productItems) piMap[pi.id] = pi;
+
+            // Ensure all referenced items exist
+            for (const id of allIds) {
+                if (!piMap[id]) throw new Error(`ProductItem not found: ${id}`);
+            }
+
+            // Ensure all main items belong to the same vendor (single-vendor checkout)
+            const vendorIds = new Set(mainIds.map((id) => piMap[id].vendorId));
+            if (vendorIds.size > 1) throw new Error("All items must belong to the same vendor");
+            const vendorId = productItems.length ? productItems.find((p) => mainIds.includes(p.id))?.vendorId ?? null : null;
+
+            // Validate availability: items must be active and inStock
+            for (const id of mainIds) {
+                const pi = piMap[id];
+                if (!pi.isActive || !pi.inStock) throw new Error(`Item not available: ${pi.name}`);
+            }
+
+            // Addon items should also be available
+            for (const id of addonIds) {
+                const pi = piMap[id];
+                if (!pi.isActive || !pi.inStock) throw new Error(`Addon not available: ${pi.name}`);
+            }
+
+            // Build create data for order items and compute totals (include addon pricing)
+            let orderTotal = 0;
+            const orderItemsCreate: any[] = [];
+
+            for (const it of input.items) {
+                const mainPi = piMap[it.productItemId];
+                const unit = mainPi.price;
+                let totalPrice = unit * it.quantity;
+
+                const addonsToCreate: any[] = [];
+                if (it.addons && it.addons.length) {
+                    for (const a of it.addons) {
+                        const addonPi = piMap[a.addonProductItemId];
+                        const addonUnit = addonPi.price;
+                        const addonTotal = addonUnit * a.quantity;
+                        totalPrice += addonTotal;
+                        addonsToCreate.push({ addonProductItemId: a.addonProductItemId, quantity: a.quantity, unitPrice: addonUnit });
+                    }
+                }
+
+                orderTotal += totalPrice;
+
+                orderItemsCreate.push({
                     productItemId: it.productItemId,
                     quantity: it.quantity,
                     unitPrice: unit,
                     totalPrice,
-                };
+                    groupKey: it.groupKey,
+                    // addons handled after orderItem creation in transaction
+                    _addons: addonsToCreate,
+                });
+            }
+
+            // Persist order + items + addons in a single transaction
+            const created = await ctx.prisma.$transaction(async (prisma) => {
+                const order = await prisma.order.create({
+                    data: {
+                        userId,
+                        vendorId: vendorId ?? undefined,
+                        addressId: input.addressId,
+                        totalAmount: orderTotal,
+                        currency: "NGN",
+                        notes: input.notes,
+                    },
+                });
+
+                // create order items and related addons
+                for (const oi of orderItemsCreate) {
+                    const createdItem = await prisma.orderItem.create({
+                        data: {
+                            orderId: order.id,
+                            productItemId: oi.productItemId,
+                            quantity: oi.quantity,
+                            unitPrice: oi.unitPrice,
+                            totalPrice: oi.totalPrice,
+                            groupKey: oi.groupKey,
+                        },
+                    });
+
+                    // create addons if any
+                    for (const a of oi._addons || []) {
+                        await prisma.orderItemAddon.create({
+                            data: {
+                                orderItemId: createdItem.id,
+                                addonProductItemId: a.addonProductItemId,
+                                quantity: a.quantity,
+                                unitPrice: a.unitPrice,
+                            },
+                        });
+                    }
+                }
+
+                // return full order with items and addons
+                return prisma.order.findUnique({ where: { id: order.id }, include: { items: { include: { productItem: true, addons: { include: { addonProductItem: true } } } }, payment: true } });
             });
 
-            const order = await ctx.prisma.order.create({
-                data: {
-                    userId,
-                    addressId: input.addressId,
-                    totalAmount: total,
-                    currency: "NGN",
-                    notes: input.notes,
-                    items: { create: orderItemsData },
-                },
-                include: { items: true },
-            });
-
-            return order;
+            return created;
         }),
 
     // List orders for current user
@@ -70,6 +156,78 @@ export const orderRouter = createTRPCRouter({
                 where: { id: input.id, userId: ctx.user!.id },
                 include: { items: { include: { productItem: true } }, payment: true }
             });
+        }),
+
+    // Get order broken down by packs (groupKey). Each pack contains main item(s) and their addons.
+    // Useful for rendering the user's tray and computing payable amounts grouped as packs.
+    getOrderPacks: protectedProcedure
+        .input(z.object({ id: z.string() }))
+        .query(async ({ ctx, input }) => {
+            // load order with items and addons (+ productItem details)
+            const order = await ctx.prisma.order.findFirst({
+                where: { id: input.id, userId: ctx.user!.id },
+                include: {
+                    items: {
+                        include: {
+                            productItem: true,
+                            addons: { include: { addonProductItem: true } },
+                        },
+                    },
+                },
+            });
+            if (!order) throw new Error("Order not found");
+
+            // Group items by groupKey (fallback to item id when groupKey is null)
+            const groups = new Map<string, any>();
+
+            for (const it of order.items) {
+                const key = it.groupKey ?? it.id;
+                if (!groups.has(key)) {
+                    groups.set(key, {
+                        groupKey: it.groupKey ?? null,
+                        items: [],
+                        addons: [],
+                        packTotal: 0,
+                    });
+                }
+
+                const pack = groups.get(key);
+
+                // main item representation
+                pack.items.push({
+                    id: it.id,
+                    productItem: it.productItem,
+                    quantity: it.quantity,
+                    unitPrice: it.unitPrice,
+                    totalPrice: it.totalPrice,
+                });
+
+                // accumulate addons (each addon references a ProductItem)
+                for (const a of it.addons ?? []) {
+                    const addonEntry = {
+                        id: a.id,
+                        addonProductItem: a.addonProductItem,
+                        quantity: a.quantity,
+                        unitPrice: a.unitPrice,
+                        totalPrice: a.unitPrice * a.quantity,
+                    };
+                    pack.addons.push(addonEntry);
+                }
+
+                // item.totalPrice already includes the item's unit price and any addon totals
+                pack.packTotal += Number(it.totalPrice);
+            }
+
+            // Convert groups map to an array
+            const packs = Array.from(groups.values());
+
+            return {
+                orderId: order.id,
+                vendorId: order.vendorId,
+                currency: order.currency,
+                totalAmount: order.totalAmount,
+                packs,
+            };
         }),
 
     // Admin/restaurant update status

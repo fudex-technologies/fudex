@@ -58,6 +58,17 @@ export const vendorProcedure = t.procedure.use(async ({ ctx, next }) => {
   return next({ ctx });
 });
 
+// Procedure which allows either a vendor, an operator, or a super-admin to proceed.
+export const vendorAndOperatorProcedure = t.procedure.use(async ({ ctx, next }) => {
+  if (!ctx.session || !ctx.user) throw new Error("Unauthorized");
+  const userId = ctx.user.id;
+  const isSuper = await ctx.prisma.userRole.findFirst({ where: { userId, role: "SUPER_ADMIN" } });
+  const isVendor = await ctx.prisma.userRole.findFirst({ where: { userId, role: "VENDOR" } });
+  const isOperator = await ctx.prisma.userRole.findFirst({ where: { userId, role: "OPERATOR" } });
+  if (!isVendor && !isOperator && !isSuper) throw new Error("Forbidden: vendor or operator role required");
+  return next({ ctx });
+});
+
 export const adminProcedure = t.procedure.use(async ({ ctx, next }) => {
   if (!ctx.session || !ctx.user) throw new Error("Unauthorized");
   const userId = ctx.user.id;

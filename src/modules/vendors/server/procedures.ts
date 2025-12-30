@@ -1,7 +1,23 @@
-import { createTRPCRouter, publicProcedure, operatorProcedure } from "@/trpc/init";
+import { createTRPCRouter, publicProcedure, operatorProcedure, vendorAndOperatorProcedure } from "@/trpc/init";
 import { z } from "zod";
 
 export const vendorRouter = createTRPCRouter({
+    // Create vendor - restricted (admin or vendors). Kept simple for now.
+    createVendor: operatorProcedure
+        .input(z.object({
+            name: z.string(),
+            slug: z.string(),
+            description: z.string().optional(),
+            phone: z.string().optional(),
+            email: z.string().optional(),
+            address: z.string().optional(),
+            city: z.string().optional(),
+            coverImage: z.string().optional()
+        }))
+        .mutation(({ ctx, input }) => {
+            return ctx.prisma.vendor.create({ data: input });
+        }),
+
     // Public listings with optional search / pagination
     list: publicProcedure
         .input(z.object({
@@ -83,7 +99,7 @@ export const vendorRouter = createTRPCRouter({
         }),
 
     // List vendors by approximate area using lat/lng bounding box
-    byArea: publicProcedure
+    listVendorsByArea: publicProcedure
         .input(z.object({
             lat: z.number(),
             lng: z.number(),
@@ -110,24 +126,96 @@ export const vendorRouter = createTRPCRouter({
             });
         }),
 
-    // Create vendor - restricted (admin or vendors). Kept simple for now.
-    createVendor: operatorProcedure
+    // Create a standalone product (vendor-level). Permission: vendor owner, operator, or super admin.
+    createProduct: vendorAndOperatorProcedure
         .input(z.object({
+            vendorId: z.string(),
             name: z.string(),
             slug: z.string(),
             description: z.string().optional(),
-            phone: z.string().optional(),
-            email: z.string().optional(),
-            address: z.string().optional(),
-            city: z.string().optional(),
-            coverImage: z.string().optional()
+            inStock: z.boolean().optional().default(true),
         }))
-        .mutation(({ ctx, input }) => {
-            return ctx.prisma.vendor.create({ data: input });
+        .mutation(async ({ ctx, input }) => {
+            const userId = ctx!.user!.id;
+
+            // fetch vendor to validate ownership
+            const vendor = await ctx.prisma.vendor.findUnique({
+                where: { id: input.vendorId }
+            });
+            if (!vendor) throw new Error("Vendor not found");
+
+            const isOperator = await ctx.prisma.userRole.findFirst({ where: { userId, role: "OPERATOR" } });
+            const isSuper = await ctx.prisma.userRole.findFirst({ where: { userId, role: "SUPER_ADMIN" } });
+            const isVendorOwner = vendor.ownerId === userId;
+
+            if (!isOperator && !isSuper && !isVendorOwner) throw new Error("Forbidden: insufficient permissions");
+
+            return ctx.prisma.product.create({
+                data: {
+                    vendorId: input.vendorId,
+                    name: input.name,
+                    // slug: input.slug,
+                    description: input.description,
+                    inStock: input.inStock
+                }
+            });
         }),
 
-    // Create/Update product items (admin/vendor)
-    createProductItem: operatorProcedure
+    // Create a product together with multiple variants (productItems) in a transaction.
+    // Input allows providing an array of variants each with its own price.
+    createProductWithItems: vendorAndOperatorProcedure
+        .input(z.object({
+            vendorId: z.string(),
+            product: z.object({
+                name: z.string(),
+                slug: z.string(),
+                description: z.string().optional()
+            }),
+            items: z.array(
+                z.object({
+                    name: z.string(),
+                    slug: z.string(),
+                    description: z.string().optional(),
+                    price: z.number(),
+                    currency: z.string().optional().default("NGN"),
+                    images: z.array(z.string()).optional(),
+                    isActive: z.boolean().optional().default(true),
+                    inStock: z.boolean().optional().default(true)
+                }))
+        }))
+        .mutation(async ({ ctx, input }) => {
+            if (!ctx.user) throw new Error("Unauthorized");
+            const userId = ctx.user.id;
+
+            const vendor = await ctx.prisma.vendor.findUnique({ where: { id: input.vendorId } });
+            if (!vendor) throw new Error("Vendor not found");
+
+            const isOperator = await ctx.prisma.userRole.findFirst({ where: { userId, role: "OPERATOR" } });
+            const isSuper = await ctx.prisma.userRole.findFirst({ where: { userId, role: "SUPER_ADMIN" } });
+            const isVendorOwner = vendor.ownerId === userId;
+
+            if (!isOperator && !isSuper && !isVendorOwner) throw new Error("Forbidden: insufficient permissions");
+
+            return ctx.prisma.$transaction(async (prisma) => {
+                const createdProduct = await prisma.product.create({
+                    data: {
+                        vendorId: input.vendorId,
+                        name: input.product.name,
+                        // slug: input.product.slug, 
+                        description: input.product.description
+                    }
+                });
+
+                for (const it of input.items) {
+                    await prisma.productItem.create({ data: { vendorId: input.vendorId, productId: createdProduct.id, name: it.name, slug: it.slug, description: it.description, price: it.price, currency: it.currency, images: it.images, isActive: it.isActive, inStock: it.inStock } });
+                }
+
+                return prisma.product.findUnique({ where: { id: createdProduct.id }, include: { items: true } });
+            });
+        }),
+
+    // Create/Update product items (vendor/operator/admin). Now permission-checked to allow vendor owners as well.
+    createProductItem: vendorAndOperatorProcedure
         .input(
             z.object({
                 vendorId: z.string(),
@@ -139,9 +227,80 @@ export const vendorRouter = createTRPCRouter({
                 currency: z.string().optional().default("NGN"),
                 images: z.array(z.string()).optional(),
                 isActive: z.boolean().optional().default(true),
+                inStock: z.boolean().optional().default(true),
             })
         )
-        .mutation(({ ctx, input }) => {
+        .mutation(async ({ ctx, input }) => {
+            if (!ctx.user) throw new Error("Unauthorized");
+            const userId = ctx.user.id;
+
+            const vendor = await ctx.prisma.vendor.findUnique({ where: { id: input.vendorId } });
+            if (!vendor) throw new Error("Vendor not found");
+
+            const isOperator = await ctx.prisma.userRole.findFirst({ where: { userId, role: "OPERATOR" } });
+            const isSuper = await ctx.prisma.userRole.findFirst({ where: { userId, role: "SUPER_ADMIN" } });
+            const isVendorOwner = vendor.ownerId === userId;
+
+            if (!isOperator && !isSuper && !isVendorOwner) throw new Error("Forbidden: insufficient permissions");
+
             return ctx.prisma.productItem.create({ data: { ...input } });
+        }),
+    updateProductItem: vendorAndOperatorProcedure
+        .input(z.object({
+            id: z.string(),
+            data: z.object({
+                name: z.string().optional(),
+                description: z.string().optional(),
+                price: z.number().optional(),
+                currency: z.string().optional(),
+                images: z.array(z.string()).optional(),
+                isActive: z.boolean().optional(),
+                inStock: z.boolean().optional(),
+            })
+        }))
+        .mutation(async ({ ctx, input }) => {
+            // allow vendor owner, operator, or super admin to update
+            if (!ctx.user) throw new Error("Unauthorized");
+            const userId = ctx.user.id;
+
+            const item = await ctx.prisma.productItem.findUnique({ where: { id: input.id } });
+            if (!item) throw new Error("ProductItem not found");
+
+            const vendor = await ctx.prisma.vendor.findUnique({ where: { id: item.vendorId } });
+
+            const isOperator = await ctx.prisma.userRole.findFirst({ where: { userId, role: "OPERATOR" } });
+            const isSuper = await ctx.prisma.userRole.findFirst({ where: { userId, role: "SUPER_ADMIN" } });
+            const isVendorOwner = vendor && vendor.ownerId === userId;
+
+            if (!isOperator && !isSuper && !isVendorOwner) throw new Error("Forbidden: insufficient permissions");
+
+            return ctx.prisma.productItem.update({ where: { id: input.id }, data: input.data });
+        }),
+
+    updateProduct: vendorAndOperatorProcedure
+        .input(z.object({
+            id: z.string(),
+            data: z.object({
+                name: z.string().optional(),
+                description: z.string().optional(),
+                inStock: z.boolean().optional(),
+            })
+        }))
+        .mutation(async ({ ctx, input }) => {
+            if (!ctx.user) throw new Error("Unauthorized");
+            const userId = ctx.user.id;
+
+            const product = await ctx.prisma.product.findUnique({ where: { id: input.id } });
+            if (!product) throw new Error("Product not found");
+
+            const vendor = await ctx.prisma.vendor.findUnique({ where: { id: product.vendorId } });
+
+            const isOperator = await ctx.prisma.userRole.findFirst({ where: { userId, role: "OPERATOR" } });
+            const isSuper = await ctx.prisma.userRole.findFirst({ where: { userId, role: "SUPER_ADMIN" } });
+            const isVendorOwner = vendor && vendor.ownerId === userId;
+
+            if (!isOperator && !isSuper && !isVendorOwner) throw new Error("Forbidden: insufficient permissions");
+
+            return ctx.prisma.product.update({ where: { id: input.id }, data: input.data });
         }),
 });

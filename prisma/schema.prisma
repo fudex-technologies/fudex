@@ -7,6 +7,7 @@
 generator client {
   provider = "prisma-client-js"
 }
+
 // generator client {
 //   provider = "prisma-client"
 //   output   = "../src/generated/prisma"
@@ -66,7 +67,6 @@ model User {
   operator  Operator? // if user is an operator, link record
   roles     UserRole[]
   reviews   Review[]
-
 
   @@unique([email])
   @@map("user")
@@ -215,7 +215,7 @@ model Vendor {
   lng         Float?
   createdAt   DateTime @default(now())
 
-  owner            User?               @relation("VendorOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  owner            User?            @relation("VendorOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   products         Product[]
   productItems     ProductItem[]
   orders           Order[] // orders placed to this vendor
@@ -234,6 +234,7 @@ model Product {
   vendor      Vendor        @relation(fields: [vendorId], references: [id], onDelete: Cascade)
   name        String
   description String?
+  inStock     Boolean       @default(true)
   createdAt   DateTime      @default(now())
   items       ProductItem[]
 
@@ -241,21 +242,23 @@ model Product {
 }
 
 model ProductItem {
-  id          String      @id @default(uuid())
-  vendorId    String
-  vendor      Vendor      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  productId   String?
-  product     Product?    @relation(fields: [productId], references: [id], onDelete: Cascade)
-  name        String
-  slug        String      @unique
-  description String?
-  price       Float
-  currency    String      @default("NGN")
-  images      String[]    @default([]) // store URLs only
-  isActive    Boolean     @default(true)
-  createdAt   DateTime    @default(now())
-  orderItems  OrderItem[]
-  categories  ProductItemCategory[]
+  id              String                @id @default(uuid())
+  vendorId        String
+  vendor          Vendor                @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  productId       String?
+  product         Product?              @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name            String
+  slug            String                @unique
+  description     String?
+  price           Float
+  inStock         Boolean               @default(true)
+  currency        String                @default("NGN")
+  images          String[]              @default([]) // store URLs only
+  isActive        Boolean               @default(true)
+  createdAt       DateTime              @default(now())
+  orderItems      OrderItem[]
+  categories      ProductItemCategory[]
+  orderItemAddons OrderItemAddon[]
 
   @@index([vendorId])
   @@index([price])
@@ -264,10 +267,10 @@ model ProductItem {
 
 // Categories and many-to-many relations with ProductItem and Vendor
 model Category {
-  id        String                    @id @default(uuid())
-  name      String                    @unique
-  slug      String                    @unique
-  createdAt DateTime                  @default(now())
+  id        String                @id @default(uuid())
+  name      String                @unique
+  slug      String                @unique
+  createdAt DateTime              @default(now())
   items     ProductItemCategory[]
   vendors   VendorCategory[]
 
@@ -343,17 +346,32 @@ model Order {
 }
 
 model OrderItem {
-  id            String      @id @default(uuid())
+  id            String           @id @default(uuid())
   orderId       String
-  order         Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order         Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productItemId String
-  productItem   ProductItem @relation(fields: [productItemId], references: [id])
-  quantity      Int         @default(1)
+  productItem   ProductItem      @relation(fields: [productItemId], references: [id])
+  quantity      Int              @default(1)
   unitPrice     Float
   totalPrice    Float
+  groupKey      String?
+  addons        OrderItemAddon[]
 
   @@index([orderId])
   @@index([productItemId])
+}
+
+model OrderItemAddon {
+  id                 String      @id @default(uuid())
+  orderItemId        String
+  orderItem          OrderItem   @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  addonProductItemId String
+  addonProductItem   ProductItem @relation(fields: [addonProductItemId], references: [id], onDelete: Cascade)
+  quantity           Int         @default(1)
+  unitPrice          Float
+
+  @@index([orderItemId])
+  @@index([addonProductItemId])
 }
 
 model Payment {

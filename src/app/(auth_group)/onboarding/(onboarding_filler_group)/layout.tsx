@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import { useNavDirection } from '@/store/nav-direction-store';
+import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
 
 export default function OnboardingLayout({
 	children,
@@ -28,7 +29,11 @@ export default function OnboardingLayout({
 	};
 
 	return (
-		<div className='min-h-screen bg-[#FFF7ED] overflow-hidden'>
+		<div className='min-h-screen bg-[#FFF7ED] overflow-hidden relative'>
+			<ImageWithFallback
+				src={'/icons/FUDEX_2t.png'}
+				className='absolute top-10 right-5 sm:right-10 lg:right-20 w-[50px] h-auto'
+			/>
 			<AnimatePresence mode='wait' custom={direction}>
 				<motion.div
 					key={pathname}

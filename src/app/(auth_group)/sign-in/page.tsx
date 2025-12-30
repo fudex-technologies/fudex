@@ -114,7 +114,7 @@ export default function LoginPage() {
 						label='Enter Password'
 						value={form.password}
 						placeholder='Enter your password here'
-						onChange={handleChange('[password]')}
+						onChange={handleChange('password')}
 						error={touched.password && errorsNow.password}
 						required
 					/>

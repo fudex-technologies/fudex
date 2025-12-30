@@ -17,10 +17,12 @@ export const PAGES_DATA = {
     checkout_page: (orderId: string) => `/orders/${orderId}/checkout`,
 
     profile_account_page: `/profile/account`,
-    profile_addresses_page: `/profile/addresses`,
     profile_favorites_page: `/profile/favorites`,
     profile_notifications_page: `/profile/notifications`,
     profile_faqs_page: `/profile/faqs`,
+    
+    profile_addresses_page: `/profile/addresses`,
+    profile_set_address_manually: `/profile/addresses/set-manually`,
 
     // auth pages
     onboarding_step_one_page: `/onboarding/step-1`,

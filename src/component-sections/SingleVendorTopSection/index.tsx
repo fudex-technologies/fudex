@@ -5,7 +5,7 @@ import GoBackButton from '@/components/GoBackButton';
 
 const SingleVendorTopSection = () => {
 	return (
-		<div className='h-[150px] w-full relative'>
+		<div className='h-[180px] w-full relative'>
 			<ImageWithFallback
 				src={'/assets/restaurants/restaurant1.png'}
 				className='w-full h-full object-cover'
