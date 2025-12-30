@@ -1,9 +1,11 @@
 'use client';
 
 import MenuListComponent from '@/components/MenuListComponnt';
+import ConfirmLogoutModal from '@/components/Modals/ConfirmLogoutModal';
+import { Skeleton } from '@/components/ui/skeleton';
 import SectionWrapper from '@/components/wrapers/SectionWrapper';
 import { PAGES_DATA } from '@/data/pagesData';
-import { signOut } from '@/lib/auth-client';
+import { useSession } from '@/lib/auth-client';
 import {
 	Bell,
 	CircleQuestionMark,
@@ -14,22 +16,15 @@ import {
 	Trash,
 	User,
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
+import { useState } from 'react';
 
 const ProfileMenusSection = () => {
-	const router = useRouter();
+	const [confirmLogout, setConfirmLogout] = useState(false);
+	const { data: session, isPending } = useSession();
 
-	const logoutandler = async () => {
-		await signOut({
-			fetchOptions: {
-				onSuccess: () => {
-					toast.success('Logged out');
-					router.push(PAGES_DATA.home_page); // redirect to login page
-				},
-			},
-		});
-	};
+	if (isPending && !session) {
+		return <ProfileMenusSectionSkeleton />;
+	}
 	return (
 		<SectionWrapper className='flex flex-col items-center'>
 			<div className='max-w-lg w-full space-y-5'>
@@ -40,16 +35,22 @@ const ProfileMenusSection = () => {
 							icon: <User />,
 							title: 'Account',
 							link: PAGES_DATA.profile_account_page,
+							protected: true,
+							show: true,
 						},
 						{
 							icon: <MapPin />,
 							title: 'Addresses',
 							link: PAGES_DATA.profile_addresses_page,
+							protected: true,
+							show: true,
 						},
 						{
 							icon: <Heart />,
 							title: 'My Favorite',
 							link: PAGES_DATA.profile_favorites_page,
+							protected: true,
+							show: true,
 						},
 					]}
 				/>
@@ -60,6 +61,7 @@ const ProfileMenusSection = () => {
 						{
 							icon: <Gift />,
 							title: 'Promo codes',
+							show: true,
 						},
 					]}
 				/>
@@ -71,29 +73,72 @@ const ProfileMenusSection = () => {
 							icon: <Bell />,
 							title: 'Notifications',
 							link: PAGES_DATA.profile_notifications_page,
+							protected: true,
+							show: true,
 						},
 						{
 							icon: <CircleQuestionMark />,
 							title: 'FAQ',
 							link: PAGES_DATA.profile_faqs_page,
+							show: true,
 						},
 						{
 							icon: <LogOut />,
 							title: 'Log Out',
 							onClick: () => {
-								logoutandler();
+								setConfirmLogout(true);
 							},
+							protected: true,
+							show: false,
 						},
 						{
 							icon: <Trash />,
 							title: 'Delete my account and data',
 							onClick: () => {},
+							protected: true,
+							show: false,
 						},
 					]}
 				/>
 			</div>
+			<ConfirmLogoutModal
+				open={confirmLogout}
+				setOpen={setConfirmLogout}
+			/>
 		</SectionWrapper>
 	);
 };
 
 export default ProfileMenusSection;
+
+export const ProfileMenusSectionSkeleton = () => {
+	return (
+		<SectionWrapper className='flex flex-col items-center'>
+			<div className='max-w-lg w-full space-y-5'>
+				<div className='space-y-3'>
+					<Skeleton className='h-5 w-24' />
+					<div className='space-y-2'>
+						<Skeleton className='h-12 w-full' />
+						<Skeleton className='h-12 w-full' />
+						<Skeleton className='h-12 w-full' />
+					</div>
+				</div>
+
+				<div className='space-y-3'>
+					<Skeleton className='h-5 w-24' />
+					<div className='space-y-2'>
+						<Skeleton className='h-12 w-full' />
+					</div>
+				</div>
+
+				<div className='space-y-3'>
+					<Skeleton className='h-5 w-24' />
+					<div className='space-y-2'>
+						<Skeleton className='h-12 w-full' />
+						<Skeleton className='h-12 w-full' />
+					</div>
+				</div>
+			</div>
+		</SectionWrapper>
+	);
+};

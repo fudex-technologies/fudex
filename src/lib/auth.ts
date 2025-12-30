@@ -26,6 +26,8 @@ export const auth = betterAuth({
                 select: {
                     phone: true,
                     phoneVerified: true,
+                    firstName: true,
+                    lastName: true,
                 },
             });
 
@@ -34,6 +36,8 @@ export const auth = betterAuth({
                     ...user,
                     phone: dbUser?.phone,
                     phoneVerified: dbUser?.phoneVerified,
+                    firstName: dbUser?.firstName,
+                    lastName: dbUser?.phoneVerified,
                 },
                 session,
             };
@@ -44,6 +48,8 @@ export const auth = betterAuth({
 // 🔹 Module augmentation to tell TypeScript about extra session fields
 declare module "better-auth" {
     interface SessionUser {
+        firstName?: string;
+        lastName?: string;
         phone?: string;
         phoneVerified: boolean;
     }
@@ -61,6 +67,8 @@ export type ExtendedUser = {
     image?: string | null;
 
     //   extended values
+    firstName?: string;
+    lastName?: string;
     phone?: string;
     phoneVerified: boolean;
 };

@@ -1,0 +1,1 @@
+export const FUDEX_PHONE_NUMBER = "+2349033657439"

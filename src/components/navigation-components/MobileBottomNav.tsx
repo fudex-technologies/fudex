@@ -17,7 +17,7 @@ import { useSession } from '@/lib/auth-client';
 
 const MobileBottomNav = () => {
 	const pathname = usePathname();
-	const { data: session } = useSession();
+	const { data: session, isPending } = useSession();
 
 	const activeStyle = (baseUrl: string): ClassNameValue => {
 		if (baseUrl !== PAGES_DATA.home_page && pathname.startsWith(baseUrl)) {
@@ -117,11 +117,7 @@ const MobileBottomNav = () => {
 					<p className=''>Orders</p>
 				</Link>
 				<Link
-					href={
-						session
-							? PAGES_DATA.profile_page
-							: PAGES_DATA.onboarding_step_one_page
-					}
+					href={PAGES_DATA.profile_page}
 					className={cn(
 						'flex flex-1 flex-col justify-start pt-3 pb-5 items-center',
 						activeStyle(PAGES_DATA.profile_page)
