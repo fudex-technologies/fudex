@@ -31,7 +31,7 @@ export default function OnboardingStepTwoPage() {
 						href={PAGES_DATA.onboarding_step_three_page}
 					/>
 					<Link
-						href={PAGES_DATA.onboarding_signup_page}
+						href={PAGES_DATA.onboarding_last_step_page}
 						className={cn(
 							buttonVariants({
 								variant: 'link',

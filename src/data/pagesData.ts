@@ -20,7 +20,7 @@ export const PAGES_DATA = {
     profile_favorites_page: `/profile/favorites`,
     profile_notifications_page: `/profile/notifications`,
     profile_faqs_page: `/profile/faqs`,
-    
+
     profile_addresses_page: `/profile/addresses`,
     profile_set_address_manually: `/profile/addresses/set-manually`,
 
@@ -28,6 +28,7 @@ export const PAGES_DATA = {
     onboarding_step_one_page: `/onboarding/step-1`,
     onboarding_step_two_page: `/onboarding/step-2`,
     onboarding_step_three_page: `/onboarding/step-3`,
+    onboarding_last_step_page: `/onboarding/step-last`,
 
     onboarding_verify_number_page: `/onboarding/verify-number`,
     onboarding_create_password_page: `/onboarding/create-password`,

@@ -6,8 +6,14 @@ import { signIn } from '@/lib/auth-client';
 import { FcGoogle } from 'react-icons/fc';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { ClassNameValue } from 'tailwind-merge';
+import { cn } from '@/lib/utils';
 
-const ContinueWithGoogleButton = () => {
+const ContinueWithGoogleButton = ({
+	className,
+}: {
+	className?: ClassNameValue;
+}) => {
 	const [loading, setLoading] = useState(false);
 
 	const signInWithGoogle = async () => {
@@ -34,7 +40,7 @@ const ContinueWithGoogleButton = () => {
 	return (
 		<Button
 			variant={'outline'}
-			className='w-full py-5'
+			className={cn('w-full py-5', className)}
 			onClick={handleClick}
 			disabled={loading}>
 			<FcGoogle />

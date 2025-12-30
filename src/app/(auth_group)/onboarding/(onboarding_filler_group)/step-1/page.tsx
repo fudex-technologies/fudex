@@ -29,7 +29,7 @@ export default function OnboardingStepOnePage() {
 				<div className='w-full space-y-2'>
 					<ContinueButton href={PAGES_DATA.onboarding_step_two_page} />
 					<Link
-						href={PAGES_DATA.onboarding_signup_page}
+						href={PAGES_DATA.onboarding_last_step_page}
 						className={cn(
 							buttonVariants({
 								variant: 'link',

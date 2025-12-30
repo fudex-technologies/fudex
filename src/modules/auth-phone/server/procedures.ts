@@ -40,15 +40,15 @@ function verifyVerificationToken(token: string) {
 async function sendTermiiSms(phone234: string, otp: string) {
     if (!TERMII_API_KEY) throw new Error('TERMII_API_KEY not configured');
     if (!TERMII_BASE) throw new Error('TERMII_BASE not configured');
-    const sms = `Your verification code is ${otp}. It expires in 5 minutes.`;
+    const sms = `Your Fudex verification code is ${otp}. It expires in 5 minutes.`;
     const url = `${TERMII_BASE}/api/sms/send`;
     const body = {
         api_key: TERMII_API_KEY,
         to: phone234,
-        from: 'Fudex',
+        from: 'FUDEX',
         sms,
         type: "plain",
-        channel: "whatsapp"
+        channel: "generic"
     };
 
     const res = await fetch(url, {
@@ -133,8 +133,8 @@ export const phoneAuthRouter = createTRPCRouter({
                 });
                 return { token };
             }
-            if (pv.attempts >= MAX_ATTEMPTS) throw new TRPCError({ 
-                code: 'TOO_MANY_REQUESTS', message: 'OTP_TOO_MANY_ATTEMPTS' 
+            if (pv.attempts >= MAX_ATTEMPTS) throw new TRPCError({
+                code: 'TOO_MANY_REQUESTS', message: 'OTP_TOO_MANY_ATTEMPTS'
             });
             if (pv.expiresAt.getTime() < Date.now()) throw new TRPCError({ code: 'BAD_REQUEST', message: 'OTP_EXPIRED' });
 
