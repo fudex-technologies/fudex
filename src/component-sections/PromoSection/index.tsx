@@ -29,7 +29,7 @@ const PromoSection = ({
 
 					<Button
 						size={'lg'}
-						className='rounded-full bg-background text-foreground py-6'>
+						className='rounded-full bg-background text-foreground py-6 hover:bg-foreground/50 hover:text-background'>
 						{buttonLabel}
 					</Button>
 				</div>

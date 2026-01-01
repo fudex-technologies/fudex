@@ -5,20 +5,26 @@ import VendorListSection from '@/component-sections/VendorListSection';
 import LocationDropdown from '@/components/LocationDropdown';
 import MobileBottomNav from '@/components/navigation-components/MobileBottomNav';
 import SearchInput from '@/components/SearchInput';
-import { Button } from '@/components/ui/button';
 import PageWrapper from '@/components/wrapers/PageWrapper';
 import SectionWrapper from '@/components/wrapers/SectionWrapper';
-import { PiSlidersHorizontalFill } from "react-icons/pi";
+import FilterVendorsDrawer from '../components/FilterVendorsDrawer';
+import { Suspense } from 'react';
+import { Button } from '@/components/ui/button';
+import { PiSlidersHorizontalFill } from 'react-icons/pi';
 
 export default function Home() {
 	return (
 		<PageWrapper>
 			<SectionWrapper className='w-full flex items-center gap-5 justify-between'>
 				<LocationDropdown />
-				<Button>
-					<PiSlidersHorizontalFill />
-					Filter
-				</Button>
+				<Suspense fallback={
+					<Button disabled>
+						<PiSlidersHorizontalFill />
+						Filter
+					</Button>
+				}>
+					<FilterVendorsDrawer />
+				</Suspense>
 			</SectionWrapper>
 			<SectionWrapper>
 				<SearchInput />

@@ -52,7 +52,7 @@ const MenuListComponent = ({
 							<div
 								key={index}
 								className={cn(
-									'w-full p-5 flex items-center justify-between',
+									'w-full p-5 flex items-center justify-between cursor-pointer',
 									disabled && 'opacity-50'
 								)}
 								onClick={() => {

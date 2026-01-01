@@ -111,4 +111,16 @@ export const userRouter = createTRPCRouter({
     deleteAddress: protectedProcedure.input(z.object({ id: z.string() })).mutation(({ ctx, input }) => {
         return ctx.prisma.address.delete({ where: { id: input.id } });
     }),
+
+    // Check if user has vendor role
+    checkVendorRole: protectedProcedure.query(async ({ ctx }) => {
+        const userId = ctx.user!.id;
+        const vendorRole = await ctx.prisma.userRole.findFirst({
+            where: {
+                userId,
+                role: "VENDOR"
+            }
+        });
+        return !!vendorRole;
+    }),
 });

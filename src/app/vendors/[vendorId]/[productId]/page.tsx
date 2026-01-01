@@ -1,25 +1,41 @@
 import ProductDetailsSelectionSection from '@/component-sections/ProductDetailsSelectionSection';
-import { Button } from '@/components/ui/button';
 import { formatCurency } from '@/lib/commonFunctions';
+import { caller } from '@/trpc/server';
 
 interface Props {
 	params: Promise<{ vendorId: string; productId: string }>;
 }
 
 export default async function VendorSingleProductPage({ params }: Props) {
-	const { productId } = await params;
+	const { productId, vendorId } = await params;
+	
+	const product = await caller.vendors.getProductWithItems({ id: productId });
+
+	if (!product) {
+		return <div>Product not found</div>;
+	}
+
+	const minPrice = product.items.length > 0 
+		? Math.min(...product.items.map(item => item.price))
+		: 0;
 
 	return (
 		<>
 			<div className='flex flex-col gap-2 px-5'>
-				<h1 className='font-semibold text-2xl'>Special Fried Rice </h1>
-				<p className='text-foreground/50'>
-					Flavorful basmatic fried rice with veggies{' '}
-				</p>
-				<p className='text-foreground/70'>From #1200.00</p>
+				<h1 className='font-semibold text-2xl'>{product.name}</h1>
+				{product.description && (
+					<p className='text-foreground/50'>{product.description}</p>
+				)}
+				{minPrice > 0 && (
+					<p className='text-foreground/70'>From {formatCurency(minPrice)}</p>
+				)}
 			</div>
 
-			<ProductDetailsSelectionSection />
+			<ProductDetailsSelectionSection 
+				productId={productId}
+				vendorId={vendorId}
+				productItems={product.items}
+			/>
 		</>
 	);
 }

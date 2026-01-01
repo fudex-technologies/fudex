@@ -11,9 +11,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { BsChatLeftTextFill } from 'react-icons/bs';
 import { FUDEX_PHONE_NUMBER } from '@/lib/staticData/contactData';
 import { normalizePhoneNumber } from '@/lib/commonFunctions';
+import { useOrderingActions } from '@/api-hooks/useOrderingActions';
 
 const ProfileTopSection = () => {
 	const { data: session, isPending } = useSession();
+	const { useGetNumberOfMyDeliveredOrders } = useOrderingActions();
+	const numberOfDeliveredOrders = useGetNumberOfMyDeliveredOrders();
 
 	const fullName =
 		session?.user?.name ||
@@ -68,7 +71,7 @@ const ProfileTopSection = () => {
 								src={'/icons/FUDEX_2t.png'}
 								className='w-7 h-auto object-contain'
 							/>
-							<p className='text-lg'>2</p>
+							<p className='text-lg'>{numberOfDeliveredOrders}</p>
 						</div>
 					</>
 				) : (

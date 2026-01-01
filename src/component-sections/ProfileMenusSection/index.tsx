@@ -15,12 +15,23 @@ import {
 	MapPin,
 	Trash,
 	User,
+	Store,
 } from 'lucide-react';
 import { useState } from 'react';
+import { useTRPC } from '@/trpc/client';
+import { useQuery } from '@tanstack/react-query';
 
 const ProfileMenusSection = () => {
 	const [confirmLogout, setConfirmLogout] = useState(false);
 	const { data: session, isPending } = useSession();
+	const trpc = useTRPC();
+
+	// Check if user is a vendor
+	const { data: isVendor } = useQuery(
+		trpc.users.checkVendorRole.queryOptions(undefined, {
+			enabled: !!session,
+		})
+	);
 
 	if (isPending && !session) {
 		return <ProfileMenusSectionSkeleton />;
@@ -54,6 +65,20 @@ const ProfileMenusSection = () => {
 						},
 					]}
 				/>
+				{isVendor && (
+					<MenuListComponent
+						menuTitle='Vendor'
+						menuItems={[
+							{
+								icon: <Store />,
+								title: 'Vendor Dashboard',
+								link: PAGES_DATA.vendor_dashboard_page,
+								protected: true,
+								show: true,
+							},
+						]}
+					/>
+				)}
 
 				<MenuListComponent
 					menuTitle='Services'

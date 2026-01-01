@@ -93,8 +93,16 @@ export function useVendorProductActions() {
         // read helpers (use inside components directly)
         useListProductItems: (input: { vendorId: string; take?: number }) =>
             useQuery(trpc.vendors.listProductItems.queryOptions(input)),
+        useGetProductItemById: (input: { id: string }) =>
+            useQuery(trpc.vendors.getProductItemById.queryOptions(input)),
+        useGetProductItemsByIds: (input: { ids: string[] }) =>
+            useQuery(trpc.vendors.getProductItemsByIds.queryOptions(input)),
+        useGetProductWithItems: (input: { id: string }) =>
+            useQuery(trpc.vendors.getProductWithItems.queryOptions(input)),
+        useGetAddonProductItems: (input: { vendorId: string; excludeProductItemIds?: string[]; take?: number }) =>
+            useQuery(trpc.vendors.getAddonProductItems.queryOptions(input)),
         useGetVendorById: (input: { id: string }) =>
-            useQuery(trpc.vendors.getById.queryOptions(input)),
+            useQuery(trpc.vendors.getById.queryOptions(input, { enabled: !!input.id })),
         useGetVendorBySlug: (input: { slug: string }) =>
             useQuery(trpc.vendors.getBySlug.queryOptions(input)),
         useSearch: (input: { q?: string; categoryId?: string; take?: number; skip?: number }) =>

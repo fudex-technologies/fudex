@@ -1,4 +1,5 @@
-import { createTRPCRouter, protectedProcedure, publicProcedure, adminProcedure } from "@/trpc/init";
+import { createTRPCRouter, protectedProcedure, publicProcedure, adminProcedure, vendorProcedure } from "@/trpc/init";
+import { OrderStatus } from "@prisma/client";
 import { z } from "zod";
 
 export const orderRouter = createTRPCRouter({
@@ -137,11 +138,17 @@ export const orderRouter = createTRPCRouter({
     listMyOrders: protectedProcedure
         .input(z.object({
             take: z.number().optional().default(20),
-            skip: z.number().optional().default(0)
+            skip: z.number().optional().default(0),
+            status: z.enum(Object.values(OrderStatus)).optional(),
         }))
         .query(({ ctx, input }) => {
+            const where: any = { userId: ctx.user!.id }
+            if (input.status) {
+                where.status = input.status;
+            }
+
             return ctx.prisma.order.findMany({
-                where: { userId: ctx.user!.id },
+                where,
                 take: input.take, skip: input.skip,
                 orderBy: { createdAt: "desc" }
             });
@@ -236,6 +243,36 @@ export const orderRouter = createTRPCRouter({
             id: z.string(),
             status: z.nativeEnum(require("@prisma/client").OrderStatus)
         })).mutation(({ ctx, input }) => {
+            return ctx.prisma.order.update({
+                where: { id: input.id },
+                data: { status: input.status }
+            });
+        }),
+
+    // Vendor update status for their own orders
+    updateMyOrderStatus: vendorProcedure
+        .input(z.object({
+            id: z.string(),
+            status: z.nativeEnum(require("@prisma/client").OrderStatus)
+        }))
+        .mutation(async ({ ctx, input }) => {
+            const userId = ctx.user!.id;
+
+            // Find vendor owned by user
+            const vendor = await ctx.prisma.vendor.findFirst({
+                where: { ownerId: userId }
+            });
+            if (!vendor) throw new Error("Vendor not found");
+
+            // Verify order belongs to vendor
+            const order = await ctx.prisma.order.findUnique({
+                where: { id: input.id }
+            });
+            if (!order) throw new Error("Order not found");
+            if (order.vendorId !== vendor.id) {
+                throw new Error("Unauthorized: Order does not belong to your vendor");
+            }
+
             return ctx.prisma.order.update({
                 where: { id: input.id },
                 data: { status: input.status }

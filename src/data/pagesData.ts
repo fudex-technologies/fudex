@@ -24,6 +24,12 @@ export const PAGES_DATA = {
     profile_addresses_page: `/profile/addresses`,
     profile_set_address_manually: `/profile/addresses/set-manually`,
 
+    // vendor dashboard pages
+    vendor_dashboard_page: `/profile/vendor-dashboard`,
+    vendor_dashboard_profile_page: `/profile/vendor-dashboard/profile`,
+    vendor_dashboard_products_page: `/profile/vendor-dashboard/products`,
+    vendor_dashboard_orders_page: `/profile/vendor-dashboard/orders`,
+
     // auth pages
     onboarding_step_one_page: `/onboarding/step-1`,
     onboarding_step_two_page: `/onboarding/step-2`,

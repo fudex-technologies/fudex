@@ -4,6 +4,7 @@ import { useTRPC } from "@/trpc/client";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { UseAPICallerOptions } from "./api-hook-types";
+import { OrderStatus } from "@prisma/client";
 
 // Hooks for vendor/product and ordering flows. Each hook returns a react-query mutation
 // or uses the trpc useQuery hook for reads. Callers may pass `onSuccess`/`onError` via
@@ -58,6 +59,11 @@ export function useOrderingActions() {
             })
         );
 
+    const useGetNumberOfMyDeliveredOrders = () => {
+        const { data } = useQuery(trpc.orders.listMyOrders.queryOptions({ status: "DELIVERED" }))
+        return data?.length || 0
+    }
+
     return {
         createOrder,
         createPayment,
@@ -68,7 +74,11 @@ export function useOrderingActions() {
             useQuery(trpc.orders.getOrder.queryOptions({ ...input })),
         useGetOrderPacks: (input: { id: string }) =>
             useQuery(trpc.orders.getOrderPacks.queryOptions({ ...input })),
-        useListMyOrders: (input?: { take?: number; skip?: number }) =>
+        useListMyOrders: (input?: { take?: number; skip?: number, status?: OrderStatus }) =>
             useQuery(trpc.orders.listMyOrders.queryOptions(input ?? {})),
+        useGetPaymentStatus: (input: { orderId: string }) =>
+            useQuery(trpc.payments.getPaymentStatus.queryOptions({ ...input })),
+
+        useGetNumberOfMyDeliveredOrders,
     };
 }

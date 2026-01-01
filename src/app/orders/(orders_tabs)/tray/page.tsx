@@ -1,18 +1,29 @@
-import { Button, buttonVariants } from '@/components/ui/button';
+'use client';
+
+import { Button } from '@/components/ui/button';
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
-import { Separator } from '@/components/ui/separator';
 import { PAGES_DATA } from '@/data/pagesData';
-import { formatCurency } from '@/lib/commonFunctions';
-import { cn } from '@/lib/utils';
+import { useCartStore } from '@/store/cart-store';
+import { useVendorProductActions } from '@/api-hooks/useVendorActions';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 export default function TrayPage() {
-	const isEmpty = false;
+	const router = useRouter();
+	const { packs, vendorId, getTotalPacks } = useCartStore();
+	const isEmpty = packs.length === 0;
+
+	const { data: vendor } = useVendorProductActions().useGetVendorById(
+		vendorId ? { id: vendorId } : { id: '' }
+	);
+
 	return (
-		<div className='w-full'>
+		<div className='w-full flex justify-center'>
 			{/* Empty state */}
 			{isEmpty && (
-				<div className='w-full p-5 flex flex-col gap-5 items-center justify-center my-20'>
+				<div className='w-full max-w-md p-5 flex flex-col gap-5 items-center justify-center my-20'>
 					<ImageWithFallback
 						src={'/assets/empty-tray.png'}
 						className='w-full'
@@ -28,41 +39,42 @@ export default function TrayPage() {
 					<Button
 						variant={'game'}
 						size={'lg'}
-						className='w-full mt-10 py-5'>
-						Order now
+						className='w-full mt-10 py-5'
+						onClick={() => router.push(PAGES_DATA.home_page)}>
+						Browse vendors
 					</Button>
 				</div>
 			)}
 
 			{/* With data state */}
 			{!isEmpty && (
-				<div className='w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3'>
+				<div className='w-full'>
 					<div className='p-5 border-b border-foreground/50 space-y-2'>
 						<div className='w-full flex gap-2'>
-							<ImageWithFallback
-								width={80}
-								height={80}
-								src={'/assets/products/prod1.png'}
-								className='object-cover rounded-md'
-							/>
-							<div className='flex-1 flex flex-col gap-5'>
+							{vendor?.coverImage && (
+								<ImageWithFallback
+									width={80}
+									height={80}
+									src={vendor.coverImage}
+									className='object-cover rounded-md'
+								/>
+							)}
+							<div className='flex-1 flex flex-col gap-2'>
 								<div className='w-full flex flex-wrap gap-1 justify-between'>
 									<h3 className='text-lg font-normal'>
-										Bukolary
+										{vendor?.name || 'Vendor'}
 									</h3>
-									<p className='text-lg font-normal'>
-										{formatCurency(6000)}
-									</p>
 								</div>
 								<div className='w-full font-light flex flex-row gap-2'>
-									<p>1 item</p>
-									<Separator orientation='vertical' />
-									<p>20 - 25mins</p>
+									<p>
+										{getTotalPacks()} pack
+										{getTotalPacks() > 1 ? 's' : ''}
+									</p>
 								</div>
 							</div>
 						</div>
 						<Link
-							href={PAGES_DATA.order_summary_page('21123')}
+							href={PAGES_DATA.order_summary_page('temp')}
 							className={cn(
 								buttonVariants({
 									variant: 'game',
@@ -70,7 +82,7 @@ export default function TrayPage() {
 									className: 'w-full py-5',
 								})
 							)}>
-							Checkout
+							View Order Summary
 						</Link>
 					</div>
 				</div>
