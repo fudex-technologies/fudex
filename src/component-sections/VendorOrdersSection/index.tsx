@@ -260,7 +260,7 @@ const VendorOrdersSection = () => {
 							<div className='flex gap-2 border-t pt-4'>
 								<Select
 									value={order.status}
-									onValueChange={(value) =>
+									onValueChange={(value: OrderStatus) =>
 										handleStatusUpdate(order.id, value)
 									}>
 									<SelectTrigger className='flex-1'>
