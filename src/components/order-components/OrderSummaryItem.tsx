@@ -42,10 +42,8 @@ const OrderSummaryItem = ({
 
 	// Fetch addon items
 	const addonIds = pack.addons?.map((a) => a.addonProductItemId) || [];
-	const { data: addonItemsData = [] } = useVendorProductActions().useGetProductItemsByIds(
-		{ ids: addonIds },
-		{ enabled: addonIds.length > 0 }
-	);
+	const { data: addonItemsData = [] } =
+		useVendorProductActions().useGetProductItemsByIds({ ids: addonIds });
 	const addonItems = addonItemsData;
 
 	// Calculate pack total
@@ -103,7 +101,8 @@ const OrderSummaryItem = ({
 						<div className='flex flex-col gap-1 pl-3 mt-1'>
 							{pack.addons.map((addon, idx) => {
 								const addonItem = addonItems.find(
-									(item) => item?.id === addon.addonProductItemId
+									(item) =>
+										item?.id === addon.addonProductItemId
 								);
 								if (!addonItem) return null;
 								return (
@@ -112,11 +111,11 @@ const OrderSummaryItem = ({
 									</p>
 								);
 							})}
-							</div>
-						)}
+						</div>
+					)}
 				</div>
 				<div className='ml-4'>
-				<CounterComponent
+					<CounterComponent
 						count={quantity}
 						setCount={setQuantity}
 						className='w-[120px] py-2'
@@ -124,9 +123,13 @@ const OrderSummaryItem = ({
 				</div>
 			</div>
 			<div className='flex justify-between items-center mt-2'>
-				<Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+				<Dialog
+					open={isEditDialogOpen}
+					onOpenChange={setIsEditDialogOpen}>
 					<DialogTrigger asChild>
-						<Button variant='link' className='text-primary text-sm p-0 h-auto'>
+						<Button
+							variant='link'
+							className='text-primary text-sm p-0 h-auto'>
 							Edit pack
 						</Button>
 					</DialogTrigger>
@@ -165,23 +168,26 @@ const PackEditDialog = ({ pack, onSave, vendorId }: PackEditDialogProps) => {
 		Record<string, number>
 	>(
 		pack.addons?.reduce(
-			(acc, addon) => ({ ...acc, [addon.addonProductItemId]: addon.quantity }),
+			(acc, addon) => ({
+				...acc,
+				[addon.addonProductItemId]: addon.quantity,
+			}),
 			{}
 		) || {}
 	);
 
 	// Fetch product items for selection
-	const { data: productItems = [] } = useVendorProductActions().useListProductItems({
-		vendorId,
-	});
+	const { data: productItems = [] } =
+		useVendorProductActions().useListProductItems({
+			vendorId,
+		});
 
 	// Fetch addon items
-	const { data: addonItems = [] } = useVendorProductActions().useGetAddonProductItems(
-		{
+	const { data: addonItems = [] } =
+		useVendorProductActions().useGetAddonProductItems({
 			vendorId,
 			excludeProductItemIds: [selectedItemId],
-		}
-	);
+		});
 
 	const handleSave = () => {
 		const addons = Object.entries(selectedAddons)
@@ -209,8 +215,12 @@ const PackEditDialog = ({ pack, onSave, vendorId }: PackEditDialogProps) => {
 					onValueChange={setSelectedItemId}
 					className='space-y-2'>
 					{productItems.map((item) => (
-						<div key={item.id} className='flex items-center justify-between p-2 rounded border'>
-							<Label htmlFor={`edit-item-${item.id}`} className='flex-1 cursor-pointer'>
+						<div
+							key={item.id}
+							className='flex items-center justify-between p-2 rounded border'>
+							<Label
+								htmlFor={`edit-item-${item.id}`}
+								className='flex-1 cursor-pointer'>
 								<div>
 									<p className='font-medium'>{item.name}</p>
 									<p className='text-sm text-foreground/50'>
@@ -218,7 +228,10 @@ const PackEditDialog = ({ pack, onSave, vendorId }: PackEditDialogProps) => {
 									</p>
 								</div>
 							</Label>
-							<RadioGroupItem value={item.id} id={`edit-item-${item.id}`} />
+							<RadioGroupItem
+								value={item.id}
+								id={`edit-item-${item.id}`}
+							/>
 						</div>
 					))}
 				</RadioGroup>
@@ -231,88 +244,129 @@ const PackEditDialog = ({ pack, onSave, vendorId }: PackEditDialogProps) => {
 						Add-ons (Optional)
 					</Label>
 					<div className='space-y-2'>
-						{addonItems.map((addon: { id: string; name: string; price: number }) => {
-							const quantity = selectedAddons[addon.id] || 0;
-							const isSelected = quantity > 0;
+						{addonItems.map(
+							(addon: {
+								id: string;
+								name: string;
+								price: number;
+							}) => {
+								const quantity = selectedAddons[addon.id] || 0;
+								const isSelected = quantity > 0;
 
-							return (
-								<div
-									key={addon.id}
-									className='flex items-center justify-between p-2 rounded border'>
-									<div className='flex items-center gap-2 flex-1'>
-										<Checkbox
-											id={`edit-addon-${addon.id}`}
-											checked={isSelected}
-											onCheckedChange={() => {
-												if (isSelected) {
-													setSelectedAddons((prev) => {
-														const newState = { ...prev };
-														delete newState[addon.id];
-														return newState;
-													});
-												} else {
-													setSelectedAddons((prev) => ({
-														...prev,
-														[addon.id]: 1,
-													}));
-												}
-											}}
-										/>
-										<Label
-											htmlFor={`edit-addon-${addon.id}`}
-											className='flex-1 cursor-pointer'>
-											<div>
-												<p className='text-sm font-medium'>{addon.name}</p>
-												<p className='text-xs text-foreground/50'>
-													{formatCurency(addon.price)}
-												</p>
-											</div>
-										</Label>
+								return (
+									<div
+										key={addon.id}
+										className='flex items-center justify-between p-2 rounded border'>
+										<div className='flex items-center gap-2 flex-1'>
+											<Checkbox
+												id={`edit-addon-${addon.id}`}
+												checked={isSelected}
+												onCheckedChange={() => {
+													if (isSelected) {
+														setSelectedAddons(
+															(prev) => {
+																const newState =
+																	{ ...prev };
+																delete newState[
+																	addon.id
+																];
+																return newState;
+															}
+														);
+													} else {
+														setSelectedAddons(
+															(prev) => ({
+																...prev,
+																[addon.id]: 1,
+															})
+														);
+													}
+												}}
+											/>
+											<Label
+												htmlFor={`edit-addon-${addon.id}`}
+												className='flex-1 cursor-pointer'>
+												<div>
+													<p className='text-sm font-medium'>
+														{addon.name}
+													</p>
+													<p className='text-xs text-foreground/50'>
+														{formatCurency(
+															addon.price
+														)}
+													</p>
+												</div>
+											</Label>
+										</div>
+										{isSelected && (
+											<CounterComponent
+												count={quantity}
+												setCount={(newCount) => {
+													const num =
+														typeof newCount ===
+														'function'
+															? newCount(quantity)
+															: newCount;
+													if (num <= 0) {
+														setSelectedAddons(
+															(prev) => {
+																const newState =
+																	{ ...prev };
+																delete newState[
+																	addon.id
+																];
+																return newState;
+															}
+														);
+													} else {
+														setSelectedAddons(
+															(prev) => ({
+																...prev,
+																[addon.id]: num,
+															})
+														);
+													}
+												}}
+												countChangeEffect={(
+													newCount
+												) => {
+													if (newCount <= 0) {
+														setSelectedAddons(
+															(prev) => {
+																const newState =
+																	{ ...prev };
+																delete newState[
+																	addon.id
+																];
+																return newState;
+															}
+														);
+													} else {
+														setSelectedAddons(
+															(prev) => ({
+																...prev,
+																[addon.id]:
+																	newCount,
+															})
+														);
+													}
+												}}
+												className='w-[100px] py-1'
+											/>
+										)}
 									</div>
-									{isSelected && (
-										<CounterComponent
-											count={quantity}
-											setCount={(newCount) => {
-												const num = typeof newCount === 'function' ? newCount(quantity) : newCount;
-												if (num <= 0) {
-													setSelectedAddons((prev) => {
-														const newState = { ...prev };
-														delete newState[addon.id];
-														return newState;
-													});
-												} else {
-													setSelectedAddons((prev) => ({
-														...prev,
-														[addon.id]: num,
-													}));
-												}
-											}}
-											countChangeEffect={(newCount) => {
-												if (newCount <= 0) {
-													setSelectedAddons((prev) => {
-														const newState = { ...prev };
-														delete newState[addon.id];
-														return newState;
-													});
-												} else {
-													setSelectedAddons((prev) => ({
-														...prev,
-														[addon.id]: newCount,
-													}));
-												}
-											}}
-											className='w-[100px] py-1'
-										/>
-									)}
-								</div>
-							);
-						})}
+								);
+							}
+						)}
 					</div>
 				</div>
 			)}
 
 			<div className='flex gap-2 pt-4'>
-				<Button variant='outline' onClick={() => onSave({})} className='flex-1'>
+				<Button
+					variant='outline'
+					onClick={() => onSave({})}
+					className='flex-1'>
 					Cancel
 				</Button>
 				<Button onClick={handleSave} className='flex-1'>

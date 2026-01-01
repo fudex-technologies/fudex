@@ -7,7 +7,7 @@ import { ClassNameValue } from 'tailwind-merge';
 interface Props {
 	className?: ClassNameValue;
 	count: number;
-	setCount: Dispatch<SetStateAction<number>>;
+	setCount?: Dispatch<SetStateAction<number>>;
 	countChangeEffect?: (newCount: number) => void;
 }
 
@@ -18,25 +18,37 @@ const CounterComponent = ({
 	countChangeEffect,
 }: Props) => {
 	const increaseCount = () => {
-		const maybePromise = setCount((prev) => prev + 1);
-		Promise.resolve(maybePromise)
-			.then(() => {
-				countChangeEffect && countChangeEffect(count);
-			})
-			.catch(() => {
-				countChangeEffect && countChangeEffect(count);
-			});
+		if (setCount) {
+			const maybePromise = setCount((prev) => prev + 1);
+			Promise.resolve(maybePromise)
+				.then(() => {
+					countChangeEffect && countChangeEffect(count);
+				})
+				.catch(() => {
+					countChangeEffect && countChangeEffect(count);
+				});
+			return;
+		} else {
+			countChangeEffect && countChangeEffect(count + 1);
+			return;
+		}
 	};
 
 	const decreaseCount = () => {
-		const maybePromise = setCount((prev) => prev - 1);
-		Promise.resolve(maybePromise)
-			.then(() => {
-				countChangeEffect && countChangeEffect(count);
-			})
-			.catch(() => {
-				countChangeEffect && countChangeEffect(count);
-			});
+		if (setCount) {
+			const maybePromise = setCount((prev) => prev - 1);
+			Promise.resolve(maybePromise)
+				.then(() => {
+					countChangeEffect && countChangeEffect(count);
+				})
+				.catch(() => {
+					countChangeEffect && countChangeEffect(count);
+				});
+			return;
+		} else {
+			countChangeEffect && countChangeEffect(count - 1);
+			return;
+		}
 	};
 
 	return (

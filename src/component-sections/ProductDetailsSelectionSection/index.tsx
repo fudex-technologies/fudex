@@ -38,14 +38,15 @@ const ProductDetailsSelectionSection = ({
 	>({}); // addonProductItemId -> quantity
 
 	// Fetch available addons (other product items from same vendor)
-	const { data: addonItems = [] } = useVendorProductActions().useGetAddonProductItems(
-		{
+	const { data: addonItems = [] } =
+		useVendorProductActions().useGetAddonProductItems({
 			vendorId,
 			excludeProductItemIds: productItems.map((item) => item.id),
-		}
-	);
+		});
 
-	const selectedItem = productItems.find((item) => item.id === selectedItemId);
+	const selectedItem = productItems.find(
+		(item) => item.id === selectedItemId
+	);
 
 	// Calculate total price
 	const totalPrice = useMemo(() => {
@@ -122,7 +123,9 @@ const ProductDetailsSelectionSection = ({
 			);
 		}
 
-		toast.success(`Added ${numberOfPacks} pack${numberOfPacks > 1 ? 's' : ''} to tray`);
+		toast.success(
+			`Added ${numberOfPacks} pack${numberOfPacks > 1 ? 's' : ''} to tray`
+		);
 		router.push(PAGES_DATA.tray_page);
 	};
 
@@ -156,9 +159,13 @@ const ProductDetailsSelectionSection = ({
 						{productItems.map((item, index) => (
 							<div key={item.id}>
 								<div className='flex gap-3 w-full items-center justify-between'>
-									<Label htmlFor={`item-${item.id}`} className='flex-1'>
+									<Label
+										htmlFor={`item-${item.id}`}
+										className='flex-1'>
 										<div className=''>
-											<p className='text-lg'>{item.name}</p>
+											<p className='text-lg'>
+												{item.name}
+											</p>
 											<p className='text-foreground/50'>
 												{formatCurency(item.price)}
 											</p>
@@ -170,7 +177,9 @@ const ProductDetailsSelectionSection = ({
 										className='w-6 h-6'
 									/>
 								</div>
-								{index < productItems.length - 1 && <Separator />}
+								{index < productItems.length - 1 && (
+									<Separator />
+								)}
 							</div>
 						))}
 					</RadioGroup>
@@ -181,7 +190,9 @@ const ProductDetailsSelectionSection = ({
 					<>
 						<div className='w-full bg-muted flex items-center gap-3 p-5 text-lg'>
 							<p>Add-ons</p>
-							<Badge variant={'outline'} className='border-primary text-primary'>
+							<Badge
+								variant={'outline'}
+								className='border-primary text-primary'>
 								Optional
 							</Badge>
 						</div>
@@ -199,20 +210,26 @@ const ProductDetailsSelectionSection = ({
 											<Checkbox
 												id={`addon-${addon.id}`}
 												checked={isSelected}
-												onCheckedChange={() => handleAddonToggle(addon.id)}
+												onCheckedChange={() =>
+													handleAddonToggle(addon.id)
+												}
 											/>
 											<Label
 												htmlFor={`addon-${addon.id}`}
 												className='flex-1 cursor-pointer'>
 												<div>
-													<p className='text-base font-medium'>{addon.name}</p>
+													<p className='text-base font-medium'>
+														{addon.name}
+													</p>
 													{addon.description && (
 														<p className='text-sm text-foreground/50'>
 															{addon.description}
 														</p>
 													)}
 													<p className='text-sm text-foreground/70'>
-														{formatCurency(addon.price)}
+														{formatCurency(
+															addon.price
+														)}
 													</p>
 												</div>
 											</Label>
@@ -221,8 +238,13 @@ const ProductDetailsSelectionSection = ({
 											<div className='ml-4'>
 												<CounterComponent
 													count={quantity}
-													setCount={(newCount) =>
-														handleAddonQuantityChange(addon.id, newCount)
+													countChangeEffect={(
+														newCount
+													) =>
+														handleAddonQuantityChange(
+															addon.id,
+															newCount
+														)
 													}
 													className='w-[120px] py-1'
 												/>

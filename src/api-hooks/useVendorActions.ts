@@ -96,7 +96,7 @@ export function useVendorProductActions() {
         useGetProductItemById: (input: { id: string }) =>
             useQuery(trpc.vendors.getProductItemById.queryOptions(input)),
         useGetProductItemsByIds: (input: { ids: string[] }) =>
-            useQuery(trpc.vendors.getProductItemsByIds.queryOptions(input)),
+            useQuery(trpc.vendors.getProductItemsByIds.queryOptions(input, { enabled: input.ids.length > 0 })),
         useGetProductWithItems: (input: { id: string }) =>
             useQuery(trpc.vendors.getProductWithItems.queryOptions(input)),
         useGetAddonProductItems: (input: { vendorId: string; excludeProductItemIds?: string[]; take?: number }) =>
