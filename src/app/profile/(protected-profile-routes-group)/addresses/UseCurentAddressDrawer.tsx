@@ -1,20 +1,122 @@
 'use client';
 
-import { Drawer, DrawerContent, DrawerTrigger } from '@/components/ui/drawer';
+import {
+	Drawer,
+	DrawerContent,
+	DrawerTrigger,
+} from '@/components/ui/drawer';
 import { cn } from '@/lib/utils';
 import { ChevronRight } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { FaLocationArrow } from 'react-icons/fa';
 import { savedAddressIcons } from './page';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { usePRofileActions } from '@/api-hooks/useProfileActions';
+import {
+	GeoResult,
+	reverseGeocode,
+} from '../../../../lib/location/reverseGeocode';
+import { Loader2 } from 'lucide-react';
 
-const UseCurentAddressDrawer = () => {
+interface AddressPayload {
+	label: string;
+	line1: string;
+	line2?: string;
+	city: string;
+	state?: string;
+	postalCode?: string;
+	country?: string;
+	lat: number;
+	lng: number;
+}
+
+const UseCurentAddressDrawer = ({
+	addAddressEffect,
+}: {
+	addAddressEffect?: () => void;
+}) => {
+	const [isOpen, setIsOpen] = useState(false);
 	const [selectedLabel, setSelectedabel] = useState<
 		'home' | 'school' | 'work' | 'other'
 	>('home');
+	const [customLabel, setCustomLabel] = useState('');
+	const [geoLoading, setGeoLoading] = useState(false);
+	const [geoError, setGeoError] = useState<string | null>(null);
+	const [resolvedAddress, setResolvedAddress] = useState<GeoResult | null>(
+		null
+	);
+
+	const { addAddress } = usePRofileActions();
+	const { mutate: addMutate, isPending: adding } = addAddress({
+		onSuccess: () => {
+			setIsOpen(false);
+			addAddressEffect && addAddressEffect();
+		},
+	});
+
+	const handleFetchCurrentLocation = useCallback(() => {
+		setGeoLoading(true);
+		setGeoError(null);
+		setResolvedAddress(null);
+
+		if (!('geolocation' in navigator)) {
+			setGeoError('Geolocation not available in this browser');
+			setGeoLoading(false);
+			return;
+		}
+
+		navigator.geolocation.getCurrentPosition(
+			async (pos) => {
+				const { latitude, longitude } = pos.coords;
+				try {
+					const address = await reverseGeocode(latitude, longitude);
+					setResolvedAddress(address);
+				} catch (err: any) {
+					setGeoError(err?.message || String(err));
+				} finally {
+					setGeoLoading(false);
+				}
+			},
+			(err) => {
+				setGeoError(err.message || 'Failed to get location');
+				setGeoLoading(false);
+			},
+			{
+				enableHighAccuracy: true,
+				timeout: 20000,
+				maximumAge: 30000, // Cache location for 30 seconds
+			}
+		);
+	}, []);
+
+	useEffect(() => {
+		if (isOpen) {
+			handleFetchCurrentLocation();
+		}
+	}, [isOpen, handleFetchCurrentLocation]);
+
+	const handleSaveAddress = () => {
+		if (!resolvedAddress) return;
+
+		const data: AddressPayload = {
+			label:
+				selectedLabel === 'other'
+					? customLabel || 'Other'
+					: selectedLabel,
+			line1: resolvedAddress.formattedAddress,
+			city: resolvedAddress.city as string,
+			state: resolvedAddress.state,
+			postalCode: resolvedAddress.postalCode,
+			country: resolvedAddress.country,
+			lat: resolvedAddress.lat,
+			lng: resolvedAddress.lng,
+		};
+		addMutate(data);
+	};
+
 	return (
-		<Drawer>
+		<Drawer open={isOpen} onOpenChange={setIsOpen}>
 			<DrawerTrigger asChild>
 				<div className='p-5 w-full border-t border-b border-foreground/50 flex items-center justify-between cursor-pointer'>
 					<div className='flex gap-2 items-center text-primary'>
@@ -32,12 +134,30 @@ const UseCurentAddressDrawer = () => {
 							<p className=''>Use your current location</p>
 						</div>
 						<div className='w-full'>
-							<p className='font-semibold'>
-								Road 5, Iworoko rd, Ekiti 360101, Ekiti, Nigeria
-							</p>
-							<p className='text-sm text-foreground/50'>
-								Road 5, Iworoko rd, Ekiti 360101, Ekiti, Nigeria
-							</p>
+							{geoLoading && (
+								<div className='flex items-center text-sm text-foreground/50'>
+									<Loader2 className='mr-2 h-4 w-4 animate-spin' />
+									Detecting location...
+								</div>
+							)}
+							{geoError && (
+								<p className='text-sm text-red-500'>
+									Error detecting location: {geoError}
+								</p>
+							)}
+
+							{resolvedAddress && (
+								<>
+									<p className='font-semibold'>
+										{resolvedAddress.formattedAddress}
+									</p>
+									<p className='text-sm text-foreground/50'>
+										{resolvedAddress.city},{' '}
+										{resolvedAddress.state},{' '}
+										{resolvedAddress.country}
+									</p>
+								</>
+							)}
 						</div>
 
 						<div className='w-full space-y-2 my-5'>
@@ -98,12 +218,20 @@ const UseCurentAddressDrawer = () => {
 								<Input
 									className='w-full my-2'
 									placeholder='Enter label'
+									value={customLabel}
+									onChange={(e) =>
+										setCustomLabel(e.target.value)
+									}
 								/>
 							)}
 						</div>
 
-						<Button variant={'game'} className='w-full py-5 my-3'>
-							Select this address
+						<Button
+							variant={'game'}
+							className='w-full py-5 my-3'
+							disabled={!resolvedAddress || adding || geoLoading}
+							onClick={handleSaveAddress}>
+							{adding ? 'Saving...' : 'Select this address'}
 						</Button>
 					</div>
 				</div>

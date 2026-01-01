@@ -6,7 +6,7 @@ import PageWrapper from '@/components/wrapers/PageWrapper';
 import EditNameForm from './EditNameForm';
 import EditPhoneForm from './EditPhoneForm';
 import EditEmailForm from './EditEmailForm';
-import { usePRofileActions } from '@/api-hooks/useAccountActions';
+import { usePRofileActions } from '@/api-hooks/useProfileActions';
 import { getFullName } from '@/lib/commonFunctions';
 
 export default function AccountPage() {

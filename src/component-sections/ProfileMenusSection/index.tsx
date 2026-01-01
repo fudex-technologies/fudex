@@ -18,7 +18,7 @@ import {
 	Store,
 } from 'lucide-react';
 import { useState } from 'react';
-import { usePRofileActions } from '@/api-hooks/useAccountActions';
+import { usePRofileActions } from '@/api-hooks/useProfileActions';
 
 const ProfileMenusSection = () => {
 	const [confirmLogout, setConfirmLogout] = useState(false);

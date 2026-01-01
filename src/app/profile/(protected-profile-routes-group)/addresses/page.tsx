@@ -1,3 +1,5 @@
+'use client';
+
 import GoBackButton from '@/components/GoBackButton';
 import SearchInput from '@/components/SearchInput';
 import PageWrapper from '@/components/wrapers/PageWrapper';
@@ -12,7 +14,11 @@ import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
 import UseCurentAddressDrawer from './UseCurentAddressDrawer';
 import Link from 'next/link';
 import { PAGES_DATA } from '@/data/pagesData';
+import { usePRofileActions } from '@/api-hooks/useProfileActions';
+import { Skeleton } from '@/components/ui/skeleton';
+import { shortenText } from '@/lib/commonFunctions';
 
+type IAddressLabel = 'home' | 'school' | 'work' | 'other';
 export const savedAddressIcons = {
 	home: {
 		name: 'Home',
@@ -33,7 +39,13 @@ export const savedAddressIcons = {
 };
 
 export default function ProfileAddressesPage() {
-	const isEmpty = false;
+	const { getAddresses } = usePRofileActions();
+	const {
+		data: addresses,
+		isLoading: addressesLoading,
+		refetch,
+	} = getAddresses();
+	const isEmpty = addresses && addresses?.length === 0 && !addressesLoading;
 
 	return (
 		<PageWrapper className='flex flex-col items-center'>
@@ -54,7 +66,9 @@ export default function ProfileAddressesPage() {
 						</Link>
 					</div>
 
-					<UseCurentAddressDrawer />
+					<UseCurentAddressDrawer
+						addAddressEffect={() => refetch()}
+					/>
 				</div>
 			</SectionWrapper>
 
@@ -63,8 +77,15 @@ export default function ProfileAddressesPage() {
 					Saved locations
 				</p>
 
-				{/* empty variant */}
-				{isEmpty && (
+				{addressesLoading && (
+					<div className='w-full flex flex-col'>
+						<AddressListItemSkeleton />
+						<AddressListItemSkeleton className='bg-foreground/5' />
+						<AddressListItemSkeleton />
+					</div>
+				)}
+
+				{!addressesLoading && isEmpty && (
 					<div className='w-full p-5 flex flex-col gap-5 items-center justify-center'>
 						<ImageWithFallback
 							src={'/assets/cityillustration.png'}
@@ -81,19 +102,23 @@ export default function ProfileAddressesPage() {
 					</div>
 				)}
 
-				{/* with data variant */}
-				{!isEmpty && (
+				{!addressesLoading && !isEmpty && (
 					<div className='w-full flex flex-col'>
-						<AddressListItem
-							addressType='home'
-							line1='Road 5, Iworoko rd, Ekiti 360101, Ekiti, Nigeria'
-						/>
-						<AddressListItem
-							addressType='school'
-							line1='Ekiti State University, Iworoko rd, Ekiti 360101, Ekiti, Nigeria'
-							line2='Room 3, Good news hostel'
-							className='bg-foreground/5'
-						/>
+						{addresses?.map((address, index) => {
+							return (
+								<AddressListItem
+									key={address.id}
+									addressType={
+										address?.label as IAddressLabel
+									}
+									line1={address?.line1}
+									line2={address?.line2}
+									className={
+										index % 2 !== 0 && 'bg-foreground/5'
+									}
+								/>
+							);
+						})}
 					</div>
 				)}
 			</SectionWrapper>
@@ -108,10 +133,10 @@ const AddressListItem = ({
 	line2,
 }: {
 	className?: ClassNameValue;
-	addressType: 'home' | 'school' | 'work' | 'other';
+	addressType?: IAddressLabel;
 	line1: string;
-	line2?: string;
-}) => {
+	line2?: string | null;
+}) => {	
 	return (
 		<div
 			className={cn(
@@ -119,13 +144,48 @@ const AddressListItem = ({
 				className
 			)}>
 			<div className='flex gap-2 items-center'>
-				{savedAddressIcons[addressType].icon}{' '}
-				<p className='font-semibold'>
-					{savedAddressIcons[addressType].name}
-				</p>
+				{addressType === 'home' ||
+				addressType === 'school' ||
+				addressType === 'work' ? (
+					<>
+						{savedAddressIcons[addressType].icon}{' '}
+						<p className='font-semibold'>
+							{savedAddressIcons[addressType].name}
+						</p>
+					</>
+				) : (
+					<>
+						{savedAddressIcons['other'].icon}{' '}
+						<p className='font-semibold'>
+							{/* {savedAddressIcons['other'].name} */}
+							{shortenText(addressType || 'Other', 30)}
+						</p>
+					</>
+				)}
 			</div>
 			<p>{line1}</p>
 			<p className='text-sm text-foreground/50'>{line2 || line1}</p>
+		</div>
+	);
+};
+
+const AddressListItemSkeleton = ({
+	className,
+}: {
+	className?: ClassNameValue;
+}) => {
+	return (
+		<div
+			className={cn(
+				'px-5 py-2 bg-background flex flex-col gap-2 text-start text-foreground overflow-hidden text-nowrap whitespace-nowrap border-b',
+				className
+			)}>
+			<div className='flex gap-2 items-center'>
+				<Skeleton className='h-5 w-5 rounded-sm' />
+				<Skeleton className='h-4 w-20' />
+			</div>
+			<Skeleton className='h-4 w-full' />
+			<Skeleton className='h-3 w-1/2' />
 		</div>
 	);
 };

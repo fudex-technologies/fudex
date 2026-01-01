@@ -9,7 +9,7 @@ import { PAGES_DATA } from '@/data/pagesData';
 import { Store, Package, ShoppingBag } from 'lucide-react';
 import TabComponent from '@/components/TabComponent';
 import { useState } from 'react';
-import { usePRofileActions } from '@/api-hooks/useAccountActions';
+import { usePRofileActions } from '@/api-hooks/useProfileActions';
 
 export default function VendorDashboardLayout({
 	children,

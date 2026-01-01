@@ -17,12 +17,13 @@ export default function Home() {
 		<PageWrapper>
 			<SectionWrapper className='w-full flex items-center gap-5 justify-between'>
 				<LocationDropdown />
-				<Suspense fallback={
-					<Button disabled>
-						<PiSlidersHorizontalFill />
-						Filter
-					</Button>
-				}>
+				<Suspense
+					fallback={
+						<Button disabled>
+							<PiSlidersHorizontalFill />
+							Filter
+						</Button>
+					}>
 					<FilterVendorsDrawer />
 				</Suspense>
 			</SectionWrapper>

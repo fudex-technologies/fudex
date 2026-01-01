@@ -11,6 +11,9 @@ import InputField, { SelectField } from '@/components/InputComponent';
 import { nigeriaStatesData } from '@/lib/staticData/nigeriaStatesData';
 import { Button } from '@/components/ui/button';
 import ConfirmLocationModal from './ConfirmLocationModal';
+import { usePRofileActions } from '@/api-hooks/useProfileActions';
+import { useRouter } from 'next/navigation';
+import { PAGES_DATA } from '@/data/pagesData';
 
 interface IFormData {
 	address: string;
@@ -34,7 +37,17 @@ export default function SetAddressManually() {
 	const [selectedLabel, setSelectedabel] = useState<
 		'home' | 'school' | 'work' | 'other'
 	>('home');
+	const [customLabel, setCustomLabel] = useState('');
 	const [confirmOpen, setConfirmOpen] = useState(false);
+	const router = useRouter();
+
+	const { addAddress } = usePRofileActions();
+	const { mutate: addAddressMutate, isPending: addingAddress } = addAddress({
+		onSuccess: () => {
+			setConfirmOpen(false);
+			router.push(PAGES_DATA.profile_addresses_page);
+		},
+	});
 
 	const validate = () => {
 		const newErrors: any = {};
@@ -49,14 +62,12 @@ export default function SetAddressManually() {
 
 	const handleFormSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
-
 		setTouched({
 			address: true,
 			city: true,
 			country: true,
 		});
 		if (!isFormValid) return;
-
 		setConfirmOpen(true);
 	};
 
@@ -99,6 +110,7 @@ export default function SetAddressManually() {
 						onChange={handleChange('city')}
 						value={form.city}
 						error={touched.address && errorsNow.address}
+						required
 					/>
 					<InputField
 						type='text'
@@ -168,6 +180,8 @@ export default function SetAddressManually() {
 							<Input
 								className='w-full my-2'
 								placeholder='Enter label'
+								value={customLabel}
+								onChange={(e) => setCustomLabel(e.target.value)}
 							/>
 						)}
 					</div>
@@ -181,11 +195,23 @@ export default function SetAddressManually() {
 				</form>
 			</SectionWrapper>
 
-			<ConfirmLocationModal 
-            open={confirmOpen} 
-            setOpen={setConfirmOpen} 
-            locationData={form}
-            />
+			<ConfirmLocationModal
+				open={confirmOpen}
+				setOpen={setConfirmOpen}
+				locationData={form}
+				handleAddAddress={() => {
+					addAddressMutate({
+						city: form.city,
+						country: form.country,
+						line1: form.address,
+						label:
+							selectedLabel === 'other'
+								? customLabel || 'Other'
+								: selectedLabel,
+					});
+				}}
+				pending={addingAddress}
+			/>
 		</PageWrapper>
 	);
 }

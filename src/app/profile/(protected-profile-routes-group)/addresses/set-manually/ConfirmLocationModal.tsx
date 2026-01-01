@@ -19,10 +19,14 @@ const ConfirmLocationModal = ({
 	open,
 	setOpen,
 	locationData,
+	handleAddAddress,
+	pending,
 }: {
 	open: boolean;
 	setOpen: Dispatch<SetStateAction<boolean>>;
 	locationData: ILocationData;
+	handleAddAddress?: () => void;
+	pending?: boolean;
 }) => {
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
@@ -48,11 +52,15 @@ const ConfirmLocationModal = ({
 				</div>
 				<DialogFooter className='flex flex-col gap-2'>
 					<Button
+						disabled={pending}
 						type='submit'
 						className='flex-1  py-3'
 						variant={'game'}
-						size={'lg'}>
-						Confirm & Save
+						size={'lg'}
+						onClick={() => {
+							handleAddAddress && handleAddAddress();
+						}}>
+						{pending ? 'Saving...' : 'Confirm & Save'}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
