@@ -183,3 +183,11 @@ export async function compareOTP(otp: string, hash: string) {
 export const validateEmailRegex = (email: string) => /\S+@\S+\.\S+/.test(email);
 export const validatePhoneNumberRegex = (phone: string) => /^(\+234|234|0)?[789]\d{9}$/.test(phone);
 export const validatepasswordRegex = (password: string) => /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(password);
+
+export const getDoodleAvatarUrl = (id?: string) =>
+    `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(id || 3)}&backgroundColor=D63C12`
+
+export const getFullName = (profile: any) => `${(profile?.firstName || profile?.lastName) &&
+    `${profile?.firstName} ${profile?.lastName}`
+    } 
+${(profile?.firstName || profile?.lastName) && '('}${profile?.name}${(profile?.firstName || profile?.lastName) && ')'}`;

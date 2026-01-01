@@ -1,29 +1,75 @@
 'use client';
 
+import InputField from '@/components/InputComponent';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { validateEmailRegex } from '@/lib/commonFunctions';
+import { useState } from 'react';
 
-const EditEmailForm = () => {
+interface IFormTouchedData {
+	email?: true;
+}
+const EditEmailForm = ({
+	email,
+	updateProfile,
+}: {
+	email?: string;
+	updateProfile: any;
+}) => {
+	const [form, setForm] = useState({ email: email || '' });
+	const [touched, setTouched] = useState<IFormTouchedData>({});
+
+	const validate = () => {
+		const newErrors: any = {};
+		if (!form.email) newErrors.email = 'Email is required';
+		else if (!validateEmailRegex(form.email))
+			newErrors.email = 'Invalid email';
+
+		return newErrors;
+	};
+	const errorsNow = validate();
+	const isFormValid = Object.keys(errorsNow).length === 0;
+
+	const handleChange =
+		(field: string) =>
+		(e: React.ChangeEvent<HTMLInputElement> | string) => {
+			setForm({
+				...form,
+				[field]: typeof e === 'string' ? e : e.target.value,
+			});
+			setTouched({ ...touched, [field]: true });
+		};
+
+	const handleSubmit = (e: React.FormEvent) => {
+		e.preventDefault();
+		setTouched({
+			email: true,
+		});
+		if (!isFormValid) return;
+		updateProfile.mutate({ email: form.email });
+	};
 	return (
-		<form className='w-full flex flex-col gap-5 max-w-lg'>
-			<Label
-				htmlFor='email'
-				className='w-full flex flex-col items-start gap-2'>
-				Email Address
-				<Input
-					type='email'
-					className='w-full py-7 text-lg'
-					placeholder='Enter your email address'
-					name='email'
-					id='email'
-				/>
-			</Label>
+		<form
+			onSubmit={handleSubmit}
+			className='w-full flex flex-col gap-5 max-w-lg'>
+			<InputField
+				label='Email Address'
+				type='email'
+				className='w-full py-7 text-lg'
+				placeholder='Enter your email address'
+				id='email'
+				value=''
+				onChange={handleChange('email')}
+				error={touched.email && errorsNow.email}
+				required
+			/>
 			<Button
 				type='submit'
 				variant={'game'}
-				className='w-full py-7 mt-10'>
-				Update Email Address
+				className='w-full py-7 mt-10'
+				disabled={!isFormValid || updateProfile.isPending}>
+				{updateProfile.isPending
+					? 'Updating...'
+					: 'Update Email Address'}
 			</Button>
 		</form>
 	);

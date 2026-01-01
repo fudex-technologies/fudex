@@ -37,7 +37,7 @@ export const auth = betterAuth({
                     phone: dbUser?.phone,
                     phoneVerified: dbUser?.phoneVerified,
                     firstName: dbUser?.firstName,
-                    lastName: dbUser?.phoneVerified,
+                    lastName: dbUser?.lastName,
                 },
                 session,
             };

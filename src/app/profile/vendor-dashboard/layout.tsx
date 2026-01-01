@@ -1,9 +1,7 @@
 'use client';
 
-import { usePathname, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useSession } from '@/lib/auth-client';
-import { useQuery } from '@tanstack/react-query';
-import { useTRPC } from '@/trpc/client';
 import { redirect } from 'next/navigation';
 import PageWrapper from '@/components/wrapers/PageWrapper';
 import GoBackButton from '@/components/GoBackButton';
@@ -11,6 +9,7 @@ import { PAGES_DATA } from '@/data/pagesData';
 import { Store, Package, ShoppingBag } from 'lucide-react';
 import TabComponent from '@/components/TabComponent';
 import { useState } from 'react';
+import { usePRofileActions } from '@/api-hooks/useAccountActions';
 
 export default function VendorDashboardLayout({
 	children,
@@ -18,17 +17,12 @@ export default function VendorDashboardLayout({
 	children: React.ReactNode;
 }) {
 	const [activeTab, setActiveTab] = useState('profile');
-	const pathname = usePathname();
 	const { data: session, isPending } = useSession();
-	const trpc = useTRPC();
 	const router = useRouter();
 
 	// Check if user is a vendor
-	const { data: isVendor, isPending: isVendorPending } = useQuery(
-		trpc.users.checkVendorRole.queryOptions(undefined, {
-			enabled: !!session,
-		})
-	);
+	const { data: isVendor, isPending: isVendorPending } =
+		usePRofileActions().isUserAVendor();
 
 	if (isPending) {
 		return (

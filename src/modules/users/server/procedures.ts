@@ -1,3 +1,4 @@
+import { getDoodleAvatarUrl } from "@/lib/commonFunctions";
 import { createTRPCRouter, publicProcedure, protectedProcedure } from "@/trpc/init";
 import { z } from "zod";
 
@@ -11,7 +12,7 @@ export const userRouter = createTRPCRouter({
         const user = await ctx.prisma.user.findUnique({
             where: { id: sessionUser.id }
         });
-        const avatarUrl = `https://api.dicebear.com/8.x/identicon/svg?seed=${encodeURIComponent(sessionUser.id)}`;
+        const avatarUrl = getDoodleAvatarUrl(sessionUser.id);
 
         return {
             id: sessionUser.id,
@@ -35,6 +36,7 @@ export const userRouter = createTRPCRouter({
                 lastName: z.string().optional(),
                 image: z.string().url().optional(),
                 phone: z.string().optional(),
+                email: z.string().email().optional(),
             })
         )
         .mutation(async ({ ctx, input }) => {
@@ -45,7 +47,12 @@ export const userRouter = createTRPCRouter({
             if (input.lastName) data.lastName = input.lastName;
             if (input.image) data.image = input.image;
             if (input.phone) data.phone = input.phone;
-            const updated = await ctx.prisma.user.update({ where: { id: userId }, data });
+            if (input.email) data.email = input.email;
+
+            const updated = await ctx.prisma.user.update({
+                where: { id: userId }, data
+            }
+            );
             return updated;
         }),
 

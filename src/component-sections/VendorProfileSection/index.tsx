@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { validatePhoneNumberRegex } from '@/lib/commonFunctions';
 import InputField, { TextAreaField } from '@/components/InputComponent';
+import { vercelBlobFolderStructure } from '@/data/vercelBlobFolders';
 
 const initialData = {
 	name: '',
@@ -106,7 +107,7 @@ const VendorProfileSection = () => {
 		try {
 			const uploadFormData = new FormData();
 			uploadFormData.append('file', file);
-			uploadFormData.append('folder', 'vendors');
+			uploadFormData.append('folder', vercelBlobFolderStructure.vendorCoverImages);
 
 			const response = await fetch('/api/upload', {
 				method: 'POST',

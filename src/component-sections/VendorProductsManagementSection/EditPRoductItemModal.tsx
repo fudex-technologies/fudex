@@ -1,6 +1,5 @@
 'use client';
 
-import { useVendorProductActions } from '@/api-hooks/useVendorActions';
 import { useVendorDashboardActions } from '@/api-hooks/useVendorDashboardActions';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -15,6 +14,7 @@ import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { vercelBlobFolderStructure } from '@/data/vercelBlobFolders';
 import { Edit, Plus } from 'lucide-react';
 import React, { useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -38,7 +38,7 @@ export default function EditProductItemModal({
 	const [isUploading, setIsUploading] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
-	const { updateProductItem } = useVendorProductActions();
+	const { updateProductItem } = useVendorDashboardActions();
 
 	const updateMutation = updateProductItem({
 		onSuccess: () => {
@@ -57,7 +57,7 @@ export default function EditProductItemModal({
 		try {
 			const uploadFormData = new FormData();
 			uploadFormData.append('file', file);
-			uploadFormData.append('folder', 'products');
+			uploadFormData.append('folder', vercelBlobFolderStructure.vendorProductImages);
 
 			const response = await fetch('/api/upload', {
 				method: 'POST',

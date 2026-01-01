@@ -10,23 +10,18 @@ import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BsChatLeftTextFill } from 'react-icons/bs';
 import { FUDEX_PHONE_NUMBER } from '@/lib/staticData/contactData';
-import { normalizePhoneNumber } from '@/lib/commonFunctions';
+import {
+	getDoodleAvatarUrl,
+	getFullName,
+	normalizePhoneNumber,
+} from '@/lib/commonFunctions';
 import { useOrderingActions } from '@/api-hooks/useOrderingActions';
 
 const ProfileTopSection = () => {
 	const { data: session, isPending } = useSession();
 	const { useGetNumberOfMyDeliveredOrders } = useOrderingActions();
 	const numberOfDeliveredOrders = useGetNumberOfMyDeliveredOrders();
-
-	const fullName =
-		session?.user?.name ||
-		`${(session?.user as ExtendedUser)?.lastName} ${
-			(session?.user as ExtendedUser)?.firstName
-		}`;
-
-	const avatarUrl = `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(
-		session?.user?.id || 3
-	)}&backgroundColor=D63C12`;
+	const avatarUrl = getDoodleAvatarUrl(session?.user?.id);
 
 	if (isPending && !session) {
 		return <ProfileTopSectionSkeleton />;
@@ -65,7 +60,9 @@ const ProfileTopSection = () => {
 			<div className='mt-12 space-y-3 text-center flex flex-col items-center'>
 				{session ? (
 					<>
-						<h1 className='font-bold text-lg'>{fullName}</h1>
+						<h1 className='font-bold text-lg'>
+							{getFullName(session?.user as ExtendedUser)}
+						</h1>
 						<div className='px-5 py-3 w-fit flex items-center justify-center gap-1 border rounded-full'>
 							<ImageWithFallback
 								src={'/icons/FUDEX_2t.png'}

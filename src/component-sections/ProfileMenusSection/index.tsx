@@ -18,20 +18,14 @@ import {
 	Store,
 } from 'lucide-react';
 import { useState } from 'react';
-import { useTRPC } from '@/trpc/client';
-import { useQuery } from '@tanstack/react-query';
+import { usePRofileActions } from '@/api-hooks/useAccountActions';
 
 const ProfileMenusSection = () => {
 	const [confirmLogout, setConfirmLogout] = useState(false);
 	const { data: session, isPending } = useSession();
-	const trpc = useTRPC();
 
 	// Check if user is a vendor
-	const { data: isVendor } = useQuery(
-		trpc.users.checkVendorRole.queryOptions(undefined, {
-			enabled: !!session,
-		})
-	);
+	const { data: isVendor } = usePRofileActions().isUserAVendor();
 
 	if (isPending && !session) {
 		return <ProfileMenusSectionSkeleton />;

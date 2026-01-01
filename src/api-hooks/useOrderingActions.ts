@@ -6,10 +6,6 @@ import { toast } from "sonner";
 import { UseAPICallerOptions } from "./api-hook-types";
 import { OrderStatus } from "@prisma/client";
 
-// Hooks for vendor/product and ordering flows. Each hook returns a react-query mutation
-// or uses the trpc useQuery hook for reads. Callers may pass `onSuccess`/`onError` via
-// the `options` argument to customize behavior.
-
 
 export function useOrderingActions() {
     const trpc = useTRPC();

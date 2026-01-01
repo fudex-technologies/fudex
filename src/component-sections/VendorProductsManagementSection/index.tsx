@@ -1,36 +1,13 @@
 'use client';
 
 import { useVendorDashboardActions } from '@/api-hooks/useVendorDashboardActions';
-import { useVendorProductActions } from '@/api-hooks/useVendorActions';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
 import { formatCurency, shortenText } from '@/lib/commonFunctions';
-import { Plus, Edit, Trash2, Package } from 'lucide-react';
-import { useState, useRef } from 'react';
+import { Trash2, Package } from 'lucide-react';
+import { useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-	DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { toast } from 'sonner';
 import ConfirmationAlertDialogue from '@/components/ConfirmationAlertDialogue';
 import CreateProductModal from './CreateProductModal';
 import CreateProductItemModal from './CreateProductItemModal';
@@ -50,8 +27,6 @@ const VendorProductsManagementSection = () => {
 		deleteProduct,
 		deleteProductItem,
 	} = useVendorDashboardActions();
-	const { createProduct, createProductItem, updateProductItem } =
-		useVendorProductActions();
 
 	const {
 		data: products = [],

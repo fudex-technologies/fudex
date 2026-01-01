@@ -1,6 +1,5 @@
 'use client';
 
-import { useVendorProductActions } from '@/api-hooks/useVendorActions';
 import { useVendorDashboardActions } from '@/api-hooks/useVendorDashboardActions';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,8 +24,7 @@ export default function CreateProductModal({
 	const [open, setOpen] = useState(false);
 	const [name, setName] = useState('');
 	const [description, setDescription] = useState('');
-	const { createProduct } = useVendorProductActions();
-	const { useGetMyVendor } = useVendorDashboardActions();
+	const { createProduct, useGetMyVendor } = useVendorDashboardActions();
 	const { data: vendor } = useGetMyVendor();
 
 	const createProductMutate = createProduct({

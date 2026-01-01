@@ -24,15 +24,78 @@ export function useVendorDashboardActions() {
             })
         );
 
-    const deleteProductItem = (options?: UseAPICallerOptions) =>
+    const createProduct = (options?: UseAPICallerOptions) =>
         useMutation(
-            trpc.vendors.deleteProductItem.mutationOptions({
+            trpc.vendors.createProduct.mutationOptions({
                 onSuccess: (data) => {
-                    if (!options?.silent) toast.success("Product item deleted");
+                    if (!options?.silent) toast.success("Product created");
                     options?.onSuccess?.(data);
                 },
                 onError: (err: unknown) => {
-                    if (!options?.silent) toast.error("Failed to delete product item", { description: err instanceof Error ? err.message : String(err) });
+                    if (!options?.silent) toast.error("Failed to create product", { description: err instanceof Error ? err.message : String(err) });
+                    options?.onError?.(err);
+                },
+                retry: false,
+            })
+        );
+
+
+    const createProductItem = (options?: UseAPICallerOptions) =>
+        useMutation(
+            trpc.vendors.createProductItem.mutationOptions({
+                onSuccess: (data) => {
+                    if (!options?.silent) toast.success("Variant created");
+                    options?.onSuccess?.(data);
+                },
+                onError: (err: unknown) => {
+                    if (!options?.silent) toast.error("Failed to create variant", { description: err instanceof Error ? err.message : String(err) });
+                    options?.onError?.(err);
+                },
+                retry: false,
+            })
+        );
+
+
+    const createProductWithItems = (options?: UseAPICallerOptions) =>
+        useMutation(
+            trpc.vendors.createProductWithItems.mutationOptions({
+                onSuccess: (data) => {
+                    if (!options?.silent) toast.success("Product and variants created");
+                    options?.onSuccess?.(data);
+                },
+                onError: (err: unknown) => {
+                    if (!options?.silent) toast.error("Failed to create product with items", { description: err instanceof Error ? err.message : String(err) });
+                    options?.onError?.(err);
+                },
+                retry: false,
+            })
+        );
+
+
+    const updateProductItem = (options?: UseAPICallerOptions) =>
+        useMutation(
+            trpc.vendors.updateProductItem.mutationOptions({
+                onSuccess: (data) => {
+                    if (!options?.silent) toast.success("Variant updated");
+                    options?.onSuccess?.(data);
+                },
+                onError: (err: unknown) => {
+                    if (!options?.silent) toast.error("Failed to update variant", { description: err instanceof Error ? err.message : String(err) });
+                    options?.onError?.(err);
+                },
+                retry: false,
+            })
+        );
+
+    const updateProduct = (options?: UseAPICallerOptions) =>
+        useMutation(
+            trpc.vendors.updateProduct.mutationOptions({
+                onSuccess: (data) => {
+                    if (!options?.silent) toast.success("Product updated");
+                    options?.onSuccess?.(data);
+                },
+                onError: (err: unknown) => {
+                    if (!options?.silent) toast.error("Failed to update product", { description: err instanceof Error ? err.message : String(err) });
                     options?.onError?.(err);
                 },
                 retry: false,
@@ -54,10 +117,32 @@ export function useVendorDashboardActions() {
             })
         );
 
+    const deleteProductItem = (options?: UseAPICallerOptions) =>
+        useMutation(
+            trpc.vendors.deleteProductItem.mutationOptions({
+                onSuccess: (data) => {
+                    if (!options?.silent) toast.success("Product item deleted");
+                    options?.onSuccess?.(data);
+                },
+                onError: (err: unknown) => {
+                    if (!options?.silent) toast.error("Failed to delete product item", { description: err instanceof Error ? err.message : String(err) });
+                    options?.onError?.(err);
+                },
+                retry: false,
+            })
+        );
+
+
+
     return {
         updateMyVendor,
-        deleteProductItem,
+        createProduct,
+        createProductItem,
+        createProductWithItems,
+        updateProductItem,
+        updateProduct,
         deleteProduct,
+        deleteProductItem,
 
         // queries
         useGetMyVendor: () =>
