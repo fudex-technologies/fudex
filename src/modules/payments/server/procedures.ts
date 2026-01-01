@@ -221,10 +221,10 @@ export const paymentRouter = createTRPCRouter({
 					status: paymentStatus,
 					paidAt:
 						paystackData.paid_at || paystackData.paidAt
-							? new Date(paystackData.paid_at || paystackData.paidAt)
+							? new Date(paystackData.paid_at || paystackData.paidAt || "")
 							: paymentStatus === "COMPLETED"
-							? new Date()
-							: null,
+								? new Date()
+								: null,
 				},
 			});
 
