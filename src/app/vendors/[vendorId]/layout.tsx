@@ -1,4 +1,3 @@
-import SingleVendorTopSection from '@/component-sections/SingleVendorTopSection';
 import PageWrapper from '@/components/wrapers/PageWrapper';
 import React from 'react';
 
@@ -12,9 +11,7 @@ export default async function VendorLayout({ params, children }: Props) {
 
 	return (
 		<PageWrapper className={'pt-0 relative'}>
-			<SingleVendorTopSection />
 			{children}
-			{/* <MobileBottomNav /> */}
 		</PageWrapper>
 	);
 }

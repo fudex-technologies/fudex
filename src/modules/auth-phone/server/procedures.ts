@@ -40,7 +40,7 @@ function verifyVerificationToken(token: string) {
 async function sendTermiiSms(phone234: string, otp: string) {
     if (!TERMII_API_KEY) throw new Error('TERMII_API_KEY not configured');
     if (!TERMII_BASE) throw new Error('TERMII_BASE not configured');
-    const sms = `Your Fudex verification code is ${otp}. It expires in 5 minutes.`;
+    const sms = `Your FUDEX verification code is ${otp}. It expires in 5 minutes.`;
     const url = `${TERMII_BASE}/api/sms/send`;
     const body = {
         api_key: TERMII_API_KEY,
@@ -59,14 +59,15 @@ async function sendTermiiSms(phone234: string, otp: string) {
 
     const data = await res.json();
 
-    console.log("TERMII STATUS:", res.status);
     console.log("TERMII RESPONSE:", data);
 
-    if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: `Termii error: ${res.status} ${text}` });
+    if (!res.ok || (data as any)?.code !== 'ok') {
+        throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: `Termii error: ${res.status} ${(data as any)?.message ?? ''}`
+        });
     }
-    return await res.json();
+    return data;
 }
 
 export const phoneAuthRouter = createTRPCRouter({
@@ -107,8 +108,12 @@ export const phoneAuthRouter = createTRPCRouter({
 
             // send SMS
             try {
-                await sendTermiiSms(phone, otp);
+                const res = await sendTermiiSms(phone, otp);
+                console.log("API RES: ", res);
+
             } catch (e: any) {
+                console.log("Error: ", e);
+
                 throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'SMS_SEND_FAILED' });
             }
 

@@ -5,7 +5,9 @@ export const PAGES_DATA = {
     profile_page: `/profile`,
 
     single_vendor_page: (id: string) => `/vendors/${id}`,
-    vendor_product_page: (vendorId: string, prodId: string) => `/vendors/${vendorId}/${prodId}`,
+    single_vendor_product_page: (vendorId: string, prodId: string) => `/vendors/${vendorId}/${prodId}`,
+    single_vendor_reviews_page: (vendorId: string) => `/vendors/${vendorId}/reviews`,
+    single_vendor_rate_page: (vendorId: string) => `/vendors/${vendorId}/rate`,
 
     // orders pages
     tray_page: '/orders/tray',
@@ -13,6 +15,8 @@ export const PAGES_DATA = {
     completed_orders_page: '/orders/completed-orders',
 
     order_summary_page: (orderId: string) => `/orders/${orderId}/order-summary`,
+    completed_order_info_page: (orderId: string) => `/orders/${orderId}/completed-order-info`,
+    summary_page: (orderId: string) => `/orders/${orderId}/order-summary`,
     order_info_page: (orderId: string) => `/orders/${orderId}/order-info`,
     checkout_page: (orderId: string) => `/orders/${orderId}/checkout`,
 

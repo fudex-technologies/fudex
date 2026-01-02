@@ -3,7 +3,7 @@ import { GoHeart } from 'react-icons/go';
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
 import GoBackButton from '@/components/GoBackButton';
 
-const SingleVendorTopSection = () => {
+const SingleVendorTopSection = ({ vendorId }: { vendorId: string }) => {
 	return (
 		<div className='h-[180px] w-full relative'>
 			<ImageWithFallback

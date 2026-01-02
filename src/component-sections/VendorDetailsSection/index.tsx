@@ -4,7 +4,11 @@ import { formatCurency } from '@/lib/commonFunctions';
 import { FaBicycle, FaBoltLightning, FaStar } from 'react-icons/fa6';
 import { GrAlarm } from 'react-icons/gr';
 
-const VendorDetailsSection = () => {
+const VendorDetailsSection = ({
+	showDetails = true,
+}: {
+	showDetails?: boolean;
+}) => {
 	return (
 		<SectionWrapper className='space-y-5'>
 			<div className=''>
@@ -24,32 +28,35 @@ const VendorDetailsSection = () => {
 					<p className='text-foreground/80'>Opens until 09:00pm</p>
 				</div>
 			</div>
+			{showDetails && (
+				<div className='flex flex-col '>
+					<Separator orientation={'horizontal'} className='w-full' />
+					<div className='w-full flex flex-1 justify-between gap-2 py-5'>
+						<div className='flex-1 flex flex-col items-center justify-center gap-2 border-r'>
+							<div className='w-10 h-10 rounded-full flex justify-center items-center  bg-secondary/10 text-secondary'>
+								<GrAlarm width={15} height={15} />
+							</div>
+							<p className=''>25 - 30mins</p>
+						</div>
+						<div className='flex-1 flex flex-col items-center justify-center gap-2'>
+							<div className='w-10 h-10 rounded-full flex justify-center items-center  bg-secondary/10 text-secondary'>
+								<FaBicycle />
+							</div>
+							<p className=''>
+								{formatCurency(500)} - {formatCurency(1000)}
+							</p>
+						</div>
+						<div className='flex-1 flex flex-col items-center justify-center gap-2 border-l'>
+							<div className='w-10 h-10 rounded-full flex justify-center items-center  bg-secondary/10 text-secondary'>
+								<FaBoltLightning />
+							</div>
+							<p className=''>25 - 30mins</p>
+						</div>
+					</div>
 
-			<div className='flex flex-col '>
-				<Separator orientation={'horizontal'} className='w-full' />
-				<div className='w-full flex flex-1 justify-between gap-2 py-5'>
-					<div className='flex-1 flex flex-col items-center justify-center gap-2 border-r'>
-						<div className='w-10 h-10 rounded-full flex justify-center items-center  bg-secondary/10 text-secondary'>
-							<GrAlarm width={15} height={15} />
-						</div>
-						<p className=''>25 - 30mins</p>
-					</div>
-					<div className='flex-1 flex flex-col items-center justify-center gap-2'>
-						<div className='w-10 h-10 rounded-full flex justify-center items-center  bg-secondary/10 text-secondary'>
-							<FaBicycle />
-						</div>
-						<p className=''>{formatCurency(500)} - {formatCurency(1000)}</p>
-					</div>
-					<div className='flex-1 flex flex-col items-center justify-center gap-2 border-l'>
-						<div className='w-10 h-10 rounded-full flex justify-center items-center  bg-secondary/10 text-secondary'>
-							<FaBoltLightning />
-						</div>
-						<p className=''>25 - 30mins</p>
-					</div>
+					<Separator orientation={'horizontal'} className='w-full' />
 				</div>
-
-				<Separator orientation={'horizontal'} className='w-full' />
-			</div>
+			)}
 		</SectionWrapper>
 	);
 };

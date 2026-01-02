@@ -17,7 +17,7 @@ const ProductListItem = ({
 }) => {
 	return (
 		<Link
-			href={PAGES_DATA.vendor_product_page('1', '3')}
+			href={PAGES_DATA.single_vendor_product_page('1', '3')}
 			className='w-full min-h-[100px] flex relative gap-2 p-5'>
 			<ImageWithFallback
 				src={image}

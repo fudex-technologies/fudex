@@ -37,7 +37,7 @@ const CategorySelectionSection = () => {
 			<ScrollArea className='w-screen max-w-[1400px] whitespace-nowrap'>
 				<div className='flex w-max space-x-4 mx-5'>
 					{demoData.map((category, index) => (
-						<Suspense fallback={<CategorySelectionCardSkeleton />}>
+						<Suspense key={index} fallback={<CategorySelectionCardSkeleton />}>
 							<CategorySelectionCard
 								key={index}
 								category={category.category}
