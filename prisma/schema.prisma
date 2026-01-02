@@ -200,20 +200,22 @@ model Address {
 
 // --- Vendors / Products (kept generic for future non-food use) ---
 model Vendor {
-  id          String   @id @default(uuid())
-  ownerId     String? // user who manages this vendor (may be null for platform-created vendors)
-  name        String
-  slug        String   @unique
-  description String?
-  phone       String?
-  email       String?
-  address     String?
-  city        String?
-  country     String?
-  coverImage  String? // external URL (Vercel blob etc.)
-  lat         Float?
-  lng         Float?
-  createdAt   DateTime @default(now())
+  id             String   @id @default(uuid())
+  ownerId        String? // user who manages this vendor (may be null for platform-created vendors)
+  name           String
+  slug           String   @unique
+  description    String?
+  phone          String?
+  email          String?
+  address        String?
+  city           String?
+  country        String?
+  coverImage     String? // external URL (Vercel blob etc.)
+  lat            Float?
+  lng            Float?
+  reviewsAverage Float    @default(0)
+  reviewsCount   Int      @default(0)
+  createdAt      DateTime @default(now())
 
   owner            User?            @relation("VendorOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   products         Product[]
@@ -306,9 +308,10 @@ model Review {
   id        String   @id @default(uuid())
   userId    String
   vendorId  String
-  rating    Int      @default(5)
+  rating    Int // 1–5
   comment   String?
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
