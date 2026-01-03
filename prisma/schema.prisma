@@ -43,6 +43,16 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum DayOfWeek {
+  SUNDAY
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+}
+
 // --- Core / Auth (existing `User` preserved by auth provider) ---
 model User {
   id            String   @id @default(uuid())
@@ -134,15 +144,31 @@ model Verification {
 
 // --- Geography / Areas ---
 model Area {
-  id        String     @id @default(uuid())
-  name      String // e.g., "Ikeja East"
-  state     String // e.g., "Lagos"
-  meta      Json? // optional geojson / metadata
-  operators Operator[]
-  createdAt DateTime   @default(now())
+  id           String            @id @default(uuid())
+  name         String // e.g., "Ikeja East"
+  state        String // e.g., "Lagos"
+  meta         Json? // optional geojson / metadata
+  operators    Operator[]
+  deliveryFees DeliveryFeeRule[]
+  createdAt    DateTime          @default(now())
+  addresses    Address[]
 
   @@unique([name, state])
   @@index([state])
+}
+
+model DeliveryFeeRule {
+  id     String @id @default(uuid())
+  areaId String
+  area   Area   @relation(fields: [areaId], references: [id], onDelete: Cascade)
+
+  startTime String // "08:00"
+  endTime   String // "18:00"
+  fee       Float
+
+  createdAt DateTime @default(now())
+
+  @@index([areaId])
 }
 
 // --- Operators & Riders (operators are users; riders are DB-only for now) ---
@@ -182,6 +208,9 @@ model Address {
   id         String   @id @default(uuid())
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  areaId     String?
+  area       Area?    @relation(fields: [areaId], references: [id])
+  customArea String? // user-entered if areaId is null
   label      String? // Home, Work
   line1      String
   line2      String?
@@ -217,17 +246,32 @@ model Vendor {
   reviewsCount   Int      @default(0)
   createdAt      DateTime @default(now())
 
-  owner            User?            @relation("VendorOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  owner            User?               @relation("VendorOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   products         Product[]
   productItems     ProductItem[]
   orders           Order[] // orders placed to this vendor
   reviews          Review[]
   vendorCategories VendorCategory[]
+  openingHours     VendorOpeningHour[]
 
   @@index([name])
   @@index([city])
   @@index([name, description])
   @@index([lat, lng])
+}
+
+model VendorOpeningHour {
+  id        String    @id @default(uuid())
+  vendorId  String
+  day       DayOfWeek
+  openTime  String? // "09:00"
+  closeTime String? // "22:00"
+  isClosed  Boolean   @default(false)
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@unique([vendorId, day])
+  @@index([vendorId])
 }
 
 model Product {
@@ -236,6 +280,7 @@ model Product {
   vendor      Vendor        @relation(fields: [vendorId], references: [id], onDelete: Cascade)
   name        String
   description String?
+  image       String?
   inStock     Boolean       @default(true)
   createdAt   DateTime      @default(now())
   items       ProductItem[]
@@ -272,6 +317,7 @@ model Category {
   id        String                @id @default(uuid())
   name      String                @unique
   slug      String                @unique
+  image     String?
   createdAt DateTime              @default(now())
   items     ProductItemCategory[]
   vendors   VendorCategory[]
@@ -334,13 +380,17 @@ model Order {
   assignedRiderId String? // optional rider assignment
   assignedRider   Rider?      @relation(fields: [assignedRiderId], references: [id])
   status          OrderStatus @default(PENDING)
-  totalAmount     Float
-  currency        String      @default("NGN")
-  notes           String?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  items           OrderItem[]
-  payment         Payment?
+
+  deliveryFee Float       @default(0)
+  serviceFee  Float       @default(0)
+  totalAmount Float
+  currency    String      @default("NGN")
+  
+  notes       String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  items       OrderItem[]
+  payment     Payment?
 
   @@index([userId])
   @@index([vendorId])
@@ -407,4 +457,10 @@ model PhoneVerification {
 
   @@index([phone])
   @@index([createdAt])
+}
+
+model PlatformSetting {
+  id    String @id @default(uuid())
+  key   String @unique
+  value Json
 }
