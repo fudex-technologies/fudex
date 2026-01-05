@@ -1,5 +1,6 @@
 'use client';
 
+import { useCategoryActions } from '@/api-hooks/useCategoryActions';
 import { useVendorDashboardActions } from '@/api-hooks/useVendorDashboardActions';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -13,7 +14,6 @@ import {
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { vercelBlobFolderStructure } from '@/data/vercelBlobFolders';
 import { Edit, Plus } from 'lucide-react';
 import React, { useRef, useState } from 'react';
@@ -29,16 +29,21 @@ export default function EditProductItemModal({
 	const [open, setOpen] = useState(false);
 	const [formData, setFormData] = useState({
 		name: item.name,
-		description: item.description || '',
+		category: item.categories?.[0]?.categoryId || '',
 		price: item.price.toString(),
 		images: item.images || [],
 		isActive: item.isActive,
 		inStock: item.inStock,
 	});
+
 	const [isUploading, setIsUploading] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	const { updateProductItem } = useVendorDashboardActions();
+	const { useListCategories } = useCategoryActions();
+	const { data: categories = [] } = useListCategories({
+		take: 20,
+	});
 
 	const updateMutation = updateProductItem({
 		onSuccess: () => {
@@ -57,7 +62,10 @@ export default function EditProductItemModal({
 		try {
 			const uploadFormData = new FormData();
 			uploadFormData.append('file', file);
-			uploadFormData.append('folder', vercelBlobFolderStructure.vendorProductImages);
+			uploadFormData.append(
+				'folder',
+				vercelBlobFolderStructure.vendorProductImages
+			);
 
 			const response = await fetch('/api/upload', {
 				method: 'POST',
@@ -84,7 +92,7 @@ export default function EditProductItemModal({
 			id: item.id,
 			data: {
 				name: formData.name,
-				description: formData.description || undefined,
+				categories: [formData.category],
 				price: parseFloat(formData.price),
 				images: formData.images,
 				isActive: formData.isActive,
@@ -135,20 +143,31 @@ export default function EditProductItemModal({
 							required
 						/>
 					</div>
-					<div className='space-y-2'>
-						<Label htmlFor='edit-desc'>Description</Label>
-						<Textarea
-							id='edit-desc'
-							value={formData.description}
-							onChange={(e) =>
-								setFormData((prev) => ({
-									...prev,
-									description: e.target.value,
-								}))
-							}
-							rows={3}
-						/>
-					</div>
+					{categories.length > 0 && (
+						<div className='space-y-2'>
+							<Label htmlFor='item-category'>Category</Label>
+							<select
+								id='item-category'
+								value={
+									categories?.find((c) => {
+										return c?.id === formData?.category;
+									})?.id || ''
+								}
+								onChange={(e) =>
+									setFormData((prev) => ({
+										...prev,
+										category: e.target.value,
+									}))
+								}
+								className='w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm'>
+								{categories.map((c) => (
+									<option key={c.id} value={c.id}>
+										{c.name}
+									</option>
+								))}
+							</select>
+						</div>
+					)}
 					<div className='space-y-2'>
 						<Label>Images</Label>
 						<div className='flex gap-2 flex-wrap'>

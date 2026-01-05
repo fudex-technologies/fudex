@@ -3,7 +3,6 @@
 import CounterComponent from '@/components/CounterComponent';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
@@ -15,42 +14,48 @@ import { toast } from 'sonner';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PAGES_DATA } from '@/data/pagesData';
 import type { ProductItem } from '@prisma/client';
+import { Plus } from 'lucide-react';
 
+const MAX_ADDONS = 4;
 interface ProductDetailsSelectionSectionProps {
-	productId: string;
 	vendorId: string;
 	productItems: ProductItem[];
 }
 
 const ProductDetailsSelectionSection = ({
-	productId,
 	vendorId,
 	productItems,
 }: ProductDetailsSelectionSectionProps) => {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const { addPack } = useCartStore();
-	
+
 	// Get variant slug from query params
 	const variantSlug = searchParams.get('variant');
-	
+
 	// Find product item by slug if variant slug is provided
 	const initialSelectedItemId = useMemo(() => {
 		if (variantSlug) {
-			const itemBySlug = productItems.find(item => item.slug === variantSlug);
+			const itemBySlug = productItems.find(
+				(item) => item.slug === variantSlug
+			);
 			if (itemBySlug) {
 				return itemBySlug.id;
 			}
 		}
 		return productItems[0]?.id || '';
 	}, [variantSlug, productItems]);
-	
-	const [selectedItemId, setSelectedItemId] = useState<string>(initialSelectedItemId);
-	
+
+	const [selectedItemId, setSelectedItemId] = useState<string>(
+		initialSelectedItemId
+	);
+
 	// Update selected item when variant slug changes
 	useEffect(() => {
 		if (variantSlug) {
-			const itemBySlug = productItems.find(item => item.slug === variantSlug);
+			const itemBySlug = productItems.find(
+				(item) => item.slug === variantSlug
+			);
 			if (itemBySlug) {
 				setSelectedItemId(itemBySlug.id);
 			}
@@ -62,11 +67,28 @@ const ProductDetailsSelectionSection = ({
 	>({}); // addonProductItemId -> quantity
 
 	// Fetch available addons (other product items from same vendor)
-	const { data: addonItems = [] } =
-		useVendorProductActions().useGetAddonProductItems({
+	const { data: proteins = [] } =
+		useVendorProductActions().useGetProductItemsByCategorySlug({
 			vendorId,
-			excludeProductItemIds: productItems.map((item) => item.id),
+			categorySlug: 'protein',
 		});
+	const { data: drinks = [] } =
+		useVendorProductActions().useGetProductItemsByCategorySlug({
+			vendorId,
+			categorySlug: 'hydration',
+		});
+
+	const selectedProteinCount = useMemo(() => {
+		return proteins.reduce((count, protein) => {
+			return count + (selectedAddons[protein.id] || 0);
+		}, 0);
+	}, [proteins, selectedAddons]);
+
+	const selectedDrinkCount = useMemo(() => {
+		return drinks.reduce((count, drink) => {
+			return count + (selectedAddons[drink.id] || 0);
+		}, 0);
+	}, [drinks, selectedAddons]);
 
 	const selectedItem = productItems.find(
 		(item) => item.id === selectedItemId
@@ -80,41 +102,80 @@ const ProductDetailsSelectionSection = ({
 
 		// Add addon prices
 		Object.entries(selectedAddons).forEach(([addonId, quantity]) => {
-			const addon = addonItems.find((item) => item.id === addonId);
+			const addon = proteins.find((p) => p.id === addonId);
+			if (addon && quantity > 0) {
+				total += addon.price * quantity * numberOfPacks;
+			}
+		});
+		Object.entries(selectedAddons).forEach(([addonId, quantity]) => {
+			const addon = drinks.find((d) => d.id === addonId);
 			if (addon && quantity > 0) {
 				total += addon.price * quantity * numberOfPacks;
 			}
 		});
 
 		return total;
-	}, [selectedItem, selectedAddons, addonItems, numberOfPacks]);
+	}, [selectedItem, selectedAddons, proteins, numberOfPacks, drinks]);
 
-	const handleAddonToggle = (addonId: string) => {
+	const handleAddonToggle = (addonId: string, type: 'protein' | 'drink') => {
 		setSelectedAddons((prev) => {
 			const current = prev[addonId] || 0;
+
+			// removing is always allowed
 			if (current > 0) {
 				const newState = { ...prev };
 				delete newState[addonId];
 				return newState;
-			} else {
-				return { ...prev, [addonId]: 1 };
 			}
+
+			// adding → enforce limits
+			if (type === 'protein' && selectedProteinCount >= MAX_ADDONS) {
+				toast.error('You can select up to 4 proteins');
+				return prev;
+			}
+
+			if (type === 'drink' && selectedDrinkCount >= MAX_ADDONS) {
+				toast.error('You can select up to 4 drinks');
+				return prev;
+			}
+
+			return { ...prev, [addonId]: 1 };
 		});
 	};
 
-	const handleAddonQuantityChange = (addonId: string, quantity: number) => {
+	const handleAddonQuantityChange = (
+		addonId: string,
+		quantity: number,
+		type: 'protein' | 'drink'
+	) => {
 		if (quantity <= 0) {
 			setSelectedAddons((prev) => {
 				const newState = { ...prev };
 				delete newState[addonId];
 				return newState;
 			});
-		} else {
-			setSelectedAddons((prev) => ({
-				...prev,
-				[addonId]: quantity,
-			}));
+			return;
 		}
+
+		const currentTotal =
+			type === 'protein' ? selectedProteinCount : selectedDrinkCount;
+
+		const currentQuantity = selectedAddons[addonId] || 0;
+
+		// If increasing and limit reached
+		if (quantity > currentQuantity && currentTotal >= MAX_ADDONS) {
+			toast.error(
+				`You can select up to 4 ${
+					type === 'protein' ? 'proteins' : 'drinks'
+				}`
+			);
+			return;
+		}
+
+		setSelectedAddons((prev) => ({
+			...prev,
+			[addonId]: quantity,
+		}));
 	};
 
 	const handleAddToTray = () => {
@@ -136,15 +197,12 @@ const ProductDetailsSelectionSection = ({
 
 		// Add packs to cart (all packs have same items initially)
 		for (let i = 0; i < numberOfPacks; i++) {
-			addPack(
-				{
-					productItemId: selectedItemId,
-					quantity: 1, // Each pack is quantity 1, but we add multiple packs
-					addons: addons.length > 0 ? addons : undefined,
-					groupKey,
-				},
-				vendorId
-			);
+			addPack(vendorId, {
+				productItemId: selectedItemId,
+				quantity: 1, // Each pack is quantity 1, but we add multiple packs
+				addons: addons.length > 0 ? addons : undefined,
+				groupKey,
+			});
 		}
 
 		toast.success(
@@ -160,6 +218,12 @@ const ProductDetailsSelectionSection = ({
 			</div>
 		);
 	}
+
+	const selectedProductItem = productItems.find(
+		(item) => item.id === selectedItemId
+	);
+
+	console.log(selectedProductItem);
 
 	return (
 		<>
@@ -187,7 +251,7 @@ const ProductDetailsSelectionSection = ({
 										htmlFor={`item-${item.id}`}
 										className='flex-1'>
 										<div className=''>
-											<p className='text-lg'>
+											<p className='text-lg text-foreground/50'>
 												{item.name}
 											</p>
 											<p className='text-foreground/50'>
@@ -202,7 +266,7 @@ const ProductDetailsSelectionSection = ({
 									/>
 								</div>
 								{index < productItems.length - 1 && (
-									<Separator />
+									<Separator className='mt-3' />
 								)}
 							</div>
 						))}
@@ -210,79 +274,193 @@ const ProductDetailsSelectionSection = ({
 				</div>
 
 				{/* Addons Selection */}
-				{addonItems.length > 0 && (
-					<>
-						<div className='w-full bg-muted flex items-center gap-3 p-5 text-lg'>
-							<p>Add-ons</p>
-							<Badge
-								variant={'outline'}
-								className='border-primary text-primary'>
-								Optional
-							</Badge>
-						</div>
+				{(selectedProductItem as any)?.categories[0]?.category?.slug !==
+					'protein' &&
+					proteins.length > 0 && (
+						<>
+							<div className='w-full bg-muted flex items-center gap-3 p-5 text-lg'>
+								<p>Extra Protein</p>
+								<Badge
+									variant={'outline'}
+									className='border-primary text-primary'>
+									Optional
+								</Badge>
+							</div>
+							<div className='px-5 space-y-3'>
+								<p className='text-lg text-foreground/50'>
+									SELECT UP TO 4 ITEMS
+								</p>
+								{proteins.map((protein, index) => {
+									const quantity =
+										selectedAddons[protein.id] || 0;
+									const isSelected = quantity > 0;
 
-						<div className='px-5 space-y-3'>
-							{addonItems.map((addon) => {
-								const quantity = selectedAddons[addon.id] || 0;
-								const isSelected = quantity > 0;
-
-								return (
-									<div
-										key={addon.id}
-										className='flex items-center justify-between p-3 rounded-lg border border-foreground/10'>
-										<div className='flex items-center gap-3 flex-1'>
-											<Checkbox
-												id={`addon-${addon.id}`}
-												checked={isSelected}
-												onCheckedChange={() =>
-													handleAddonToggle(addon.id)
-												}
-											/>
-											<Label
-												htmlFor={`addon-${addon.id}`}
-												className='flex-1 cursor-pointer'>
-												<div>
-													<p className='text-base font-medium'>
-														{addon.name}
-													</p>
-													{addon.description && (
-														<p className='text-sm text-foreground/50'>
-															{addon.description}
+									return (
+										<>
+											<div
+												key={protein.id}
+												className='flex items-center justify-between'>
+												<div className='flex items-center gap-3 flex-1'>
+													<div className='flex-1 cursor-pointer text-start'>
+														<p className='text-base text-foreground/50 font-medium'>
+															{protein.name}
 														</p>
-													)}
-													<p className='text-sm text-foreground/70'>
-														{formatCurency(
-															addon.price
+														{protein.description && (
+															<p className='text-sm text-foreground/50'>
+																{
+																	protein.description
+																}
+															</p>
 														)}
-													</p>
+														<p className='text-sm text-foreground/70'>
+															{formatCurency(
+																protein.price
+															)}
+														</p>
+													</div>
 												</div>
-											</Label>
-										</div>
-										{isSelected && (
-											<div className='ml-4'>
-												<CounterComponent
-													count={quantity}
-													countChangeEffect={(
-														newCount
-													) =>
-														handleAddonQuantityChange(
-															addon.id,
-															newCount
-														)
-													}
-													className='w-[120px] py-1'
-												/>
+												{!isSelected && (
+													<Button
+														onClick={() =>
+															handleAddonToggle(
+																protein.id,
+																'protein'
+															)
+														}
+														variant={'muted'}
+														size={'icon-sm'}
+														className='rounded-full'>
+														<Plus />
+													</Button>
+												)}
+												{isSelected && (
+													<div className='ml-4'>
+														<CounterComponent
+															count={quantity}
+															countChangeEffect={(
+																newCount
+															) =>
+																handleAddonQuantityChange(
+																	protein.id,
+																	newCount,
+																	'protein'
+																)
+															}
+															className='w-[120px] py-1'
+															disabledAdd={
+																selectedProteinCount >=
+																	MAX_ADDONS &&
+																quantity === 0
+															}
+														/>
+													</div>
+												)}
 											</div>
-										)}
-									</div>
-								);
-							})}
-						</div>
-					</>
-				)}
+											{index < proteins.length - 1 && (
+												<Separator />
+											)}
+										</>
+									);
+								})}
+							</div>
+						</>
+					)}
+
+				{/* drinks selection */}
+				{(selectedProductItem as any)?.categories[0]?.category?.slug !==
+					'hydration' &&
+					drinks.length > 0 && (
+						<>
+							<div className='w-full bg-muted flex items-center gap-3 p-5 text-lg'>
+								<p>Choose your preferred drink</p>
+								<Badge
+									variant={'outline'}
+									className='border-primary text-primary'>
+									Optional
+								</Badge>
+							</div>
+							<div className='px-5 space-y-3'>
+								<p className='text-lg text-foreground/50'>
+									SELECT UP TO 4 ITEMS
+								</p>
+								{drinks.map((drink, index) => {
+									const quantity =
+										selectedAddons[drink.id] || 0;
+									const isSelected = quantity > 0;
+
+									return (
+										<>
+											<div
+												key={drink.id}
+												className='flex items-center justify-between'>
+												<div className='flex items-center gap-3 flex-1'>
+													<div className='flex-1 cursor-pointer text-start'>
+														<p className='text-base text-foreground/50 font-medium'>
+															{drink.name}
+														</p>
+														{drink.description && (
+															<p className='text-sm text-foreground/50'>
+																{
+																	drink.description
+																}
+															</p>
+														)}
+														<p className='text-sm text-foreground/70'>
+															{formatCurency(
+																drink.price
+															)}
+														</p>
+													</div>
+												</div>
+												{!isSelected && (
+													<Button
+														onClick={() =>
+															handleAddonToggle(
+																drink.id,
+																'drink'
+															)
+														}
+														variant={'muted'}
+														size={'icon-sm'}
+														className='rounded-full'>
+														<Plus />
+													</Button>
+												)}
+												{isSelected && (
+													<div className='ml-4'>
+														<CounterComponent
+															count={quantity}
+															countChangeEffect={(
+																newCount
+															) =>
+																handleAddonQuantityChange(
+																	drink.id,
+																	newCount,
+																	'drink'
+																)
+															}
+															className='w-[120px] py-1'
+															disabledAdd={
+																selectedDrinkCount >=
+																	MAX_ADDONS &&
+																quantity === 0
+															}
+														/>
+													</div>
+												)}
+											</div>
+											{index < drinks.length - 1 && (
+												<Separator />
+											)}
+										</>
+									);
+								})}
+							</div>
+						</>
+					)}
 
 				{/* Number of Packs */}
-				<div className='p-5 space-y-2'>
+				<div className='p-5 w-full flex flex-col items-center text-center space-y-2'>
 					<p className='text-lg'>Number Of Packs</p>
 					<CounterComponent
 						count={numberOfPacks}

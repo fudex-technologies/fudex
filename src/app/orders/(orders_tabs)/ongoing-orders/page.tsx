@@ -103,6 +103,7 @@ export default function OngoingOrdersPage() {
 								orderId={order.id}
 								vendorName={order.vendor?.name || 'Vendor'}
 								orderStatus={getOrderStatus(order.status)}
+								displayOrderId={displayOrderId}
 							/>
 						);
 					})}

@@ -12,7 +12,7 @@ export default async function RateVendorPage({ params }: Props) {
 	return (
 		<>
 			<SingleVendorTopSection vendorId={vendorId} />
-			<VendorDetailsSection showDetails={false} />
+			<VendorDetailsSection vendorId={vendorId} showDetails={false} />
 			<RateVendorSection vendorId={vendorId} />
 		</>
 	);

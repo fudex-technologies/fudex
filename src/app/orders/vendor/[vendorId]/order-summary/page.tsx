@@ -5,11 +5,11 @@ import { PAGES_DATA } from '@/data/pagesData';
 import Link from 'next/link';
 
 interface Props {
-	params: Promise<{ orderId: string }>;
+	params: Promise<{ vendorId: string }>;
 }
 
 export default async function OrderSummaryPage({ params }: Props) {
-	const { orderId } = await params;
+	const { vendorId } = await params;
 	return (
 		<PageWrapper>
 			<div className='flex items-center gap-10 px-5'>
@@ -18,7 +18,7 @@ export default async function OrderSummaryPage({ params }: Props) {
 					<p className='font-semibold text-xl'>Tray</p>
 				</Link>
 			</div>
-			<OrderSummaryDetailsSection />
+			<OrderSummaryDetailsSection vendorId={vendorId} />
 		</PageWrapper>
 	);
 }

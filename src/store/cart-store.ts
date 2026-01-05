@@ -8,21 +8,37 @@ export interface CartAddon {
 }
 
 export interface CartPack {
-	id: string; // unique pack ID for editing
-	productItemId: string; // main item
-	quantity: number; // quantity of this pack
-	addons?: CartAddon[]; // optional addons
-	groupKey?: string; // for grouping similar packs
+	id: string;
+	productItemId: string;
+	quantity: number;
+	addons?: CartAddon[];
+	groupKey?: string;
+}
+
+export interface CartVendor {
+	vendorId: string;
+	packs: CartPack[];
 }
 
 export interface CartState {
-	packs: CartPack[];
-	vendorId: string | null; // all items must be from same vendor
-	addPack: (pack: Omit<CartPack, "id">, vendorId: string) => void;
-	updatePack: (packId: string, updates: Partial<CartPack>) => void;
-	removePack: (packId: string) => void;
+	vendors: Record<string, CartVendor>;
+	isCartEmpty: () => boolean;
+	isVendorCartEmpty: (vendorId: string) => boolean;
+	addPack: (vendorId: string, pack: Omit<CartPack, "id">) => void;
+	updatePack: (
+		vendorId: string,
+		packId: string,
+		updates: Partial<CartPack>
+	) => void;
+	removePack: (vendorId: string, packId: string) => void;
+
+	clearVendor: (vendorId: string) => void;
 	clearCart: () => void;
+
 	getTotalPacks: () => number;
+	getVendorPacks: (vendorId: string) => CartPack[];
+	getVendorPackCount: (vendorId: string) => number;
+	getVendorsCount: () => number;
 }
 
 const CART_STORAGE_KEY = "fudex:cart";
@@ -30,55 +46,123 @@ const CART_STORAGE_KEY = "fudex:cart";
 export const useCartStore = create<CartState>()(
 	persist(
 		(set, get) => ({
-			packs: [],
-			vendorId: null,
-
-			addPack: (pack, vendorId) => {
-				const state = get();
+			vendors: {},
+			isCartEmpty: () => {
+				return Object.values(get().vendors).every(
+					(v) => v.packs.length === 0
+				);
+			},
+			isVendorCartEmpty: (vendorId) => {
+				return get().vendors[vendorId]?.packs.length === 0;
+			},
+			addPack: (vendorId, pack) => {
 				const newPack: CartPack = {
 					...pack,
-					id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+					id: `${Date.now()}-${Math.random()
+						.toString(36)
+						.slice(2)}`,
 				};
 
-				// If cart is empty, set vendorId
-				// If cart has items, ensure same vendor
-				if (state.packs.length === 0) {
-					set({ packs: [newPack], vendorId });
-				} else {
-					// Validate same vendor (will be checked on order creation)
-					if (state.vendorId !== vendorId) {
-						throw new Error('All items must be from the same vendor');
-					}
-					set((state) => ({
-						packs: [...state.packs, newPack],
-					}));
-				}
-			},
-
-			updatePack: (packId, updates) => {
-				set((state) => ({
-					packs: state.packs.map((pack) =>
-						pack.id === packId ? { ...pack, ...updates } : pack
-					),
-				}));
-			},
-
-			removePack: (packId) => {
 				set((state) => {
-					const newPacks = state.packs.filter((pack) => pack.id !== packId);
+					const vendor = state.vendors[vendorId];
+
+					if (!vendor) {
+						return {
+							vendors: {
+								...state.vendors,
+								[vendorId]: {
+									vendorId,
+									packs: [newPack],
+								},
+							},
+						};
+					}
+
 					return {
-						packs: newPacks,
-						vendorId: newPacks.length === 0 ? null : state.vendorId,
+						vendors: {
+							...state.vendors,
+							[vendorId]: {
+								...vendor,
+								packs: [...vendor.packs, newPack],
+							},
+						},
 					};
 				});
 			},
 
-			clearCart: () => {
-				set({ packs: [], vendorId: null });
+			updatePack: (vendorId, packId, updates) => {
+				set((state) => {
+					const vendor = state.vendors[vendorId];
+					if (!vendor) return state;
+
+					return {
+						vendors: {
+							...state.vendors,
+							[vendorId]: {
+								...vendor,
+								packs: vendor.packs.map((p) =>
+									p.id === packId ? { ...p, ...updates } : p
+								),
+							},
+						},
+					};
+				});
 			},
 
+			removePack: (vendorId, packId) => {
+				set((state) => {
+					const vendor = state.vendors[vendorId];
+					if (!vendor) return state;
+
+					const packs = vendor.packs.filter(
+						(p) => p.id !== packId
+					);
+
+					if (packs.length === 0) {
+						const { [vendorId]: _, ...rest } =
+							state.vendors;
+						return { vendors: rest };
+					}
+
+					return {
+						vendors: {
+							...state.vendors,
+							[vendorId]: { ...vendor, packs },
+						},
+					};
+				});
+			},
+
+			clearVendor: (vendorId) => {
+				set((state) => {
+					const { [vendorId]: _, ...rest } =
+						state.vendors;
+					return { vendors: rest };
+				});
+			},
+
+			clearCart: () => {
+				set({ vendors: {} });
+			},
+
+			getVendorPacks: (vendorId) => {
+				return get().vendors[vendorId]?.packs ?? [];
+			},
+
+
 			getTotalPacks: () => {
-				return get().packs.length;
+				return Object.values(get().vendors).reduce(
+					(sum, v) => sum + v.packs.length,
+					0
+				);
+			},
+
+			getVendorPackCount: (vendorId) => {
+				return get().vendors[vendorId]?.packs.length ?? 0;
+			},
+
+			getVendorsCount: () => {
+				return Object.keys(get().vendors).length;
 			},
 		}),
 		{

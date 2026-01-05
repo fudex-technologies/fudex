@@ -1,4 +1,4 @@
-import { parseAsArrayOf, parseAsString, useQueryStates } from "nuqs"
+import { parseAsString, useQueryStates } from "nuqs"
 
 const params = {
   rating: parseAsString

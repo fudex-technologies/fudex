@@ -12,9 +12,11 @@ import { useVendorProductActions } from '@/api-hooks/useVendorActions';
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 
-const OrderSummaryDetailsSection = () => {
+const OrderSummaryDetailsSection = ({ vendorId }: { vendorId: string }) => {
 	const router = useRouter();
-	const { packs, vendorId, clearCart, removePack, updatePack } = useCartStore();
+	const { getVendorPacks, clearVendor, removePack, updatePack } =
+		useCartStore();
+	const packs = getVendorPacks(vendorId);
 
 	// Fetch vendor info
 	const vendorQueryResult = useVendorProductActions().useGetVendorById({
@@ -25,16 +27,17 @@ const OrderSummaryDetailsSection = () => {
 	// Collect all product item IDs needed for price calculation
 	const allProductItemIds = useMemo(() => {
 		const mainIds = packs.map((p) => p.productItemId);
-		const addonIds = packs.flatMap((p) =>
-			p.addons?.map((a) => a.addonProductItemId) || []
+		const addonIds = packs.flatMap(
+			(p) => p.addons?.map((a) => a.addonProductItemId) || []
 		);
 		return Array.from(new Set([...mainIds, ...addonIds]));
 	}, [packs]);
 
 	// Fetch all product items for price calculation
-	const productItemsQueryResult = useVendorProductActions().useGetProductItemsByIds(
-		{ ids: allProductItemIds }
-	);
+	const productItemsQueryResult =
+		useVendorProductActions().useGetProductItemsByIds({
+			ids: allProductItemIds,
+		});
 	const { data: productItems = [] } = productItemsQueryResult;
 
 	// Create a map for quick lookup
@@ -63,9 +66,12 @@ const OrderSummaryDetailsSection = () => {
 			// Add addon prices
 			if (pack.addons) {
 				for (const addon of pack.addons) {
-					const addonItem = productItemsMap.get(addon.addonProductItemId);
+					const addonItem = productItemsMap.get(
+						addon.addonProductItemId
+					);
 					if (addonItem) {
-						total += addonItem.price * addon.quantity * pack.quantity;
+						total +=
+							addonItem.price * addon.quantity * pack.quantity;
 					}
 				}
 			}
@@ -102,12 +108,14 @@ const OrderSummaryDetailsSection = () => {
 				<div className='w-full px-5 flex items-center justify-between'>
 					<p>
 						{packs.length} pack{packs.length > 1 ? 's' : ''} from{' '}
-						<span className='text-primary'>{vendor?.name || 'Vendor'}</span>
+						<span className='text-primary'>
+							{vendor?.name || 'Vendor'}
+						</span>
 					</p>
 					<Button
 						variant={'link'}
 						className='text-destructive'
-						onClick={clearCart}>
+						onClick={() => clearVendor(vendorId)}>
 						Clear Order
 					</Button>
 				</div>
@@ -118,8 +126,10 @@ const OrderSummaryDetailsSection = () => {
 							key={pack.id}
 							index={index + 1}
 							pack={pack}
-							onRemove={() => removePack(pack.id)}
-							onUpdate={(updates) => updatePack(pack.id, updates)}
+							onRemove={() => removePack(vendorId, pack.id)}
+							onUpdate={(updates) =>
+								updatePack(vendorId, pack.id, updates)
+							}
 						/>
 					))}
 				</div>
@@ -131,7 +141,11 @@ const OrderSummaryDetailsSection = () => {
 							className: 'bg-primary/10 text-primary',
 						})
 					)}
-					href={vendorId ? PAGES_DATA.single_vendor_page(vendorId) : PAGES_DATA.home_page}>
+					href={
+						vendorId
+							? PAGES_DATA.single_vendor_page(vendorId)
+							: PAGES_DATA.home_page
+					}>
 					<Plus />
 					Add more items
 				</Link>
@@ -151,10 +165,7 @@ const OrderSummaryDetailsSection = () => {
 							variant={'game'}
 							size={'lg'}
 							onClick={() => {
-								// Navigate to checkout - we'll create order there
-								// For now, we'll use a temporary order ID
-								// In real flow, we'd create order first
-								router.push(PAGES_DATA.checkout_page('temp'));
+								router.push(PAGES_DATA.checkout_page(vendorId));
 							}}>
 							Proceed to checkout
 						</Button>

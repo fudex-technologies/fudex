@@ -94,9 +94,9 @@ export default function OperatorVendorsPage() {
 							<div className='flex-1'>
 								<div className='flex items-center gap-2 mb-1'>
 									<h3 className='font-semibold text-lg'>{vendor.name}</h3>
-									<Badge variant={vendor.isActive ? 'default' : 'secondary'}>
+									{/* <Badge variant={vendor.isActive ? 'default' : 'secondary'}>
 										{vendor.isActive ? 'Active' : 'Inactive'}
-									</Badge>
+									</Badge> */}
 								</div>
 								{vendor.description && (
 									<p className='text-sm text-foreground/70 mb-1'>{vendor.description}</p>

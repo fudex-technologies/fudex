@@ -43,6 +43,19 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum PayoutStatus {
+  NOT_ELIGIBLE // not delivered yet
+  PENDING // delivered, waiting payout
+  PAID
+  FAILED
+}
+
+enum PayoutTransferStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
 enum DayOfWeek {
   SUNDAY
   MONDAY
@@ -246,6 +259,13 @@ model Vendor {
   reviewsCount   Int      @default(0)
   createdAt      DateTime @default(now())
 
+  // payout setup
+  payoutEnabled     Boolean @default(false)
+  bankName          String?
+  bankCode          String?
+  bankAccountNumber String?
+  paystackRecipient String? // RCP_xxx from Paystack
+
   owner            User?               @relation("VendorOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   products         Product[]
   productItems     ProductItem[]
@@ -253,6 +273,7 @@ model Vendor {
   reviews          Review[]
   vendorCategories VendorCategory[]
   openingHours     VendorOpeningHour[]
+  vendorPayouts    VendorPayout[]
 
   @@index([name])
   @@index([city])
@@ -381,16 +402,21 @@ model Order {
   assignedRider   Rider?      @relation(fields: [assignedRiderId], references: [id])
   status          OrderStatus @default(PENDING)
 
-  deliveryFee Float       @default(0)
-  serviceFee  Float       @default(0)
-  totalAmount Float
-  currency    String      @default("NGN")
-  
-  notes       String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  items       OrderItem[]
-  payment     Payment?
+  productAmount Float // vendor’s earning (sum of items)
+  deliveryFee   Float  @default(0)
+  serviceFee    Float  @default(0)
+  platformFee   Float  @default(0) // optional, future-proof
+  totalAmount   Float
+  currency      String @default("NGN")
+
+  payoutStatus PayoutStatus @default(NOT_ELIGIBLE)
+
+  notes        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  items        OrderItem[]
+  payment      Payment?
+  vendorPayout VendorPayout?
 
   @@index([userId])
   @@index([vendorId])
@@ -439,10 +465,34 @@ model Payment {
   providerRef String // payment reference from provider
   status      PaymentStatus @default(PENDING)
   paidAt      DateTime?
+  metadata    Json?
   createdAt   DateTime      @default(now())
 
   @@index([userId])
   @@index([providerRef])
+}
+
+model VendorPayout {
+  id       String @id @default(uuid())
+  vendorId String
+  orderId  String
+  amount   Float
+  currency String @default("NGN")
+
+  // Paystack
+  transferRef  String?
+  transferCode String?
+  status       PayoutTransferStatus @default(PENDING)
+
+  initiatedAt DateTime  @default(now())
+  completedAt DateTime?
+
+  vendor Vendor @relation(fields: [vendorId], references: [id])
+  order  Order  @relation(fields: [orderId], references: [id])
+
+  @@unique([orderId]) // one payout per order
+  @@index([vendorId])
+  @@index([status])
 }
 
 // Phone verification records for OTP flows

@@ -23,17 +23,25 @@ export const vendorRouter = createTRPCRouter({
     list: publicProcedure
         .input(z.object({
             q: z.string().optional(),
+            ratingFilter: z.string().optional(),
             take: z.number().optional().default(20),
             skip: z.number().optional().default(0)
         }))
         .query(({ ctx, input }) => {
             const where: any = input.q ? {
-                OR: [{
-                    name: { contains: input.q, mode: "insensitive" }
-                },
-                { description: { contains: input.q, mode: "insensitive" } }
+                OR: [
+                    {
+                        name: { contains: input.q, mode: "insensitive" }
+                    },
+                    { description: { contains: input.q, mode: "insensitive" } }
                 ]
             } : {};
+
+            if (input?.ratingFilter) {
+                where.reviewsAverage = {
+                    gte: input.ratingFilter === "2.0+" ? 2 : input.ratingFilter === "3.5+" ? 3.5 : input.ratingFilter === "4.0+" ? 4 : input.ratingFilter === "4.5+" ? 4.5 : 0
+                }
+            }
 
             return ctx.prisma.vendor.findMany({ where, take: input.take, skip: input.skip, orderBy: { createdAt: "desc" } });
         }),
@@ -41,9 +49,9 @@ export const vendorRouter = createTRPCRouter({
     getById: publicProcedure
         .input(z.object({ id: z.string() }))
         .query(({ ctx, input }) => {
-            return ctx.prisma.vendor.findUnique({ 
-                where: { id: input.id }, 
-                include: { 
+            return ctx.prisma.vendor.findUnique({
+                where: { id: input.id },
+                include: {
                     products: true,
                     vendorCategories: {
                         include: {
@@ -56,7 +64,7 @@ export const vendorRouter = createTRPCRouter({
                             reviews: true
                         }
                     }
-                } 
+                }
             });
         }),
 
@@ -94,11 +102,69 @@ export const vendorRouter = createTRPCRouter({
             return ctx.prisma.product.findUnique({
                 where: { id: input.id },
                 include: {
-                    items: { where: { isActive: true }, orderBy: { price: "asc" } },
+                    items: {
+                        where: { isActive: true },
+                        orderBy: { price: "asc" },
+                        include: {
+                            categories: {
+                                include: {
+                                    category: true,
+                                },
+                            }
+                        }
+                    },
                     vendor: true
                 }
             });
         }),
+
+    getProductItemsByCategorySlug: publicProcedure
+        .input(
+            z.object({
+                categorySlug: z.string(),
+                vendorId: z.string().optional(),
+                includeOutOfStock: z.boolean().optional().default(false),
+            })
+        )
+        .query(async ({ ctx, input }) => {
+            const { categorySlug, vendorId, includeOutOfStock } = input;
+
+            return ctx.prisma.productItem.findMany({
+                where: {
+                    isActive: true,
+                    ...(includeOutOfStock ? {} : { inStock: true }),
+                    ...(vendorId ? { vendorId } : {}),
+
+                    categories: {
+                        some: {
+                            category: {
+                                slug: categorySlug,
+                            },
+                        },
+                    },
+                },
+
+                include: {
+                    vendor: {
+                        select: {
+                            id: true,
+                            name: true,
+                            slug: true,
+                        },
+                    },
+                    categories: {
+                        include: {
+                            category: true,
+                        },
+                    },
+                },
+
+                orderBy: {
+                    createdAt: "desc",
+                },
+            });
+        }),
+
 
     // Get product items for addons (from same vendor, excluding specific product items)
     getAddonProductItems: publicProcedure
@@ -130,9 +196,9 @@ export const vendorRouter = createTRPCRouter({
             take: z.number().optional().default(50)
         }))
         .query(({ ctx, input }) => {
-            return ctx.prisma.productItem.findMany({ 
-                where: { vendorId: input.vendorId, isActive: true }, 
-                take: input.take, 
+            return ctx.prisma.productItem.findMany({
+                where: { vendorId: input.vendorId, isActive: true },
+                take: input.take,
                 orderBy: { createdAt: "desc" },
                 include: {
                     product: true,
@@ -165,8 +231,8 @@ export const vendorRouter = createTRPCRouter({
             // Support both single categoryId (backward compatibility) and multiple categoryIds
             const categoryIds = input.categoryIds || (input.categoryId ? [input.categoryId] : []);
             if (categoryIds.length > 0) {
-                vendorWhere.vendorCategories = { 
-                    some: { categoryId: { in: categoryIds } } 
+                vendorWhere.vendorCategories = {
+                    some: { categoryId: { in: categoryIds } }
                 };
             }
 
@@ -178,17 +244,17 @@ export const vendorRouter = createTRPCRouter({
                 ];
             }
             if (categoryIds.length > 0) {
-                productWhere.categories = { 
-                    some: { categoryId: { in: categoryIds } } 
+                productWhere.categories = {
+                    some: { categoryId: { in: categoryIds } }
                 };
             }
 
             const [vendors, products] = await Promise.all([
                 ctx.prisma.vendor.findMany({ where: vendorWhere, take: input.take, skip: input.skip, orderBy: { createdAt: "desc" } }),
-                ctx.prisma.productItem.findMany({ 
-                    where: productWhere, 
-                    take: input.take, 
-                    skip: input.skip, 
+                ctx.prisma.productItem.findMany({
+                    where: productWhere,
+                    take: input.take,
+                    skip: input.skip,
                     orderBy: { createdAt: "desc" },
                     include: {
                         product: true
@@ -474,7 +540,7 @@ export const vendorRouter = createTRPCRouter({
                 price: z.number(),
                 currency: z.string().optional().default("NGN"),
                 images: z.array(z.string()).optional(),
-                categories: z.array(z.string()).optional(),
+                categories: z.array(z.string()).min(1),
                 isActive: z.boolean().optional().default(true),
                 inStock: z.boolean().optional().default(true),
             })
@@ -492,7 +558,33 @@ export const vendorRouter = createTRPCRouter({
 
             if (!isOperator && !isSuper && !isVendorOwner) throw new Error("Forbidden: insufficient permissions");
 
-            return ctx.prisma.productItem.create({ data: { ...input } });
+            // 🔍 Ensure categories exist
+            const existingCategories = await ctx.prisma.category.findMany({
+                where: { id: { in: input.categories } },
+                select: { id: true },
+            });
+
+            if (existingCategories.length !== input.categories.length) {
+                throw new Error("One or more categories are invalid");
+            }
+
+            return ctx.prisma.productItem.create({
+                data: {
+                    ...input, // ✅ correct category relation
+                    categories: {
+                        createMany: {
+                            data: existingCategories.map((c) => ({
+                                categoryId: c.id,
+                            })),
+                        },
+                    },
+                },
+                include: {
+                    categories: {
+                        include: { category: true },
+                    },
+                },
+            });
         }),
 
     // Create a product together with multiple variants (productItems) in a transaction.
@@ -553,9 +645,9 @@ export const vendorRouter = createTRPCRouter({
             id: z.string(),
             data: z.object({
                 name: z.string().optional(),
-                description: z.string().optional(),
                 price: z.number().optional(),
                 currency: z.string().optional(),
+                categories: z.array(z.string()).min(1),
                 images: z.array(z.string()).optional(),
                 isActive: z.boolean().optional(),
                 inStock: z.boolean().optional(),
@@ -577,7 +669,29 @@ export const vendorRouter = createTRPCRouter({
 
             if (!isOperator && !isSuper && !isVendorOwner) throw new Error("Forbidden: insufficient permissions");
 
-            return ctx.prisma.productItem.update({ where: { id: input.id }, data: input.data });
+            // 🔍 Ensure categories exist
+            const existingCategories = await ctx.prisma.category.findMany({
+                where: { id: { in: input.data.categories } },
+                select: { id: true },
+            });
+
+            if (existingCategories.length !== input.data.categories.length) {
+                throw new Error("One or more categories are invalid");
+            }
+
+            return ctx.prisma.productItem.update({
+                where: { id: input.id },
+                data: {
+                    ...input.data, // ✅ correct category relation
+                    categories: {
+                        createMany: {
+                            data: existingCategories.map((c) => ({
+                                categoryId: c.id,
+                            })),
+                        },
+                    },
+                }
+            });
         }),
 
     updateProduct: vendorAndOperatorProcedure

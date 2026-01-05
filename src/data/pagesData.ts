@@ -14,11 +14,11 @@ export const PAGES_DATA = {
     ongoing_orders_page: '/orders/ongoing-orders',
     completed_orders_page: '/orders/completed-orders',
 
-    order_summary_page: (orderId: string) => `/orders/${orderId}/order-summary`,
     completed_order_info_page: (orderId: string) => `/orders/${orderId}/completed-order-info`,
     summary_page: (orderId: string) => `/orders/${orderId}/order-summary`,
     order_info_page: (orderId: string) => `/orders/${orderId}/order-info`,
-    checkout_page: (orderId: string) => `/orders/${orderId}/checkout`,
+    checkout_page: (vendorId: string) => `/orders/vendor/${vendorId}/checkout`, order_summary_page: (vendorId: string) => `/orders/vendor/${vendorId}/order-summary`,
+
 
     profile_account_page: `/profile/account`,
     profile_favorites_page: `/profile/favorites`,

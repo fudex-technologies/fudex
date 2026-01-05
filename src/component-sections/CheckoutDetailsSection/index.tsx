@@ -33,15 +33,16 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useVendorProductActions } from '@/api-hooks/useVendorActions';
 
-const CheckoutDetailsSection = () => {
+const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 	const router = useRouter();
 	const { data: session } = useSession();
-	const { packs, vendorId, clearCart } = useCartStore();
+	const { getVendorPacks, clearCart } = useCartStore();
 	const trpc = useTRPC();
 	const [selectedAddressId, setSelectedAddressId] = useState<string>('');
 	const [noteToStore, setNoteToStore] = useState('');
 	const [noteToRider, setNoteToRider] = useState('');
 	const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false);
+	const packs = getVendorPacks(vendorId);
 
 	// Fetch addresses
 	const { data: addresses = [] } = useQuery(
@@ -56,7 +57,8 @@ const CheckoutDetailsSection = () => {
 	// Set default address
 	useMemo(() => {
 		if (addresses.length > 0 && !selectedAddressId) {
-			const defaultAddress = addresses.find((a) => a.isDefault) || addresses[0];
+			const defaultAddress =
+				addresses.find((a) => a.isDefault) || addresses[0];
 			if (defaultAddress) {
 				setSelectedAddressId(defaultAddress.id);
 			}
@@ -68,16 +70,17 @@ const CheckoutDetailsSection = () => {
 	// Collect all product item IDs needed for price calculation
 	const allProductItemIds = useMemo(() => {
 		const mainIds = packs.map((p) => p.productItemId);
-		const addonIds = packs.flatMap((p) =>
-			p.addons?.map((a) => a.addonProductItemId) || []
+		const addonIds = packs.flatMap(
+			(p) => p.addons?.map((a) => a.addonProductItemId) || []
 		);
 		return Array.from(new Set([...mainIds, ...addonIds]));
 	}, [packs]);
 
 	// Fetch all product items for price calculation
-	const { data: productItems = [] } = useVendorProductActions().useGetProductItemsByIds(
-		{ ids: allProductItemIds }
-	);
+	const { data: productItems = [] } =
+		useVendorProductActions().useGetProductItemsByIds({
+			ids: allProductItemIds,
+		});
 
 	// Create a map for quick lookup
 	const productItemsMap = useMemo(() => {
@@ -105,9 +108,12 @@ const CheckoutDetailsSection = () => {
 			// Add addon prices
 			if (pack.addons) {
 				for (const addon of pack.addons) {
-					const addonItem = productItemsMap.get(addon.addonProductItemId);
+					const addonItem = productItemsMap.get(
+						addon.addonProductItemId
+					);
 					if (addonItem) {
-						total += addonItem.price * addon.quantity * pack.quantity;
+						total +=
+							addonItem.price * addon.quantity * pack.quantity;
 					}
 				}
 			}
@@ -118,11 +124,14 @@ const CheckoutDetailsSection = () => {
 
 	// Fetch delivery fee based on selected address area
 	const { data: deliveryFeeData } = useQuery(
-		trpc.users.calculateDeliveryFee.queryOptions({
-			areaId: selectedAddress?.areaId || null,
-		}, {
-			enabled: !!selectedAddress,
-		})
+		trpc.users.calculateDeliveryFee.queryOptions(
+			{
+				areaId: selectedAddress?.areaId || null,
+			},
+			{
+				enabled: !!selectedAddress,
+			}
+		)
 	);
 
 	// Fetch service fee
@@ -139,19 +148,21 @@ const CheckoutDetailsSection = () => {
 		onSuccess: async (order: any) => {
 			// Create payment after order is created
 			// Build callback URL for payment redirect
-			const baseUrl = typeof window !== 'undefined' 
-				? window.location.origin 
-				: process.env.NEXT_PUBLIC_BASE_URL || '';
+			const baseUrl =
+				typeof window !== 'undefined'
+					? window.location.origin
+					: process.env.NEXT_PUBLIC_BASE_URL || '';
 			const callbackUrl = `${baseUrl}/orders/${order.id}/payment-callback`;
-			
-			createPaymentMutation.mutate({ 
+
+			createPaymentMutation.mutate({
 				orderId: order.id,
 				callbackUrl,
 			});
 		},
 		onError: (err) => {
 			toast.error('Failed to create order', {
-				description: err instanceof Error ? err.message : 'Unknown error',
+				description:
+					err instanceof Error ? err.message : 'Unknown error',
 			});
 		},
 		silent: false,
@@ -167,12 +178,15 @@ const CheckoutDetailsSection = () => {
 				// Redirect to Paystack checkout page
 				window.location.href = data.checkoutUrl;
 			} else {
-				toast.error('Payment initialization failed - no checkout URL received');
+				toast.error(
+					'Payment initialization failed - no checkout URL received'
+				);
 			}
 		},
 		onError: (err) => {
 			toast.error('Failed to create payment', {
-				description: err instanceof Error ? err.message : 'Unknown error',
+				description:
+					err instanceof Error ? err.message : 'Unknown error',
 			});
 		},
 		silent: false,
@@ -209,9 +223,7 @@ const CheckoutDetailsSection = () => {
 		}));
 
 		// Combine notes
-		const notes = [noteToStore, noteToRider]
-			.filter(Boolean)
-			.join(' | ');
+		const notes = [noteToStore, noteToRider].filter(Boolean).join(' | ');
 
 		// Create order first, then create payment
 		createOrderMutation.mutate({
@@ -226,7 +238,8 @@ const CheckoutDetailsSection = () => {
 			<div className='w-full flex justify-center pb-10'>
 				<div className='max-w-lg w-full flex flex-col items-center gap-5 p-10'>
 					<p className='text-center text-foreground/70'>
-						Please login or create an account to continue with checkout
+						Please login or create an account to continue with
+						checkout
 					</p>
 					<Button
 						variant='game'
@@ -267,8 +280,11 @@ const CheckoutDetailsSection = () => {
 					</div>
 					<div className='flex items-center justify-between p-5'>
 						<p>
-							{packs.length} pack{packs.length > 1 ? 's' : ''} from{' '}
-							<span className='text-primary'>{vendor?.name || 'Vendor'}</span>
+							{packs.length} pack{packs.length > 1 ? 's' : ''}{' '}
+							from{' '}
+							<span className='text-primary'>
+								{vendor?.name || 'Vendor'}
+							</span>
 						</p>
 						<ChevronRight size={14} />
 					</div>
@@ -287,12 +303,18 @@ const CheckoutDetailsSection = () => {
 							{selectedAddress ? (
 								<p className='text-left'>
 									{shortenText(
-										`${selectedAddress.line1}${selectedAddress.line2 ? ', ' + selectedAddress.line2 : ''}, ${selectedAddress.city}`,
+										`${selectedAddress.line1}${
+											selectedAddress.line2
+												? ', ' + selectedAddress.line2
+												: ''
+										}, ${selectedAddress.city}`,
 										40
 									)}
 								</p>
 							) : (
-								<p className='text-foreground/50'>Select address</p>
+								<p className='text-foreground/50'>
+									Select address
+								</p>
 							)}
 						</div>
 						<ChevronRight size={14} />
@@ -300,7 +322,9 @@ const CheckoutDetailsSection = () => {
 				</div>
 
 				{/* Address Selection Dialog */}
-				<Dialog open={isAddressDialogOpen} onOpenChange={setIsAddressDialogOpen}>
+				<Dialog
+					open={isAddressDialogOpen}
+					onOpenChange={setIsAddressDialogOpen}>
 					<DialogContent>
 						<DialogHeader>
 							<DialogTitle>Select Delivery Address</DialogTitle>
@@ -308,13 +332,16 @@ const CheckoutDetailsSection = () => {
 						{addresses.length === 0 ? (
 							<div className='space-y-4'>
 								<p className='text-foreground/70'>
-									No addresses found. Please add an address first.
+									No addresses found. Please add an address
+									first.
 								</p>
 								<Button
 									variant='game'
 									onClick={() => {
 										setIsAddressDialogOpen(false);
-										router.push(PAGES_DATA.profile_addresses_page);
+										router.push(
+											PAGES_DATA.profile_addresses_page
+										);
 									}}>
 									Add Address
 								</Button>
@@ -339,20 +366,25 @@ const CheckoutDetailsSection = () => {
 												className='flex-1 cursor-pointer'>
 												<div>
 													{address.label && (
-														<p className='font-semibold'>{address.label}</p>
+														<p className='font-semibold'>
+															{address.label}
+														</p>
 													)}
 													<p className='text-sm'>
 														{address.line1}
-														{address.line2 && `, ${address.line2}`}
+														{address.line2 &&
+															`, ${address.line2}`}
 													</p>
 													<p className='text-sm text-foreground/50'>
 														{address.city}
-														{address.state && `, ${address.state}`}
+														{address.state &&
+															`, ${address.state}`}
 													</p>
 												</div>
 											</Label>
 										</div>
-										{addresses.indexOf(address) < addresses.length - 1 && (
+										{addresses.indexOf(address) <
+											addresses.length - 1 && (
 											<Separator className='my-2' />
 										)}
 									</div>
@@ -384,12 +416,16 @@ const CheckoutDetailsSection = () => {
 										className='w-full resize-none'
 										rows={4}
 										value={noteToStore}
-										onChange={(e) => setNoteToStore(e.target.value)}
+										onChange={(e) =>
+											setNoteToStore(e.target.value)
+										}
 									/>
 								</AccordionContent>
 							</AccordionItem>
 
-							<AccordionItem value='note-to-rider' className='py-2'>
+							<AccordionItem
+								value='note-to-rider'
+								className='py-2'>
 								<AccordionTrigger>
 									<div className='flex gap-2 items-center text-base font-normal'>
 										<FaBicycle size={20} />
@@ -402,7 +438,9 @@ const CheckoutDetailsSection = () => {
 										className='w-full resize-none'
 										rows={4}
 										value={noteToRider}
-										onChange={(e) => setNoteToRider(e.target.value)}
+										onChange={(e) =>
+											setNoteToRider(e.target.value)
+										}
 									/>
 								</AccordionContent>
 							</AccordionItem>
@@ -417,20 +455,31 @@ const CheckoutDetailsSection = () => {
 					</div>
 					<div className='py-5 space-y-2'>
 						<div className='flex items-center justify-between px-5'>
-							<p>Sub-total ({packs.length} pack{packs.length > 1 ? 's' : ''})</p>
-							<p className='font-semibold'>{formatCurency(subTotal)}</p>
+							<p>
+								Sub-total ({packs.length} pack
+								{packs.length > 1 ? 's' : ''})
+							</p>
+							<p className='font-semibold'>
+								{formatCurency(subTotal)}
+							</p>
 						</div>
 						<div className='flex items-center justify-between px-5'>
 							<p>Delivery fee</p>
-							<p className='font-semibold'>{formatCurency(deliveryFee)}</p>
+							<p className='font-semibold'>
+								{formatCurency(deliveryFee)}
+							</p>
 						</div>
 						<div className='flex items-center justify-between px-5'>
 							<p>Service fee</p>
-							<p className='font-semibold'>{formatCurency(serviceFee)}</p>
+							<p className='font-semibold'>
+								{formatCurency(serviceFee)}
+							</p>
 						</div>
 						<div className='flex items-center justify-between px-5'>
 							<p className='font-semibold'>Total</p>
-							<p className='font-semibold'>{formatCurency(total)}</p>
+							<p className='font-semibold'>
+								{formatCurency(total)}
+							</p>
 						</div>
 					</div>
 				</div>
@@ -447,7 +496,8 @@ const CheckoutDetailsSection = () => {
 							createPaymentMutation.isPending ||
 							!selectedAddressId
 						}>
-						{createOrderMutation.isPending || createPaymentMutation.isPending
+						{createOrderMutation.isPending ||
+						createPaymentMutation.isPending
 							? 'Processing...'
 							: 'Make Payment'}
 					</Button>

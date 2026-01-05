@@ -67,6 +67,7 @@ export default function CompletedOrdersPage() {
 							: 'Address not available';
 						const pickupTime = new Date(order.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 						const pickupAddress = order.vendor?.name || 'Vendor location';
+						const displayOrderId = order.id.slice(0, 8).toUpperCase();
 
 						return (
 							<OngoingOrderItem
@@ -81,6 +82,7 @@ export default function CompletedOrdersPage() {
 								deliveryAddress={deliveryAddress}
 								pickupTime={pickupTime}
 								pickupAddress={pickupAddress}
+								displayOrderId={displayOrderId}
 							/>
 						);
 					})}

@@ -7,7 +7,13 @@ import GoBackButton from '@/components/GoBackButton';
 import { useVendorProductActions } from '@/api-hooks/useVendorActions';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const SingleVendorTopSection = ({ vendorId }: { vendorId: string }) => {
+const SingleVendorTopSection = ({
+	vendorId,
+	image,
+}: {
+	vendorId: string;
+	image?: string;
+}) => {
 	const { useGetVendorById } = useVendorProductActions();
 	const { data: vendor, isLoading } = useGetVendorById({ id: vendorId });
 
@@ -27,7 +33,8 @@ const SingleVendorTopSection = ({ vendorId }: { vendorId: string }) => {
 		);
 	}
 
-	const coverImage = vendor?.coverImage || '/assets/restaurants/restaurant1.png';
+	const coverImage =
+		image || vendor?.coverImage || '/assets/restaurants/restaurant1.png';
 
 	return (
 		<div className='h-[180px] w-full relative'>

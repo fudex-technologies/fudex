@@ -120,6 +120,7 @@ export const orderRouter = createTRPCRouter({
                         serviceFee,
                         currency: "NGN",
                         notes: input.notes,
+                        productAmount: orderSubTotal
                     },
                 });
 

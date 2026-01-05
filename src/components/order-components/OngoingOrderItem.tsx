@@ -19,7 +19,9 @@ const OngoingOrderItem = ({
 	deliveryAddress,
 	pickupTime,
 	pickupAddress,
+	displayOrderId,
 }: {
+	displayOrderId: string;
 	vendorName: string;
 	orderStatus: 'preparing' | 'on-the-way' | 'delivered';
 	itemCount: number;

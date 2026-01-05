@@ -1,7 +1,7 @@
 'use client';
 
 import GoBackButton from '@/components/GoBackButton';
-import SearchInput from '@/components/SearchInput';
+import SearchInput, { SearchInputSkeleton } from '@/components/SearchInput';
 import PageWrapper from '@/components/wrapers/PageWrapper';
 import SectionWrapper from '@/components/wrapers/SectionWrapper';
 import { cn } from '@/lib/utils';
@@ -17,6 +17,7 @@ import { PAGES_DATA } from '@/data/pagesData';
 import { usePRofileActions } from '@/api-hooks/useProfileActions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { shortenText } from '@/lib/commonFunctions';
+import { Suspense } from 'react';
 
 type IAddressLabel = 'home' | 'school' | 'work' | 'other';
 export const savedAddressIcons = {
@@ -59,10 +60,15 @@ export default function ProfileAddressesPage() {
 						<Link
 							href={PAGES_DATA.profile_set_address_manually}
 							className='w-full'>
-							<SearchInput
-								placeholder='Enter new address'
-								disabled={true}
-							/>
+							<Suspense
+								fallback={
+									<SearchInputSkeleton placeholder='Enter new address' />
+								}>
+								<SearchInput
+									placeholder='Enter new address'
+									disabled={true}
+								/>
+							</Suspense>
 						</Link>
 					</div>
 
@@ -136,7 +142,7 @@ const AddressListItem = ({
 	addressType?: IAddressLabel;
 	line1: string;
 	line2?: string | null;
-}) => {	
+}) => {
 	return (
 		<div
 			className={cn(

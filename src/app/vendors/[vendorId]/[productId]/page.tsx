@@ -29,7 +29,10 @@ export default async function VendorSingleProductPage({ params }: Props) {
 
 	return (
 		<>
-			<SingleVendorTopSection vendorId={vendorId} />
+			<SingleVendorTopSection
+				image={product?.items[0]?.images[0] ?? undefined}
+				vendorId={vendorId}
+			/>
 			<div className='flex flex-col gap-2 px-5'>
 				<h1 className='font-semibold text-2xl'>{product.name}</h1>
 				{product.description && (
@@ -42,9 +45,11 @@ export default async function VendorSingleProductPage({ params }: Props) {
 				)}
 			</div>
 
-			<Suspense fallback={<div className='p-5'>Loading product details...</div>}>
+			<Suspense
+				fallback={
+					<div className='p-5'>Loading product details...</div>
+				}>
 				<ProductDetailsSelectionSection
-					productId={productId}
 					vendorId={vendorId}
 					productItems={product.items}
 				/>

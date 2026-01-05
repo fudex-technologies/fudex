@@ -1,16 +1,20 @@
 import CategorySelectionSection from '@/component-sections/CategorySelectionSection';
 import PopularRestaurantsSection from '@/component-sections/PopularRestaurantsSection.tsx';
 import PromoSection from '@/component-sections/PromoSection';
-import VendorListSection from '@/component-sections/VendorListSection';
+import VendorListSection, {
+	VendorListSectionSkeleton,
+} from '@/component-sections/VendorListSection';
 import LocationDropdown from '@/components/LocationDropdown';
 import MobileBottomNav from '@/components/navigation-components/MobileBottomNav';
-import SearchInput from '@/components/SearchInput';
+import SearchInput, { SearchInputSkeleton } from '@/components/SearchInput';
 import PageWrapper from '@/components/wrapers/PageWrapper';
 import SectionWrapper from '@/components/wrapers/SectionWrapper';
 import FilterVendorsDrawer from '../components/FilterVendorsDrawer';
 import { Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { PiSlidersHorizontalFill } from 'react-icons/pi';
+import { PAGES_DATA } from '@/data/pagesData';
+import Link from 'next/link';
 
 export default function Home() {
 	return (
@@ -28,7 +32,11 @@ export default function Home() {
 				</Suspense>
 			</SectionWrapper>
 			<SectionWrapper>
-				<SearchInput />
+				<Link href={PAGES_DATA.search_page} className='w-full'>
+					<Suspense fallback={<SearchInputSkeleton />}>
+						<SearchInput disabled={true} />
+					</Suspense>
+				</Link>
 			</SectionWrapper>
 			<CategorySelectionSection />
 			<PromoSection
@@ -38,7 +46,12 @@ export default function Home() {
 				buttonLabel='Order Now!'
 			/>
 			<PopularRestaurantsSection />
-			<VendorListSection title='Available Food Spots' />
+			<Suspense
+				fallback={
+					<VendorListSectionSkeleton title={'Available Food Spots'} />
+				}>
+				<VendorListSection title='Available Food Spots' />
+			</Suspense>
 			<MobileBottomNav />
 		</PageWrapper>
 	);

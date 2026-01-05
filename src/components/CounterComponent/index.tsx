@@ -9,6 +9,10 @@ interface Props {
 	count: number;
 	setCount?: Dispatch<SetStateAction<number>>;
 	countChangeEffect?: (newCount: number) => void;
+	max?: number;
+	min?: number;
+	disabledAdd?: boolean;
+	disabledSubtract?: boolean;
 }
 
 const CounterComponent = ({
@@ -16,19 +20,34 @@ const CounterComponent = ({
 	count,
 	setCount,
 	countChangeEffect,
+	disabledAdd,
+	disabledSubtract,
+	max,
+	min,
 }: Props) => {
 	const increaseCount = () => {
 		if (setCount) {
-			const maybePromise = setCount((prev) => prev + 1);
+			const maybePromise = setCount((prev) =>
+				disabledAdd
+					? prev
+					: max && prev >= max
+					? prev
+					: min && prev <= min
+					? prev
+					: prev + 1
+			);
 			Promise.resolve(maybePromise)
 				.then(() => {
+					if (disabledAdd || (max && count >= max)) return;
 					countChangeEffect && countChangeEffect(count);
 				})
 				.catch(() => {
+					if (disabledAdd || (max && count >= max)) return;
 					countChangeEffect && countChangeEffect(count);
 				});
 			return;
 		} else {
+			if (disabledAdd || (max && count >= max)) return;
 			countChangeEffect && countChangeEffect(count + 1);
 			return;
 		}
@@ -36,16 +55,21 @@ const CounterComponent = ({
 
 	const decreaseCount = () => {
 		if (setCount) {
-			const maybePromise = setCount((prev) => prev - 1);
+			const maybePromise = setCount((prev) =>
+				min && prev <= min ? prev : max && prev >= max ? prev : prev - 1
+			);
 			Promise.resolve(maybePromise)
 				.then(() => {
+					if (disabledSubtract || (min && count <= min)) return;
 					countChangeEffect && countChangeEffect(count);
 				})
 				.catch(() => {
+					if (disabledSubtract || (min && count <= min)) return;
 					countChangeEffect && countChangeEffect(count);
 				});
 			return;
 		} else {
+			if (disabledSubtract || (min && count <= min)) return;
 			countChangeEffect && countChangeEffect(count - 1);
 			return;
 		}
@@ -59,7 +83,11 @@ const CounterComponent = ({
 			)}>
 			<div
 				onClick={decreaseCount}
-				className='flex-1 flex items-center justify-center cursor-pointer'>
+				className={cn(
+					'flex-1 flex items-center justify-center cursor-pointer',
+					((min && count === min) || disabledSubtract) &&
+						'cursor-not-allowed opacity-30'
+				)}>
 				-
 			</div>
 			<div className='flex-1 flex items-center justify-center'>
@@ -67,7 +95,11 @@ const CounterComponent = ({
 			</div>
 			<div
 				onClick={increaseCount}
-				className='flex-1 flex items-center justify-center cursor-pointer'>
+				className={cn(
+					'flex-1 flex items-center justify-center cursor-pointer',
+					((max && count === max) || disabledAdd) &&
+						'opacity-30 cursor-not-allowed'
+				)}>
 				+
 			</div>
 		</div>
