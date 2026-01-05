@@ -87,6 +87,16 @@ export function usePRofileActions() {
                 enabled: !!session,
             }),
         ),
+        isUserAnAdmin: () => useQuery(
+            trpc.users.checkAdminRole.queryOptions(undefined, {
+                enabled: !!session,
+            }),
+        ),
+        isUserAnOperator: () => useQuery(
+            trpc.operators.checkOperatorRole.queryOptions(undefined, {
+                enabled: !!session,
+            }),
+        ),
         getAddresses: () => useQuery(
             trpc.users.listAddresses.queryOptions(undefined, {
                 enabled: !!session,

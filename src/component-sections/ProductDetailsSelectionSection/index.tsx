@@ -8,11 +8,11 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { formatCurency } from '@/lib/commonFunctions';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useVendorProductActions } from '@/api-hooks/useVendorActions';
 import { useCartStore, CartAddon } from '@/store/cart-store';
 import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { PAGES_DATA } from '@/data/pagesData';
 import type { ProductItem } from '@prisma/client';
 
@@ -28,10 +28,34 @@ const ProductDetailsSelectionSection = ({
 	productItems,
 }: ProductDetailsSelectionSectionProps) => {
 	const router = useRouter();
+	const searchParams = useSearchParams();
 	const { addPack } = useCartStore();
-	const [selectedItemId, setSelectedItemId] = useState<string>(
-		productItems[0]?.id || ''
-	);
+	
+	// Get variant slug from query params
+	const variantSlug = searchParams.get('variant');
+	
+	// Find product item by slug if variant slug is provided
+	const initialSelectedItemId = useMemo(() => {
+		if (variantSlug) {
+			const itemBySlug = productItems.find(item => item.slug === variantSlug);
+			if (itemBySlug) {
+				return itemBySlug.id;
+			}
+		}
+		return productItems[0]?.id || '';
+	}, [variantSlug, productItems]);
+	
+	const [selectedItemId, setSelectedItemId] = useState<string>(initialSelectedItemId);
+	
+	// Update selected item when variant slug changes
+	useEffect(() => {
+		if (variantSlug) {
+			const itemBySlug = productItems.find(item => item.slug === variantSlug);
+			if (itemBySlug) {
+				setSelectedItemId(itemBySlug.id);
+			}
+		}
+	}, [variantSlug, productItems]);
 	const [numberOfPacks, setNumberOfPacks] = useState(1);
 	const [selectedAddons, setSelectedAddons] = useState<
 		Record<string, number>

@@ -1,7 +1,20 @@
-import { createTRPCRouter, operatorProcedure } from "@/trpc/init";
+import { createTRPCRouter, operatorProcedure, protectedProcedure } from "@/trpc/init";
 import { z } from "zod";
+import { OrderStatus } from "@prisma/client";
 
 export const operatorRouter = createTRPCRouter({
+    // Check if user is an operator
+    checkOperatorRole: protectedProcedure.query(async ({ ctx }) => {
+        const userId = ctx.user!.id;
+        const operatorRole = await ctx.prisma.userRole.findFirst({
+            where: {
+                userId,
+                role: "OPERATOR"
+            }
+        });
+        return !!operatorRole;
+    }),
+
     // List orders within the operator's area (operatorProcedure ensures role)
     listOrdersInArea: operatorProcedure
         .input(z.object({
@@ -28,13 +41,51 @@ export const operatorRouter = createTRPCRouter({
                 take: input.take,
                 skip: input.skip,
                 orderBy: { createdAt: "desc" },
+                include: {
+                    vendor: {
+                        select: {
+                            id: true,
+                            name: true,
+                            coverImage: true,
+                        }
+                    },
+                    address: {
+                        select: {
+                            id: true,
+                            line1: true,
+                            line2: true,
+                            city: true,
+                            state: true,
+                        }
+                    },
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            phone: true,
+                        }
+                    },
+                    items: {
+                        select: {
+                            id: true,
+                            quantity: true,
+                        }
+                    },
+                    assignedRider: {
+                        select: {
+                            id: true,
+                            name: true,
+                            phone: true,
+                        }
+                    }
+                }
             });
         }),
 
     updateOrderStatus: operatorProcedure
         .input(z.object({
             orderId: z.string(),
-            status: z.nativeEnum(require("@prisma/client").OrderStatus)
+            status: z.enum(Object.values(OrderStatus))
         }))
         .mutation(async ({ ctx, input }) => {
             // ensure operator can access the order (simplified check: same area)
@@ -109,7 +160,125 @@ export const operatorRouter = createTRPCRouter({
             // simple assign
             return ctx.prisma.order.update({
                 where: { id: input.orderId },
-                data: { assignedRiderId: rider.id, status: "ASSIGNED" }
+                data: { assignedRiderId: rider.id, status: "ASSIGNED", operatorId: operator.id }
+            });
+        }),
+
+    // List categories (operators can view all categories)
+    listCategories: operatorProcedure
+        .input(z.object({
+            take: z.number().optional().default(100),
+            skip: z.number().optional().default(0)
+        }))
+        .query(({ ctx, input }) => {
+            return ctx.prisma.category.findMany({
+                take: input.take,
+                skip: input.skip,
+                orderBy: { name: "asc" },
+                include: {
+                    _count: {
+                        select: {
+                            vendors: true,
+                            items: true
+                        }
+                    }
+                }
+            });
+        }),
+
+    // Create category
+    createCategory: operatorProcedure
+        .input(z.object({
+            name: z.string(),
+            slug: z.string().optional(),
+            image: z.string().optional(),
+        }))
+        .mutation(({ ctx, input }) => {
+            const data = {
+                ...input,
+                slug: input.slug || input.name.toLowerCase().replace(/ /g, "-"),
+            }
+            return ctx.prisma.category.create({ data });
+        }),
+
+    // Update category
+    updateCategory: operatorProcedure
+        .input(z.object({
+            id: z.string(),
+            name: z.string().optional(),
+            description: z.string().optional(),
+            image: z.string().optional(),
+        }))
+        .mutation(({ ctx, input }) => {
+            const { id, ...data } = input;
+            return ctx.prisma.category.update({
+                where: { id },
+                data
+            });
+        }),
+
+    // Delete category
+    deleteCategory: operatorProcedure
+        .input(z.object({ id: z.string() }))
+        .mutation(({ ctx, input }) => {
+            return ctx.prisma.category.delete({
+                where: { id: input.id }
+            });
+        }),
+
+    // List vendors (operators can view all vendors)
+    listVendors: operatorProcedure
+        .input(z.object({
+            take: z.number().optional().default(50),
+            skip: z.number().optional().default(0),
+            q: z.string().optional()
+        }))
+        .query(({ ctx, input }) => {
+            const where: any = {};
+            if (input.q) {
+                where.OR = [
+                    { name: { contains: input.q, mode: "insensitive" } },
+                    { description: { contains: input.q, mode: "insensitive" } }
+                ];
+            }
+            return ctx.prisma.vendor.findMany({
+                where,
+                take: input.take,
+                skip: input.skip,
+                orderBy: { createdAt: "desc" },
+                include: {
+                    owner: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                        }
+                    },
+                    _count: {
+                        select: {
+                            products: true,
+                            orders: true
+                        }
+                    }
+                }
+            });
+        }),
+
+    // Update vendor
+    updateVendor: operatorProcedure
+        .input(z.object({
+            id: z.string(),
+            name: z.string().optional(),
+            description: z.string().optional(),
+            city: z.string().optional(),
+            coverImage: z.string().optional(),
+            isActive: z.boolean().optional(),
+        }))
+        .mutation(({ ctx, input }) => {
+            const { id, ...data } = input;
+            return ctx.prisma.vendor.update({
+                where: { id },
+                data
             });
         }),
 });

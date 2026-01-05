@@ -21,7 +21,7 @@ export default async function CompletedOrderSummaryPage({ params }: Props) {
 						/>
 					</div>
 					<div className='flex-1 text-white'>
-						<p className='text-lg font-light'>#FDX-238491</p>
+						<p className='text-lg font-light'>#{orderId.slice(0, 8).toUpperCase()}</p>
 						<h3 className='text-lg font-bold'>Package Delivered</h3>
 					</div>
 				</div>

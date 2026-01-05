@@ -2,6 +2,7 @@ import ProductDetailsSelectionSection from '@/component-sections/ProductDetailsS
 import SingleVendorTopSection from '@/component-sections/SingleVendorTopSection';
 import { formatCurency } from '@/lib/commonFunctions';
 import { caller } from '@/trpc/server';
+import { Suspense } from 'react';
 
 interface Props {
 	params: Promise<{ vendorId: string; productId: string }>;
@@ -41,11 +42,13 @@ export default async function VendorSingleProductPage({ params }: Props) {
 				)}
 			</div>
 
-			<ProductDetailsSelectionSection
-				productId={productId}
-				vendorId={vendorId}
-				productItems={product.items}
-			/>
+			<Suspense fallback={<div className='p-5'>Loading product details...</div>}>
+				<ProductDetailsSelectionSection
+					productId={productId}
+					vendorId={vendorId}
+					productItems={product.items}
+				/>
+			</Suspense>
 		</>
 	);
 }

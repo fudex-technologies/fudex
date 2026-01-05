@@ -1,6 +1,7 @@
 import { createTRPCRouter, protectedProcedure, publicProcedure, adminProcedure, vendorProcedure } from "@/trpc/init";
 import { OrderStatus } from "@prisma/client";
 import { z } from "zod";
+import { calculateDeliveryFee, getServiceFee } from "@/lib/deliveryFeeCalculator";
 
 export const orderRouter = createTRPCRouter({
     // Create an order: supports item-level addons and optional grouping (groupKey) for "packs".
@@ -55,8 +56,24 @@ export const orderRouter = createTRPCRouter({
                 if (!pi.isActive || !pi.inStock) throw new Error(`Addon not available: ${pi.name}`);
             }
 
+            // Fetch address to get areaId for delivery fee calculation
+            const address = await ctx.prisma.address.findUnique({
+                where: { id: input.addressId },
+                select: { areaId: true }
+            });
+
+            if (!address) {
+                throw new Error("Address not found");
+            }
+
+            // Calculate delivery fee based on area and current time
+            const deliveryFee = await calculateDeliveryFee(ctx.prisma, address.areaId);
+            
+            // Get service fee from platform settings
+            const serviceFee = await getServiceFee(ctx.prisma);
+
             // Build create data for order items and compute totals (include addon pricing)
-            let orderTotal = 0;
+            let orderSubTotal = 0;
             const orderItemsCreate: any[] = [];
 
             for (const it of input.items) {
@@ -75,7 +92,7 @@ export const orderRouter = createTRPCRouter({
                     }
                 }
 
-                orderTotal += totalPrice;
+                orderSubTotal += totalPrice;
 
                 orderItemsCreate.push({
                     productItemId: it.productItemId,
@@ -88,6 +105,9 @@ export const orderRouter = createTRPCRouter({
                 });
             }
 
+            // Calculate total amount including delivery and service fees
+            const totalAmount = orderSubTotal + deliveryFee + serviceFee;
+
             // Persist order + items + addons in a single transaction
             const created = await ctx.prisma.$transaction(async (prisma) => {
                 const order = await prisma.order.create({
@@ -95,7 +115,9 @@ export const orderRouter = createTRPCRouter({
                         userId,
                         vendorId: vendorId ?? undefined,
                         addressId: input.addressId,
-                        totalAmount: orderTotal,
+                        totalAmount,
+                        deliveryFee,
+                        serviceFee,
                         currency: "NGN",
                         notes: input.notes,
                     },
@@ -150,7 +172,37 @@ export const orderRouter = createTRPCRouter({
             return ctx.prisma.order.findMany({
                 where,
                 take: input.take, skip: input.skip,
-                orderBy: { createdAt: "desc" }
+                orderBy: { createdAt: "desc" },
+                include: {
+                    vendor: {
+                        select: {
+                            id: true,
+                            name: true,
+                            coverImage: true,
+                        }
+                    },
+                    address: {
+                        select: {
+                            id: true,
+                            line1: true,
+                            line2: true,
+                            city: true,
+                            state: true,
+                        }
+                    },
+                    items: {
+                        select: {
+                            id: true,
+                            quantity: true,
+                        }
+                    },
+                    assignedRider: {
+                        select: {
+                            id: true,
+                            name: true,
+                        }
+                    }
+                }
             });
         }),
 
@@ -161,7 +213,67 @@ export const orderRouter = createTRPCRouter({
         .query(({ ctx, input }) => {
             return ctx.prisma.order.findFirst({
                 where: { id: input.id, userId: ctx.user!.id },
-                include: { items: { include: { productItem: true } }, payment: true }
+                include: {
+                    vendor: {
+                        select: {
+                            id: true,
+                            name: true,
+                            coverImage: true,
+                        }
+                    },
+                    address: {
+                        select: {
+                            id: true,
+                            line1: true,
+                            line2: true,
+                            city: true,
+                            state: true,
+                            area: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    state: true,
+                                }
+                            }
+                        }
+                    },
+                    items: {
+                        include: {
+                            productItem: {
+                                include: {
+                                    product: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                        }
+                                    }
+                                }
+                            },
+                            addons: {
+                                include: {
+                                    addonProductItem: {
+                                        include: {
+                                            product: {
+                                                select: {
+                                                    id: true,
+                                                    name: true,
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    payment: true,
+                    assignedRider: {
+                        select: {
+                            id: true,
+                            name: true,
+                            phone: true,
+                        }
+                    }
+                }
             });
         }),
 
@@ -241,7 +353,7 @@ export const orderRouter = createTRPCRouter({
     updateStatus: adminProcedure
         .input(z.object({
             id: z.string(),
-            status: z.nativeEnum(require("@prisma/client").OrderStatus)
+            status: z.enum(Object.values(OrderStatus))
         })).mutation(({ ctx, input }) => {
             return ctx.prisma.order.update({
                 where: { id: input.id },
@@ -253,7 +365,7 @@ export const orderRouter = createTRPCRouter({
     updateMyOrderStatus: vendorProcedure
         .input(z.object({
             id: z.string(),
-            status: z.nativeEnum(require("@prisma/client").OrderStatus)
+            status: z.enum(Object.values(OrderStatus))
         }))
         .mutation(async ({ ctx, input }) => {
             const userId = ctx.user!.id;

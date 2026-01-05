@@ -5,6 +5,10 @@ const params = {
         .withOptions({
             clearOnDefault: true
         }).withDefault([]),
+    q: parseAsString
+        .withOptions({
+            clearOnDefault: true
+        }).withDefault(""),
 }
 
 export const useSearchQueries = () => {

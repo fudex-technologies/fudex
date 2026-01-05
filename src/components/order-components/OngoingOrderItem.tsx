@@ -33,9 +33,12 @@ const OngoingOrderItem = ({
 	pickupTime?: string;
 	pickupAddress?: string;
 }) => {
+	// If orderId is short (8 chars), it's a display ID, otherwise use as-is
+	const linkOrderId = orderId.length === 8 ? orderId : orderId;
+	
 	return (
 		<Link
-			href={PAGES_DATA.order_info_page(orderId)}
+			href={PAGES_DATA.order_info_page(linkOrderId)}
 			className='p-5 border border-foreground/50 rounded-md flex flex-col gap-3'>
 			<div className='flex gap-2'>
 				<div className=''>
@@ -72,7 +75,7 @@ const OngoingOrderItem = ({
 									<Separator orientation='vertical' />
 									<p>{estimatedTime}</p>
 								</div>
-								<p>Order ID: #{orderId}</p>
+								<p>Order ID: #{displayOrderId}</p>
 							</div>
 							<ChevronRight />
 						</div>

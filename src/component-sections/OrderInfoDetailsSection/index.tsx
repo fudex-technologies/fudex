@@ -1,68 +1,119 @@
+'use client';
+
 import CancelOrderModal from '@/components/Modals/CancelOrderModal';
 import OrderInfoItem from '@/components/order-components/OrderInfoItem';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useOrderingActions } from '@/api-hooks/useOrderingActions';
+import { Skeleton } from '@/components/ui/skeleton';
+import { OrderStatus } from '@prisma/client';
 
 const OrderInfoDetailsSection = ({ orderId }: { orderId: string }) => {
+	const { useGetOrder } = useOrderingActions();
+	const { data: order, isLoading } = useGetOrder({ id: orderId });
+
+	if (isLoading) {
+		return (
+			<div className='w-full max-w-lg p-5 space-y-5'>
+				<Skeleton className='h-20 w-full' />
+				<Skeleton className='h-64 w-full' />
+				<Skeleton className='h-40 w-full' />
+			</div>
+		);
+	}
+
+	if (!order) {
+		return (
+			<div className='w-full max-w-lg p-5'>
+				<p className='text-center text-foreground/50'>Order not found</p>
+			</div>
+		);
+	}
+
+	// Determine status indicators based on order status
+	const getStatusIndicators = () => {
+		const status = order.status;
+		return [
+			{
+				status: 'done' as const,
+				title: 'Order placed',
+			},
+			{
+				status: (status === OrderStatus.PREPARING || status === OrderStatus.PAID || status === OrderStatus.ASSIGNED || status === OrderStatus.DELIVERED ? 'done' : status === OrderStatus.PENDING ? 'in-progress' : 'pending') as 'done' | 'in-progress' | 'pending',
+				title: 'Preparing your order',
+			},
+			{
+				status: (status === OrderStatus.ASSIGNED || status === OrderStatus.DELIVERED ? 'done' : status === OrderStatus.PREPARING ? 'in-progress' : 'pending') as 'done' | 'in-progress' | 'pending',
+				title: 'Rider is on the way',
+			},
+			{
+				status: (status === OrderStatus.DELIVERED ? 'done' : status === OrderStatus.ASSIGNED ? 'in-progress' : 'pending') as 'done' | 'in-progress' | 'pending',
+				title: 'Delivered',
+				isLast: true,
+			},
+		];
+	};
+
+	const statusIndicators = getStatusIndicators();
+	const displayOrderId = order.id.slice(0, 8).toUpperCase();
+
+	// Calculate estimated time (placeholder)
+	const getEstimatedTime = () => {
+		if (order.status === OrderStatus.DELIVERED) {
+			return 'Delivered';
+		}
+		if (order.status === OrderStatus.ASSIGNED) {
+			return 'Rider on the way';
+		}
+		if (order.status === OrderStatus.PREPARING) {
+			return 'Estimated ready in 5 minutes';
+		}
+		return 'Estimated ready in 10 minutes';
+	};
+
 	return (
 		<>
 			<div className='w-full max-w-lg p-5 space-y-5'>
 				<div className='text-center'>
 					<p className='font-light'>Order ID</p>
-					<p className='font-semibold text-xl'>#{orderId}</p>
-					<p>Estimated ready in 5 minutes</p>
+					<p className='font-semibold text-xl'>#{displayOrderId}</p>
+					<p>{getEstimatedTime()}</p>
 				</div>
 
 				<div className='w-full flex flex-col gap-14 px-5'>
-					<StatusIndicator status='done' title='Order placed' />
-					<StatusIndicator
-						status='in-progress'
-						title='Preparing your order'
-					/>
-					<StatusIndicator
-						status='pending'
-						title='Rider is on the way'
-					/>
-					<StatusIndicator
-						status='pending'
-						title='Delivered'
-						isLast={true}
-					/>
+					{statusIndicators.map((indicator, index) => (
+						<StatusIndicator
+							key={index}
+							status={indicator.status}
+							title={indicator.title}
+							isLast={indicator.isLast}
+						/>
+					))}
 				</div>
 
 				<div className='mt-10'>
 					<p className='text-lg mb-5'>Items ordered</p>
 					<div className='w-full grid grid-cols-1 gap-5'>
-						<OrderInfoItem
-							index={1}
-							orderDetails={{
-								main: 'Special Fried Rice ',
-								quantity: 2,
-								additions: [
-									{
-										name: 'Beef',
-										number: 3,
-									},
-									{
-										name: 'Bottle water',
-										quantity: '70 ltrs',
-										number: 2,
-									},
-									{
-										name: 'Chicken',
-									},
-								],
-								totalAmount: 7500,
-							}}
-						/>
-						<OrderInfoItem
-							index={2}
-							orderDetails={{
-								main: 'Jollof Rice ',
-								quantity: 1,
-								totalAmount: 5000,
-							}}
-						/>
+						{order.items.map((item, index) => {
+							const mainName = item.productItem.product?.name || item.productItem.name;
+							const additions = item.addons?.map((addon) => ({
+								name: addon.addonProductItem.product?.name || addon.addonProductItem.name,
+								number: addon.quantity,
+							})) || [];
+
+							return (
+								<OrderInfoItem
+									key={item.id}
+									index={index + 1}
+									orderDetails={{
+										main: mainName,
+										quantity: item.quantity,
+										additions: additions.length > 0 ? additions : undefined,
+										totalAmount: item.totalPrice,
+									}}
+								/>
+							);
+						})}
 					</div>
 				</div>
 			</div>

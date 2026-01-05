@@ -65,16 +65,74 @@ const CheckoutDetailsSection = () => {
 
 	const selectedAddress = addresses.find((a) => a.id === selectedAddressId);
 
-	// Calculate totals
-	const { subTotal, deliveryFee, serviceFee, total } = useMemo(() => {
-		// For now, use placeholder values
-		// In production, you'd calculate from actual product prices
-		const subTotal = 0; // Calculate from packs
-		const deliveryFee = 600;
-		const serviceFee = 300;
-		const total = subTotal + deliveryFee + serviceFee;
-		return { subTotal, deliveryFee, serviceFee, total };
+	// Collect all product item IDs needed for price calculation
+	const allProductItemIds = useMemo(() => {
+		const mainIds = packs.map((p) => p.productItemId);
+		const addonIds = packs.flatMap((p) =>
+			p.addons?.map((a) => a.addonProductItemId) || []
+		);
+		return Array.from(new Set([...mainIds, ...addonIds]));
 	}, [packs]);
+
+	// Fetch all product items for price calculation
+	const { data: productItems = [] } = useVendorProductActions().useGetProductItemsByIds(
+		{ ids: allProductItemIds }
+	);
+
+	// Create a map for quick lookup
+	const productItemsMap = useMemo(() => {
+		const map = new Map();
+		productItems.forEach((item) => {
+			map.set(item.id, item);
+		});
+		return map;
+	}, [productItems]);
+
+	// Calculate subtotal from packs
+	const subTotal = useMemo(() => {
+		if (productItems.length === 0) return 0;
+
+		let total = 0;
+
+		for (const pack of packs) {
+			const mainItem = productItemsMap.get(pack.productItemId);
+			if (!mainItem) continue;
+
+			// Main item price * quantity
+			const packPrice = mainItem.price * pack.quantity;
+			total += packPrice;
+
+			// Add addon prices
+			if (pack.addons) {
+				for (const addon of pack.addons) {
+					const addonItem = productItemsMap.get(addon.addonProductItemId);
+					if (addonItem) {
+						total += addonItem.price * addon.quantity * pack.quantity;
+					}
+				}
+			}
+		}
+
+		return total;
+	}, [packs, productItemsMap, productItems.length]);
+
+	// Fetch delivery fee based on selected address area
+	const { data: deliveryFeeData } = useQuery(
+		trpc.users.calculateDeliveryFee.queryOptions({
+			areaId: selectedAddress?.areaId || null,
+		}, {
+			enabled: !!selectedAddress,
+		})
+	);
+
+	// Fetch service fee
+	const { data: serviceFeeData } = useQuery(
+		trpc.users.getServiceFee.queryOptions(undefined)
+	);
+
+	const deliveryFee = deliveryFeeData?.deliveryFee || 0;
+	const serviceFee = serviceFeeData?.serviceFee || 0;
+	const total = subTotal + deliveryFee + serviceFee;
 
 	// Create order mutation
 	const createOrderMutation = useOrderingActions().createOrder({

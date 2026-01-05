@@ -6,26 +6,63 @@ import { formatCurency, normalizePhoneNumber } from '@/lib/commonFunctions';
 import { FUDEX_PHONE_NUMBER } from '@/lib/staticData/contactData';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { useOrderingActions } from '@/api-hooks/useOrderingActions';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const CompletedOrderDetailsSection = ({ orderId }: { orderId: string }) => {
+	const { useGetOrder } = useOrderingActions();
+	const { data: order, isLoading } = useGetOrder({ id: orderId });
+
+	if (isLoading) {
+		return (
+			<div className='w-full max-w-lg py-10 space-y-5'>
+				<Skeleton className='h-40 w-full' />
+				<Skeleton className='h-60 w-full' />
+				<Skeleton className='h-40 w-full' />
+			</div>
+		);
+	}
+
+	if (!order) {
+		return (
+			<div className='w-full max-w-lg py-10 px-5'>
+				<p className='text-center text-foreground/50'>Order not found</p>
+			</div>
+		);
+	}
+
+	const displayOrderId = order.id.slice(0, 8).toUpperCase();
+	const itemCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
+	const subTotal = order.items.reduce((sum, item) => sum + item.totalPrice, 0);
+	
+	const pickupDate = new Date(order.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+	const pickupTime = new Date(order.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+	const deliveryDate = new Date(order.updatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+	const deliveryTime = new Date(order.updatedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+	
+	const pickupAddress = order.vendor?.name || 'Vendor location';
+	const deliveryAddress = order.address
+		? `${order.address.line1}${order.address.line2 ? ', ' + order.address.line2 : ''}, ${order.address.city}${order.address.state ? ', ' + order.address.state : ''}`
+		: 'Address not available';
+
 	return (
 		<>
 			<div className='w-full max-w-lg py-10 space-y-5'>
 				<div className='w-full space-y-5 px-5'>
 					<div className='w-full'>
 						<p className='font-light'>
-							Picked at 14 Jan 2025 at 4:42 PM
+							Picked at {pickupDate} at {pickupTime}
 						</p>
 						<p className='font-semibold'>
-							God is good, Phase 2, Ekiti
+							{pickupAddress}
 						</p>
 					</div>
 					<div className='w-full'>
 						<p className='font-light'>
-							Picked at 14 Jan 2025 at 4:42 PM
+							Delivered at {deliveryDate} at {deliveryTime}
 						</p>
 						<p className='font-semibold'>
-							God is good, Phase 2, Ekiti
+							{deliveryAddress}
 						</p>
 					</div>
 				</div>
@@ -34,20 +71,20 @@ const CompletedOrderDetailsSection = ({ orderId }: { orderId: string }) => {
 						<p className='text-lg font-bold'>Payment Summary</p>
 					</div>
 					<div className='flex items-center justify-between py-1 px-5'>
-						<p>Sub-total (2 items)</p>
-						<p className='font-semibold'>{formatCurency(1400)}</p>
+						<p>Sub-total ({itemCount} item{itemCount !== 1 ? 's' : ''})</p>
+						<p className='font-semibold'>{formatCurency(subTotal)}</p>
 					</div>
 					<div className='flex items-center justify-between py-1 px-5'>
 						<p>Delivery fee</p>
-						<p className='font-semibold'>{formatCurency(1000)}</p>
+						<p className='font-semibold'>{formatCurency(order.deliveryFee)}</p>
 					</div>
 					<div className='flex items-center justify-between py-1 px-5'>
 						<p>Service fee</p>
-						<p className='font-semibold'>{formatCurency(60)}</p>
+						<p className='font-semibold'>{formatCurency(order.serviceFee)}</p>
 					</div>
 					<div className='flex items-center justify-between py-1 px-5'>
 						<p className='font-semibold'>Total</p>
-						<p className='font-semibold'>{formatCurency(1560)}</p>
+						<p className='font-semibold'>{formatCurency(order.totalAmount)}</p>
 					</div>
 				</div>
 				<div className='w-full flex flex-col'>
@@ -56,7 +93,7 @@ const CompletedOrderDetailsSection = ({ orderId }: { orderId: string }) => {
 					</div>
 					<div className='flex flex-col  text-start justify-between py-1 px-5'>
 						<p className='font-light'>Package ID</p>
-						<p className='font-semibold'>#FDX-238491</p>
+						<p className='font-semibold'>#{displayOrderId}</p>
 					</div>
 					<div className='flex flex-col  text-start justify-between py-1 px-5'>
 						<p className='font-light'>Package items</p>
@@ -64,14 +101,14 @@ const CompletedOrderDetailsSection = ({ orderId }: { orderId: string }) => {
 					</div>
 					<div className='flex flex-col  text-start justify-between py-1 px-5'>
 						<p className='font-light'>Date</p>
-						<p className='font-semibold'>14 Jan 2025 at 5:06 PM</p>
+						<p className='font-semibold'>{deliveryDate} at {deliveryTime}</p>
 					</div>
-					<div className='flex flex-col  text-start justify-between py-1 px-5'>
-						<p className='font-light'>Delivery instructions</p>
-						<p className='font-semibold'>
-							Call when you get to hostel gate, don’t knock.
-						</p>
-					</div>
+					{order.notes && (
+						<div className='flex flex-col  text-start justify-between py-1 px-5'>
+							<p className='font-light'>Delivery instructions</p>
+							<p className='font-semibold'>{order.notes}</p>
+						</div>
+					)}
 				</div>
 			</div>
 			<>
@@ -93,16 +130,18 @@ const CompletedOrderDetailsSection = ({ orderId }: { orderId: string }) => {
 							)}>
 							Need help?
 						</a>
-						<Link
-							href={PAGES_DATA.single_vendor_page('12')}
-							className={cn(
-								buttonVariants({
-									variant: 'game',
-									className: 'flex-1 py-6',
-								})
-							)}>
-							Rate your order
-						</Link>
+						{order.vendorId && (
+							<Link
+								href={PAGES_DATA.single_vendor_rate_page(order.vendorId)}
+								className={cn(
+									buttonVariants({
+										variant: 'game',
+										className: 'flex-1 py-6',
+									})
+								)}>
+								Rate your order
+							</Link>
+						)}
 					</div>
 				</div>
 			</>

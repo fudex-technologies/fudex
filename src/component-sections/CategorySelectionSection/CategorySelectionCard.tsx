@@ -9,53 +9,51 @@ import { useRouter } from 'next/navigation';
 
 const CategorySelectionCard = ({
 	image,
-	category,
+	categoryId,
+	categoryName,
 }: {
 	image: string;
-	category: string;
+	categoryId: string;
+	categoryName: string;
 }) => {
 	const [search, setSearch] = useSearchQueries();
 	const router = useRouter();
 
 	const handleCatClick = () => {
-		const isRemoving = search.cat.includes(category);
+		const isRemoving = search.cat.includes(categoryId);
 		const newCats = isRemoving
-			? search.cat.filter((cat) => cat !== category)
-			: [...search.cat, category];
+			? search.cat.filter((cat) => cat !== categoryId)
+			: [...search.cat, categoryId];
 		const maybePromise = setSearch({ cat: newCats });
 		Promise.resolve(maybePromise)
 			.then(() => {
-				router.push(`${PAGES_DATA.search_page}?cat=${newCats}`);
+				router.push(`${PAGES_DATA.search_page}?cat=${newCats.join(',')}`);
 			})
 			.catch(() => {
-				router.push(`${PAGES_DATA.search_page}?cat=${newCats}`);
+				router.push(`${PAGES_DATA.search_page}?cat=${newCats.join(',')}`);
 			});
 	};
 
-	const isActive = search.cat.includes(category);
+	const isActive = search.cat.includes(categoryId);
 	return (
 		<div
-			// href={"/search"}
 			onClick={handleCatClick}
 			className={cn(
-				'bg-muted text-muted-foreground flex flex-col gap-2 w-[100px] p-3 rounded-lg shadow-sm border',
+				'bg-muted text-muted-foreground flex flex-col gap-2 w-[100px] p-3 rounded-lg shadow-sm border cursor-pointer',
 				isActive &&
-					'bg-secondary text-secondary-foreground transition-colors ease-linear border-0'
+				'bg-secondary text-secondary-foreground transition-colors ease-linear border-0'
 			)}>
-			<p className=''>{category}</p>
+			<p className=''>{categoryName}</p>
 			<div className='relative w-full'>
 				<ImageWithFallback
 					src={image}
-					alt={category}
+					alt={categoryName}
 					className='object-contain w-full aspect-square'
 				/>
 			</div>
 		</div>
 	);
 };
-
-export default CategorySelectionCard;
-
 
 export const CategorySelectionCardSkeleton = () => {
 	return (
@@ -67,3 +65,5 @@ export const CategorySelectionCardSkeleton = () => {
 		</div>
 	);
 };
+
+export default CategorySelectionCard;

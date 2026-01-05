@@ -16,6 +16,8 @@ import {
 	Trash,
 	User,
 	Store,
+	Shield,
+	Settings,
 } from 'lucide-react';
 import { useState } from 'react';
 import { usePRofileActions } from '@/api-hooks/useProfileActions';
@@ -26,6 +28,10 @@ const ProfileMenusSection = () => {
 
 	// Check if user is a vendor
 	const { data: isVendor } = usePRofileActions().isUserAVendor();
+	// Check if user is an admin
+	const { data: isAdmin } = usePRofileActions().isUserAnAdmin();
+	// Check if user is an operator
+	const { data: isOperator } = usePRofileActions().isUserAnOperator();
 
 	if (isPending && !session) {
 		return <ProfileMenusSectionSkeleton />;
@@ -67,6 +73,34 @@ const ProfileMenusSection = () => {
 								icon: <Store />,
 								title: 'Vendor Dashboard',
 								link: PAGES_DATA.vendor_dashboard_page,
+								protected: true,
+								show: true,
+							},
+						]}
+					/>
+				)}
+				{isAdmin && (
+					<MenuListComponent
+						menuTitle='Admin'
+						menuItems={[
+							{
+								icon: <Shield />,
+								title: 'Admin Dashboard',
+								link: PAGES_DATA.admin_dashboard_page,
+								protected: true,
+								show: true,
+							},
+						]}
+					/>
+				)}
+				{isOperator && (
+					<MenuListComponent
+						menuTitle='Operator'
+						menuItems={[
+							{
+								icon: <Settings />,
+								title: 'Operator Dashboard',
+								link: PAGES_DATA.operator_dashboard_page,
 								protected: true,
 								show: true,
 							},

@@ -1,27 +1,88 @@
+'use client';
+
 import OngoingOrderItem from '@/components/order-components/OngoingOrderItem';
 import { Button } from '@/components/ui/button';
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
+import { useOrderingActions } from '@/api-hooks/useOrderingActions';
+import { Skeleton } from '@/components/ui/skeleton';
+import { PAGES_DATA } from '@/data/pagesData';
+import { useRouter } from 'next/navigation';
+import { OrderStatus } from '@prisma/client';
 
 export default function OngoingOrdersPage() {
-	const isEmpty = false;
+	const router = useRouter();
+	const { useListMyOrders } = useOrderingActions();
+	
+	// Get ongoing orders (PENDING, PAID, PREPARING, ASSIGNED)
+	const { data: orders = [], isLoading } = useListMyOrders({
+		take: 50,
+	});
+
+	// Filter ongoing orders
+	const ongoingOrders = orders.filter(
+		(order) =>
+			order.status === OrderStatus.PENDING ||
+			order.status === OrderStatus.PAID ||
+			order.status === OrderStatus.PREPARING ||
+			order.status === OrderStatus.ASSIGNED
+	);
+
+	const isEmpty = !isLoading && ongoingOrders.length === 0;
+
+	// Map order status to component status
+	const getOrderStatus = (status: OrderStatus): 'preparing' | 'on-the-way' | 'delivered' => {
+		if (status === OrderStatus.PENDING || status === OrderStatus.PAID || status === OrderStatus.PREPARING) {
+			return 'preparing';
+		}
+		if (status === OrderStatus.ASSIGNED) {
+			return 'on-the-way';
+		}
+		return 'delivered';
+	};
+
+	// Calculate estimated time (placeholder - could be enhanced with actual delivery time estimates)
+	const getEstimatedTime = (status: OrderStatus): string => {
+		if (status === OrderStatus.PENDING || status === OrderStatus.PAID) {
+			return '10 - 15 mins';
+		}
+		if (status === OrderStatus.PREPARING) {
+			return '5 - 10 mins';
+		}
+		if (status === OrderStatus.ASSIGNED) {
+			return '5 - 10 mins';
+		}
+		return '5 - 10 mins';
+	};
+
+	if (isLoading) {
+		return (
+			<div className='w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 px-5'>
+				{Array.from({ length: 3 }).map((_, i) => (
+					<Skeleton key={i} className='h-40 w-full rounded-md' />
+				))}
+			</div>
+		);
+	}
+
 	return (
 		<div className='w-full'>
 			{/* Empty state */}
 			{isEmpty && (
-				<div className='w-full p-5 flex flex-col gap-5 items-center justify-center my-20'>
+				<div className='w-full max-w-md p-5 flex flex-col gap-5 items-center justify-center my-20'>
 					<ImageWithFallback
 						src={'/assets/bike.png'}
 						className='w-full'
 					/>
 					<div className='text-center'>
 						<p className='text-sm font-light'>
-							We’re waiting for your first order
+							We're waiting for your first order
 						</p>
 					</div>
 					<Button
 						variant={'game'}
 						size={'lg'}
-						className='w-full mt-10 py-5'>
+						className='w-full mt-10 py-5'
+						onClick={() => router.push(PAGES_DATA.home_page)}>
 						Order now
 					</Button>
 				</div>
@@ -30,20 +91,21 @@ export default function OngoingOrdersPage() {
 			{/* With data state */}
 			{!isEmpty && (
 				<div className='w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 px-5'>
-					<OngoingOrderItem
-						estimatedTime='5 - 10mins'
-						itemCount={2}
-						orderId='FDX-238491'
-						vendorName='Bukolary'
-						orderStatus='preparing'
-					/>
-					<OngoingOrderItem
-						estimatedTime='5 - 10mins'
-						itemCount={2}
-						orderId='FDX-238491'
-						vendorName='Bukolary'
-						orderStatus='on-the-way'
-					/>
+					{ongoingOrders.map((order) => {
+						const itemCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
+						const displayOrderId = order.id.slice(0, 8).toUpperCase();
+						
+						return (
+							<OngoingOrderItem
+								key={order.id}
+								estimatedTime={getEstimatedTime(order.status)}
+								itemCount={itemCount}
+								orderId={order.id}
+								vendorName={order.vendor?.name || 'Vendor'}
+								orderStatus={getOrderStatus(order.status)}
+							/>
+						);
+					})}
 				</div>
 			)}
 		</div>

@@ -1,5 +1,7 @@
 'use client';
 
+import { useCategoryActions } from '@/api-hooks/useCategoryActions';
+import { useOperatorActions } from '@/api-hooks/useOperatorActions';
 import { useVendorDashboardActions } from '@/api-hooks/useVendorDashboardActions';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -32,6 +34,7 @@ function CreateProductItemModal({
 		productId: '',
 		name: '',
 		slug: '',
+		category: '',
 		description: '',
 		price: '',
 		images: [] as string[],
@@ -41,6 +44,10 @@ function CreateProductItemModal({
 	const [isUploading, setIsUploading] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
+	const { useListCategories } = useCategoryActions();
+	const { data: categories = [] } = useListCategories({
+		take: 20,
+	});
 	const { createProductItem, useGetMyVendor } = useVendorDashboardActions();
 	const { data: vendor } = useGetMyVendor();
 
@@ -52,6 +59,7 @@ function CreateProductItemModal({
 				productId: '',
 				name: '',
 				slug: '',
+				category: '',
 				description: '',
 				price: '',
 				images: [],
@@ -71,7 +79,10 @@ function CreateProductItemModal({
 		try {
 			const uploadFormData = new FormData();
 			uploadFormData.append('file', file);
-			uploadFormData.append('folder', vercelBlobFolderStructure.vendorProductImages);
+			uploadFormData.append(
+				'folder',
+				vercelBlobFolderStructure.vendorProductImages
+			);
 
 			const response = await fetch('/api/upload', {
 				method: 'POST',
@@ -102,6 +113,7 @@ function CreateProductItemModal({
 			vendorId: vendor.id,
 			productId: formData.productId || undefined,
 			name: formData.name,
+			categories: [formData.category],
 			slug:
 				formData.slug ||
 				formData.name.toLowerCase().replace(/\s+/g, '-'),
@@ -145,6 +157,27 @@ function CreateProductItemModal({
 								{products.map((p) => (
 									<option key={p.id} value={p.id}>
 										{p.name}
+									</option>
+								))}
+							</select>
+						</div>
+					)}
+					{categories.length > 0 && (
+						<div className='space-y-2'>
+							<Label htmlFor='item-category'>Category</Label>
+							<select
+								id='item-category'
+								value={formData.category}
+								onChange={(e) =>
+									setFormData((prev) => ({
+										...prev,
+										category: e.target.value,
+									}))
+								}
+								className='w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm'>
+								{categories.map((c) => (
+									<option key={c.id} value={c.id}>
+										{c.name}
 									</option>
 								))}
 							</select>

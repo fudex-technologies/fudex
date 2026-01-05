@@ -34,6 +34,18 @@ export const PAGES_DATA = {
     vendor_dashboard_products_page: `/profile/vendor-dashboard/products`,
     vendor_dashboard_orders_page: `/profile/vendor-dashboard/orders`,
 
+    // admin dashboard pages
+    admin_dashboard_page: `/profile/admin-dashboard`,
+    admin_dashboard_areas_page: `/profile/admin-dashboard/areas`,
+    admin_dashboard_settings_page: `/profile/admin-dashboard/settings`,
+
+    // operator dashboard pages
+    operator_dashboard_page: `/profile/operator-dashboard`,
+    operator_dashboard_orders_page: `/profile/operator-dashboard/orders`,
+    operator_dashboard_riders_page: `/profile/operator-dashboard/riders`,
+    operator_dashboard_categories_page: `/profile/operator-dashboard/categories`,
+    operator_dashboard_vendors_page: `/profile/operator-dashboard/vendors`,
+
     // auth pages
     onboarding_step_one_page: `/onboarding/step-1`,
     onboarding_step_two_page: `/onboarding/step-2`,

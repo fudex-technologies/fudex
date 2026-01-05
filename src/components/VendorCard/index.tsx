@@ -7,25 +7,31 @@ import { PAGES_DATA } from '@/data/pagesData';
 import { Separator } from '../ui/separator';
 import { formatCurency } from '@/lib/commonFunctions';
 
-interface Props {
-	image: string;
+interface VendorData {
+	id: string;
 	name: string;
-	rating?: number;
-	numberFoRatings?: number;
-	deliveryPrice: number;
+	coverImage?: string | null;
+	reviewsAverage?: number | null;
+	reviewsCount?: number | null;
+}
+
+interface Props {
+	vendor: VendorData;
+	deliveryPrice?: number; // Optional, defaults to 600
 	deliveryTime?: string;
 }
 const VendorCard = ({
-	deliveryPrice,
-	image,
-	name,
-	numberFoRatings,
-	rating,
+	vendor,
+	deliveryPrice = 600,
 	deliveryTime,
 }: Props) => {
+	const rating = vendor.reviewsAverage ?? undefined;
+	const numberFoRatings = vendor.reviewsCount ?? undefined;
+	const image = vendor.coverImage || '/assets/restaurants/restaurant1.png';
+
 	return (
 		<Link
-			href={PAGES_DATA.single_vendor_page('1')}
+			href={PAGES_DATA.single_vendor_page(vendor.id)}
 			className='w-full flex flex-col shrink-0 space-y-1'>
 			<div className='relative h-[150px] w-full'>
 				<GoHeart
@@ -36,12 +42,12 @@ const VendorCard = ({
 				<ImageWithFallback
 					src={image}
 					className='rounded-lg h-full w-full object-cover'
-					alt='restaurant'
+					alt={vendor.name}
 				/>
 			</div>
 
 			<div className='w-full flex justify-between'>
-				<p className='font-semibold '>{name}</p>
+				<p className='font-semibold '>{vendor.name}</p>
 				{rating && (
 					<div className='flex items-center gap-1'>
 						<FaStar
@@ -50,7 +56,7 @@ const VendorCard = ({
 							className='text-[#F9C300]'
 						/>
 						<p className='text-foreground/80'>
-							{rating}
+							{rating.toFixed(1)}
 							{numberFoRatings && (
 								<span className='text-foreground/60'>
 									({numberFoRatings})

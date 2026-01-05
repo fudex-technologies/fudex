@@ -1,6 +1,7 @@
 import { getDoodleAvatarUrl } from "@/lib/commonFunctions";
 import { createTRPCRouter, publicProcedure, protectedProcedure } from "@/trpc/init";
 import { z } from "zod";
+import { calculateDeliveryFee, getServiceFee } from "@/lib/deliveryFeeCalculator";
 
 export const userRouter = createTRPCRouter({
     // Return resolved session (null if unauthenticated)
@@ -74,6 +75,8 @@ export const userRouter = createTRPCRouter({
                 lat: z.number().optional(),
                 lng: z.number().optional(),
                 isDefault: z.boolean().optional(),
+                areaId: z.string().optional(),
+                customArea: z.string().optional(),
             })
         )
         .mutation(async ({ ctx, input }) => {
@@ -98,7 +101,9 @@ export const userRouter = createTRPCRouter({
                 country: z.string().optional(),
                 lat: z.number().optional(),
                 lng: z.number().optional(),
-                isDefault: z.boolean().optional()
+                isDefault: z.boolean().optional(),
+                areaId: z.string().optional().nullable(),
+                customArea: z.string().optional(),
             })
         }))
         .mutation(async ({ ctx, input }) => {
@@ -130,4 +135,53 @@ export const userRouter = createTRPCRouter({
         });
         return !!vendorRole;
     }),
+
+    // Check if user has super admin role
+    checkAdminRole: protectedProcedure.query(async ({ ctx }) => {
+        const userId = ctx.user!.id;
+        const adminRole = await ctx.prisma.userRole.findFirst({
+            where: {
+                userId,
+                role: "SUPER_ADMIN"
+            }
+        });
+        return !!adminRole;
+    }),
+
+    // ========== PUBLIC PROCEDURES FOR AREAS AND FEES ==========
+
+    // List all areas (for address dropdown)
+    listAreas: publicProcedure
+        .input(z.object({
+            state: z.string().optional(),
+            take: z.number().optional().default(100)
+        }).optional())
+        .query(({ ctx, input }) => {
+            const where: any = {};
+            if (input?.state) {
+                where.state = input.state;
+            }
+            return ctx.prisma.area.findMany({
+                where,
+                take: input?.take ?? 100,
+                orderBy: [{ state: "asc" }, { name: "asc" }]
+            });
+        }),
+
+    // Calculate delivery fee for preview (public, used in checkout)
+    calculateDeliveryFee: publicProcedure
+        .input(z.object({
+            areaId: z.string().nullable(),
+        }))
+        .query(async ({ ctx, input }) => {
+            const fee = await calculateDeliveryFee(ctx.prisma, input.areaId);
+            return { deliveryFee: fee };
+        }),
+
+    // Get service fee (public, used in checkout)
+    getServiceFee: publicProcedure
+        .query(async ({ ctx }) => {
+            const fee = await getServiceFee(ctx.prisma);
+            return { serviceFee: fee };
+        }),
 });

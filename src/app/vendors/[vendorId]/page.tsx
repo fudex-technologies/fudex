@@ -12,8 +12,8 @@ export default async function SingleVendorPage({ params }: Props) {
 	return (
 		<>
 			<SingleVendorTopSection vendorId={vendorId} />
-			<VendorDetailsSection />
-			<VendorProductsTabSection />
+			<VendorDetailsSection vendorId={vendorId} />
+			<VendorProductsTabSection vendorId={vendorId} />
 		</>
 	);
 }

@@ -28,7 +28,11 @@ export function useVendorProductActions() {
             useQuery(trpc.vendors.getById.queryOptions(input, { enabled: !!input.id })),
         useGetVendorBySlug: (input: { slug: string }) =>
             useQuery(trpc.vendors.getBySlug.queryOptions(input)),
-        useVendorsSearch: (input: { q?: string; categoryId?: string; take?: number; skip?: number }) =>
+        useVendorsSearch: (input: { q?: string; categoryId?: string; categoryIds?: string[]; take?: number; skip?: number }) =>
             useQuery(trpc.vendors.search.queryOptions(input)),
+        useListVendors: (input?: { q?: string; take?: number; skip?: number }) =>
+            useQuery(trpc.vendors.list.queryOptions(input ?? {})),
+        usePopularVendors: (input?: { take?: number; skip?: number }) =>
+            useQuery(trpc.vendors.getPopularVendors.queryOptions(input ?? {})),
     };
 }

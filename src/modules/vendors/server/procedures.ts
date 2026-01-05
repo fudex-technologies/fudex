@@ -41,7 +41,23 @@ export const vendorRouter = createTRPCRouter({
     getById: publicProcedure
         .input(z.object({ id: z.string() }))
         .query(({ ctx, input }) => {
-            return ctx.prisma.vendor.findUnique({ where: { id: input.id }, include: { products: true } });
+            return ctx.prisma.vendor.findUnique({ 
+                where: { id: input.id }, 
+                include: { 
+                    products: true,
+                    vendorCategories: {
+                        include: {
+                            category: true
+                        }
+                    },
+                    _count: {
+                        select: {
+                            orders: true,
+                            reviews: true
+                        }
+                    }
+                } 
+            });
         }),
 
     getBySlug: publicProcedure
@@ -114,7 +130,19 @@ export const vendorRouter = createTRPCRouter({
             take: z.number().optional().default(50)
         }))
         .query(({ ctx, input }) => {
-            return ctx.prisma.productItem.findMany({ where: { vendorId: input.vendorId, isActive: true }, take: input.take, orderBy: { createdAt: "desc" } });
+            return ctx.prisma.productItem.findMany({ 
+                where: { vendorId: input.vendorId, isActive: true }, 
+                take: input.take, 
+                orderBy: { createdAt: "desc" },
+                include: {
+                    product: true,
+                    categories: {
+                        include: {
+                            category: true
+                        }
+                    }
+                }
+            });
         }),
 
     // Combined search for vendors and product items
@@ -122,6 +150,7 @@ export const vendorRouter = createTRPCRouter({
         .input(z.object({
             q: z.string().optional(),
             categoryId: z.string().optional(),
+            categoryIds: z.array(z.string()).optional(),
             take: z.number().optional().default(20),
             skip: z.number().optional().default(0),
         }))
@@ -133,8 +162,12 @@ export const vendorRouter = createTRPCRouter({
                     { description: { contains: input.q, mode: "insensitive" } },
                 ];
             }
-            if (input.categoryId) {
-                vendorWhere.vendorCategories = { some: { categoryId: input.categoryId } };
+            // Support both single categoryId (backward compatibility) and multiple categoryIds
+            const categoryIds = input.categoryIds || (input.categoryId ? [input.categoryId] : []);
+            if (categoryIds.length > 0) {
+                vendorWhere.vendorCategories = { 
+                    some: { categoryId: { in: categoryIds } } 
+                };
             }
 
             const productWhere: any = { isActive: true };
@@ -144,13 +177,23 @@ export const vendorRouter = createTRPCRouter({
                     { description: { contains: input.q, mode: "insensitive" } },
                 ];
             }
-            if (input.categoryId) {
-                productWhere.categories = { some: { categoryId: input.categoryId } };
+            if (categoryIds.length > 0) {
+                productWhere.categories = { 
+                    some: { categoryId: { in: categoryIds } } 
+                };
             }
 
             const [vendors, products] = await Promise.all([
                 ctx.prisma.vendor.findMany({ where: vendorWhere, take: input.take, skip: input.skip, orderBy: { createdAt: "desc" } }),
-                ctx.prisma.productItem.findMany({ where: productWhere, take: input.take, skip: input.skip, orderBy: { createdAt: "desc" } }),
+                ctx.prisma.productItem.findMany({ 
+                    where: productWhere, 
+                    take: input.take, 
+                    skip: input.skip, 
+                    orderBy: { createdAt: "desc" },
+                    include: {
+                        product: true
+                    }
+                }),
             ]);
 
             return { vendors, products };
@@ -181,6 +224,33 @@ export const vendorRouter = createTRPCRouter({
                 take: input.take,
                 skip: input.skip,
                 orderBy: { createdAt: "desc" },
+            });
+        }),
+
+    // Get popular vendors ordered by orders count and reviewsAverage
+    getPopularVendors: publicProcedure
+        .input(z.object({
+            take: z.number().optional().default(10),
+            skip: z.number().optional().default(0),
+        }))
+        .query(async ({ ctx, input }) => {
+            const vendors = await ctx.prisma.vendor.findMany({
+                take: input.take,
+                skip: input.skip,
+                include: {
+                    _count: {
+                        select: {
+                            orders: true,
+                        }
+                    }
+                },
+            });
+
+            // Sort by orders count (descending) and then by reviewsAverage (descending)
+            return vendors.sort((a, b) => {
+                const orderDiff = b._count.orders - a._count.orders;
+                if (orderDiff !== 0) return orderDiff;
+                return b.reviewsAverage - a.reviewsAverage;
             });
         }),
 
@@ -404,6 +474,7 @@ export const vendorRouter = createTRPCRouter({
                 price: z.number(),
                 currency: z.string().optional().default("NGN"),
                 images: z.array(z.string()).optional(),
+                categories: z.array(z.string()).optional(),
                 isActive: z.boolean().optional().default(true),
                 inStock: z.boolean().optional().default(true),
             })
