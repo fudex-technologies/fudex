@@ -15,7 +15,7 @@ const TrayListItem = ({ vendorId }: { vendorId: string }) => {
 	);
 
 	return (
-		<div className='p-5 border-b border-foreground/50 space-y-2'>
+		<div className='p-5 border-b border-foreground/50 space-y-4'>
 			<div className='w-full flex gap-2'>
 				{vendor?.coverImage && (
 					<ImageWithFallback

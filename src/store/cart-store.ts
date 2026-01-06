@@ -53,6 +53,7 @@ export const useCartStore = create<CartState>()(
 				);
 			},
 			isVendorCartEmpty: (vendorId) => {
+				if (!get().vendors[vendorId]) return true;
 				return get().vendors[vendorId]?.packs.length === 0;
 			},
 			addPack: (vendorId, pack) => {
