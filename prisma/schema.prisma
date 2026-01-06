@@ -402,7 +402,7 @@ model Order {
   assignedRider   Rider?      @relation(fields: [assignedRiderId], references: [id])
   status          OrderStatus @default(PENDING)
 
-  productAmount Float // vendor’s earning (sum of items)
+  productAmount Float  @default(0) // vendor’s earning (sum of items)
   deliveryFee   Float  @default(0)
   serviceFee    Float  @default(0)
   platformFee   Float  @default(0) // optional, future-proof
