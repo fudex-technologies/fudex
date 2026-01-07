@@ -6,16 +6,16 @@ import PageWrapper from '@/components/wrapers/PageWrapper';
 import EditNameForm from './EditNameForm';
 import EditPhoneForm from './EditPhoneForm';
 import EditEmailForm from './EditEmailForm';
-import { usePRofileActions } from '@/api-hooks/useProfileActions';
 import { getFullName } from '@/lib/commonFunctions';
+import { useProfileActions } from '@/api-hooks/useProfileActions';
 
 export default function AccountPage() {
 	const {
 		data: profileData,
 		isLoading: profileLoading,
 		refetch,
-	} = usePRofileActions().getProfile();
-	const updateProfile = usePRofileActions().updateProfile({
+	} = useProfileActions().getProfile();
+	const updateProfile = useProfileActions().updateProfile({
 		silent: false,
 		onSuccess: () => {
 			refetch();

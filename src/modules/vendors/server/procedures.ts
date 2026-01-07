@@ -1,5 +1,5 @@
-import { createTRPCRouter, publicProcedure, operatorProcedure, vendorAndOperatorProcedure, vendorProcedure } from "@/trpc/init";
-import { OrderStatus } from "@prisma/client";
+import { createTRPCRouter, publicProcedure, operatorProcedure, vendorAndOperatorProcedure, vendorProcedure, protectedProcedure } from "@/trpc/init";
+import { DayOfWeek, OrderStatus } from "@prisma/client";
 import { z } from "zod";
 
 export const vendorRouter = createTRPCRouter({
@@ -163,6 +163,48 @@ export const vendorRouter = createTRPCRouter({
                     createdAt: "desc",
                 },
             });
+        }),
+
+    getVendorOpeningHours: publicProcedure
+        .input(z.object({ vendorId: z.string() }))
+        .query(({ ctx, input }) => {
+            return ctx.prisma.vendorOpeningHour.findMany({
+                where: { vendorId: input.vendorId },
+                orderBy: { day: "asc" },
+            });
+        }),
+
+    isVendorOpenNow: publicProcedure
+        .input(z.object({ vendorId: z.string() }))
+        .query(async ({ ctx, input }) => {
+            const now = new Date();
+
+            const dayMap: Record<number, DayOfWeek> = {
+                0: "SUNDAY",
+                1: "MONDAY",
+                2: "TUESDAY",
+                3: "WEDNESDAY",
+                4: "THURSDAY",
+                5: "FRIDAY",
+                6: "SATURDAY",
+            };
+
+            const day = dayMap[now.getDay()];
+            const timeNow = now.toTimeString().slice(0, 5); // "HH:mm"
+
+            const hours = await ctx.prisma.vendorOpeningHour.findUnique({
+                where: {
+                    vendorId_day: {
+                        vendorId: input.vendorId,
+                        day,
+                    },
+                },
+            });
+
+            if (!hours || hours.isClosed) return false;
+            if (!hours.openTime || !hours.closeTime) return false;
+
+            return timeNow >= hours.openTime && timeNow <= hours.closeTime;
         }),
 
 
@@ -378,6 +420,66 @@ export const vendorRouter = createTRPCRouter({
                 data: input
             });
         }),
+
+    getMyOpeningHours: vendorProcedure.query(async ({ ctx }) => {
+        const vendor = await ctx.prisma.vendor.findFirst({
+            where: { ownerId: ctx.user!.id },
+        });
+
+        if (!vendor) throw new Error("Vendor not found");
+
+        return ctx.prisma.vendorOpeningHour.findMany({
+            where: { vendorId: vendor.id },
+            orderBy: { day: "asc" },
+        });
+    }),
+
+    setMyOpeningHours: vendorProcedure
+        .input(
+            z.array(
+                z.object({
+                    day: z.enum(Object.values(DayOfWeek)),
+                    openTime: z.string().optional(),  // "09:00"
+                    closeTime: z.string().optional(), // "22:00"
+                    isClosed: z.boolean().optional(),
+                })
+            )
+        )
+        .mutation(async ({ ctx, input }) => {
+            const vendor = await ctx.prisma.vendor.findFirst({
+                where: { ownerId: ctx.user!.id },
+            });
+
+            if (!vendor) throw new Error("Vendor not found");
+
+            await ctx.prisma.$transaction(
+                input.map((d) =>
+                    ctx.prisma.vendorOpeningHour.upsert({
+                        where: {
+                            vendorId_day: {
+                                vendorId: vendor.id,
+                                day: d.day,
+                            },
+                        },
+                        update: {
+                            openTime: d.isClosed ? null : d.openTime,
+                            closeTime: d.isClosed ? null : d.closeTime,
+                            isClosed: d.isClosed ?? false,
+                        },
+                        create: {
+                            vendorId: vendor.id,
+                            day: d.day,
+                            openTime: d.isClosed ? null : d.openTime,
+                            closeTime: d.isClosed ? null : d.closeTime,
+                            isClosed: d.isClosed ?? false,
+                        },
+                    })
+                )
+            );
+
+            return { success: true };
+        }),
+
 
     // Get vendor's products with items
     getMyProducts: vendorProcedure

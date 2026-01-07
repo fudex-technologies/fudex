@@ -8,11 +8,11 @@ import {
 } from '@/components/ui/accordion';
 import { Textarea } from '@/components/ui/textarea';
 import { formatCurency, shortenText } from '@/lib/commonFunctions';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Phone } from 'lucide-react';
 import { PiMapPinAreaBold } from 'react-icons/pi';
 import { PiStorefrontBold } from 'react-icons/pi';
 import { FaBicycle } from 'react-icons/fa';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { useCartStore } from '@/store/cart-store';
 import { useOrderingActions } from '@/api-hooks/useOrderingActions';
 import { useTRPC } from '@/trpc/client';
@@ -22,32 +22,33 @@ import { useRouter } from 'next/navigation';
 import { PAGES_DATA } from '@/data/pagesData';
 import { useState, useMemo } from 'react';
 import { toast } from 'sonner';
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-} from '@/components/ui/dialog';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { useVendorProductActions } from '@/api-hooks/useVendorActions';
+import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
+import { cn } from '@/lib/utils';
+import Link from 'next/link';
+import { Skeleton } from '@/components/ui/skeleton';
+import AddressesDrawer from './AddressesDrawer';
+import AddPhoneNumberDrawer from './AddPhoneNumberDrawer';
+import { useProfileActions } from '@/api-hooks/useProfileActions';
 
 const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 	const router = useRouter();
-	const { data: session } = useSession();
+	const { data: session, isPending } = useSession();
 	const { getVendorPacks, clearCart } = useCartStore();
 	const trpc = useTRPC();
 	const [selectedAddressId, setSelectedAddressId] = useState<string>('');
 	const [noteToStore, setNoteToStore] = useState('');
 	const [noteToRider, setNoteToRider] = useState('');
 	const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false);
+	const [isAddPhoneDrawerOpen, setIsAddPhoneDrawerOpen] = useState(false);
 	const packs = getVendorPacks(vendorId);
 
+	const { getProfile, getAddresses } = useProfileActions();
+
+	// Fetch user information
+	const { data: prodileData, refetch: refetchProfile } = getProfile();
 	// Fetch addresses
-	const { data: addresses = [] } = useQuery(
-		trpc.users.listAddresses.queryOptions(undefined)
-	);
+	const { data: addresses = [] } = getAddresses();
 
 	// Fetch vendor info
 	const { data: vendor } = useVendorProductActions().useGetVendorById(
@@ -123,19 +124,20 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 	}, [packs, productItemsMap, productItems.length]);
 
 	// Fetch delivery fee based on selected address area
-	const { data: deliveryFeeData } = useQuery(
-		trpc.users.calculateDeliveryFee.queryOptions(
-			{
-				areaId: selectedAddress?.areaId || null,
-			},
-			{
-				enabled: !!selectedAddress,
-			}
-		)
-	);
+	const { data: deliveryFeeData, isLoading: isLoadingDeliveryFeeData } =
+		useQuery(
+			trpc.users.calculateDeliveryFee.queryOptions(
+				{
+					areaId: selectedAddress?.areaId || null,
+				},
+				{
+					enabled: !!selectedAddress,
+				}
+			)
+		);
 
 	// Fetch service fee
-	const { data: serviceFeeData } = useQuery(
+	const { data: serviceFeeData, isLoading: isLoadingServiceFee } = useQuery(
 		trpc.users.getServiceFee.queryOptions(undefined)
 	);
 
@@ -233,20 +235,45 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 		});
 	};
 
-	if (!session) {
+	if (isPending) {
+		return (
+			<div className='w-full max-w-lg space-y-5 mx-auto p-5'>
+				<Skeleton className='h-5' />
+				<Skeleton className='h-10' />
+				<Skeleton className='h-20' />
+				<Skeleton className='h-5' />
+				<Skeleton className='h-5' />
+			</div>
+		);
+	}
+
+	if (!session && !isPending) {
 		return (
 			<div className='w-full flex justify-center pb-10'>
 				<div className='max-w-lg w-full flex flex-col items-center gap-5 p-10'>
+					<ImageWithFallback
+						src={'/assets/fudex-tackout-pack.png'}
+						className='w-full'
+					/>
 					<p className='text-center text-foreground/70'>
 						Please login or create an account to continue with
 						checkout
 					</p>
-					<Button
-						variant='game'
-						size='lg'
-						onClick={() => router.push(PAGES_DATA.login_page)}>
+					<Link
+						href={`${
+							PAGES_DATA.login_page
+						}?redirect=${encodeURIComponent(
+							PAGES_DATA.checkout_page(vendorId)
+						)}`}
+						className={cn(
+							buttonVariants({
+								variant: 'game',
+								size: 'lg',
+								className: 'w-full',
+							})
+						)}>
 						Login / Sign Up
-					</Button>
+					</Link>
 				</div>
 			</div>
 		);
@@ -257,7 +284,7 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 			<div className='w-full flex justify-center pb-10'>
 				<div className='max-w-lg w-full flex flex-col items-center gap-5 p-10'>
 					<p className='text-center text-foreground/70'>
-						Your cart is empty
+						Your tray is empty
 					</p>
 					<Button
 						variant='game'
@@ -271,239 +298,252 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 	}
 
 	return (
-		<div className='w-full flex justify-center pb-10'>
-			<div className='max-w-lg w-full flex flex-col'>
-				{/* Order Summary */}
-				<div className='w-full flex flex-col'>
-					<div className='px-5 py-2 bg-muted text-muted-foreground'>
-						<p className='text-lg font-bold'>Your order</p>
-					</div>
-					<div className='flex items-center justify-between p-5'>
-						<p>
-							{packs.length} pack{packs.length > 1 ? 's' : ''}{' '}
-							from{' '}
-							<span className='text-primary'>
-								{vendor?.name || 'Vendor'}
-							</span>
-						</p>
-						<ChevronRight size={14} />
-					</div>
-				</div>
-
-				{/* Delivery Address */}
-				<div className='w-full flex flex-col'>
-					<div className='px-5 py-2 bg-muted text-muted-foreground'>
-						<p className='text-lg font-bold'>Delivery address</p>
-					</div>
-					<button
-						onClick={() => setIsAddressDialogOpen(true)}
-						className='flex items-center justify-between p-5 hover:bg-muted/50 transition-colors'>
-						<div className='flex gap-2 items-center flex-1'>
-							<PiMapPinAreaBold size={20} />
-							{selectedAddress ? (
-								<p className='text-left'>
-									{shortenText(
-										`${selectedAddress.line1}${
-											selectedAddress.line2
-												? ', ' + selectedAddress.line2
-												: ''
-										}, ${selectedAddress.city}`,
-										40
-									)}
-								</p>
-							) : (
-								<p className='text-foreground/50'>
-									Select address
-								</p>
-							)}
+		<>
+			<div className='w-full flex justify-center pb-10'>
+				<div className='max-w-lg w-full flex flex-col'>
+					{/* Order Summary */}
+					<div className='w-full flex flex-col'>
+						<div className='px-5 py-2 bg-muted text-muted-foreground'>
+							<p className='text-lg font-bold'>Your order</p>
 						</div>
-						<ChevronRight size={14} />
-					</button>
-				</div>
+						<div className='flex items-center justify-between p-5'>
+							<p>
+								{packs.length} pack{packs.length > 1 ? 's' : ''}{' '}
+								from{' '}
+								<span className='text-primary'>
+									{vendor?.name || 'Vendor'}
+								</span>
+							</p>
+							<ChevronRight size={14} />
+						</div>
+					</div>
 
-				{/* Address Selection Dialog */}
-				<Dialog
-					open={isAddressDialogOpen}
-					onOpenChange={setIsAddressDialogOpen}>
-					<DialogContent>
-						<DialogHeader>
-							<DialogTitle>Select Delivery Address</DialogTitle>
-						</DialogHeader>
-						{addresses.length === 0 ? (
-							<div className='space-y-4'>
-								<p className='text-foreground/70'>
-									No addresses found. Please add an address
-									first.
-								</p>
-								<Button
-									variant='game'
-									onClick={() => {
-										setIsAddressDialogOpen(false);
-										router.push(
-											PAGES_DATA.profile_addresses_page
-										);
-									}}>
-									Add Address
-								</Button>
+					{/* Delivery Address */}
+					<div className='w-full flex flex-col'>
+						<div className='px-5 py-2 bg-muted text-muted-foreground'>
+							<p className='text-lg font-bold'>
+								Delivery address
+							</p>
+						</div>
+						<button
+							onClick={() => setIsAddressDialogOpen(true)}
+							className='flex items-center justify-between p-5 hover:bg-muted/50 transition-colors'>
+							<div className='flex gap-2 items-center flex-1'>
+								<PiMapPinAreaBold size={20} />
+								{selectedAddress ? (
+									<p className='text-left'>
+										{shortenText(
+											`${selectedAddress.line1}${
+												selectedAddress.line2
+													? ', ' +
+													  selectedAddress.line2
+													: ''
+											}, ${selectedAddress.city}`,
+											40
+										)}
+									</p>
+								) : (
+									<p className='text-foreground/50'>
+										Select address
+									</p>
+								)}
 							</div>
-						) : (
-							<RadioGroup
-								value={selectedAddressId}
-								onValueChange={(value) => {
-									setSelectedAddressId(value);
-									setIsAddressDialogOpen(false);
-								}}
-								className='space-y-2'>
-								{addresses.map((address) => (
-									<div key={address.id}>
-										<div className='flex items-center gap-3 p-3 rounded border'>
-											<RadioGroupItem
-												value={address.id}
-												id={`address-${address.id}`}
-											/>
-											<Label
-												htmlFor={`address-${address.id}`}
-												className='flex-1 cursor-pointer'>
-												<div>
-													{address.label && (
-														<p className='font-semibold'>
-															{address.label}
-														</p>
-													)}
-													<p className='text-sm'>
-														{address.line1}
-														{address.line2 &&
-															`, ${address.line2}`}
-													</p>
-													<p className='text-sm text-foreground/50'>
-														{address.city}
-														{address.state &&
-															`, ${address.state}`}
-													</p>
-												</div>
-											</Label>
-										</div>
-										{addresses.indexOf(address) <
-											addresses.length - 1 && (
-											<Separator className='my-2' />
+							<ChevronRight size={14} />
+						</button>
+					</div>
+					{/* Phone number */}
+					<div className='w-full flex flex-col'>
+						<div className='px-5 py-2 bg-muted text-muted-foreground'>
+							<p className='text-lg font-bold'>
+								Contact Information
+							</p>
+						</div>
+						<div className='flex items-center justify-between p-5'>
+							<div className='flex gap-2 items-center flex-1'>
+								<Phone size={20} />
+								{prodileData?.phone ? (
+									<div className='flex items-center gap-2'>
+										<p>{prodileData.phone}</p>
+										{prodileData.phoneVerified ? (
+											<span className='text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full'>
+												Verified
+											</span>
+										) : (
+											<span className='text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full'>
+												Unverified
+											</span>
 										)}
 									</div>
-								))}
-							</RadioGroup>
-						)}
-					</DialogContent>
-				</Dialog>
-
-				{/* Instructions */}
-				<div className='w-full flex flex-col'>
-					<div className='px-5 py-2 bg-muted text-muted-foreground'>
-						<p className='text-lg font-bold'>Instructions</p>
-					</div>
-					<div className='w-full px-5'>
-						<Accordion type='single' collapsible className='w-full'>
-							<AccordionItem
-								value='note-to-store'
-								className='py-2 border-b! border-foreground/50'>
-								<AccordionTrigger>
-									<div className='flex gap-2 items-center text-base font-normal'>
-										<PiStorefrontBold size={20} />
-										<p>Note to store</p>
-									</div>
-								</AccordionTrigger>
-								<AccordionContent className='w-full'>
-									<Textarea
-										placeholder='Add delivery instructions'
-										className='w-full resize-none'
-										rows={4}
-										value={noteToStore}
-										onChange={(e) =>
-											setNoteToStore(e.target.value)
+								) : (
+									<p className='text-foreground/50'>
+										No Phone Number
+									</p>
+								)}
+							</div>
+							{!prodileData?.phoneVerified && (
+								<Button
+									variant='outline'
+									size='sm'
+									onClick={() => {
+										if (prodileData?.phone) {
+											router.push(
+												`${
+													PAGES_DATA.profile_verify_phone_page
+												}?redirect=${encodeURIComponent(
+													PAGES_DATA.checkout_page(
+														vendorId
+													)
+												)}`
+											);
+										} else {
+											setIsAddPhoneDrawerOpen(true);
 										}
-									/>
-								</AccordionContent>
-							</AccordionItem>
-
-							<AccordionItem
-								value='note-to-rider'
-								className='py-2'>
-								<AccordionTrigger>
-									<div className='flex gap-2 items-center text-base font-normal'>
-										<FaBicycle size={20} />
-										<p>Note to rider</p>
-									</div>
-								</AccordionTrigger>
-								<AccordionContent className='w-full'>
-									<Textarea
-										placeholder='Add note to rider'
-										className='w-full resize-none'
-										rows={4}
-										value={noteToRider}
-										onChange={(e) =>
-											setNoteToRider(e.target.value)
-										}
-									/>
-								</AccordionContent>
-							</AccordionItem>
-						</Accordion>
-					</div>
-				</div>
-
-				{/* Payment Summary */}
-				<div className='w-full flex flex-col'>
-					<div className='px-5 py-2 bg-muted text-muted-foreground'>
-						<p className='text-lg font-bold'>Payment Summary</p>
-					</div>
-					<div className='py-5 space-y-2'>
-						<div className='flex items-center justify-between px-5'>
-							<p>
-								Sub-total ({packs.length} pack
-								{packs.length > 1 ? 's' : ''})
-							</p>
-							<p className='font-semibold'>
-								{formatCurency(subTotal)}
-							</p>
-						</div>
-						<div className='flex items-center justify-between px-5'>
-							<p>Delivery fee</p>
-							<p className='font-semibold'>
-								{formatCurency(deliveryFee)}
-							</p>
-						</div>
-						<div className='flex items-center justify-between px-5'>
-							<p>Service fee</p>
-							<p className='font-semibold'>
-								{formatCurency(serviceFee)}
-							</p>
-						</div>
-						<div className='flex items-center justify-between px-5'>
-							<p className='font-semibold'>Total</p>
-							<p className='font-semibold'>
-								{formatCurency(total)}
-							</p>
+									}}>
+									{prodileData?.phone
+										? 'Verify Now'
+										: 'Add Phone Number'}
+								</Button>
+							)}
 						</div>
 					</div>
-				</div>
 
-				{/* Checkout Button */}
-				<div className='px-5 py-2 bg-background sticky bottom-5'>
-					<Button
-						variant={'game'}
-						size={'lg'}
-						className='w-full'
-						onClick={handleCheckout}
-						disabled={
-							createOrderMutation.isPending ||
-							createPaymentMutation.isPending ||
-							!selectedAddressId
-						}>
-						{createOrderMutation.isPending ||
-						createPaymentMutation.isPending
-							? 'Processing...'
-							: 'Make Payment'}
-					</Button>
+					{/* Instructions */}
+					<div className='w-full flex flex-col'>
+						<div className='px-5 py-2 bg-muted text-muted-foreground'>
+							<p className='text-lg font-bold'>Instructions</p>
+						</div>
+						<div className='w-full px-5'>
+							<Accordion
+								type='single'
+								collapsible
+								className='w-full'>
+								<AccordionItem
+									value='note-to-store'
+									className='py-2 border-b! border-foreground/50'>
+									<AccordionTrigger>
+										<div className='flex gap-2 items-center text-base font-normal'>
+											<PiStorefrontBold size={20} />
+											<p>Note to store</p>
+										</div>
+									</AccordionTrigger>
+									<AccordionContent className='w-full'>
+										<Textarea
+											placeholder='Add delivery instructions'
+											className='w-full resize-none'
+											rows={4}
+											value={noteToStore}
+											onChange={(e) =>
+												setNoteToStore(e.target.value)
+											}
+										/>
+									</AccordionContent>
+								</AccordionItem>
+
+								<AccordionItem
+									value='note-to-rider'
+									className='py-2'>
+									<AccordionTrigger>
+										<div className='flex gap-2 items-center text-base font-normal'>
+											<FaBicycle size={20} />
+											<p>Note to rider</p>
+										</div>
+									</AccordionTrigger>
+									<AccordionContent className='w-full'>
+										<Textarea
+											placeholder='Add note to rider'
+											className='w-full resize-none'
+											rows={4}
+											value={noteToRider}
+											onChange={(e) =>
+												setNoteToRider(e.target.value)
+											}
+										/>
+									</AccordionContent>
+								</AccordionItem>
+							</Accordion>
+						</div>
+					</div>
+
+					{/* Payment Summary */}
+					<div className='w-full flex flex-col'>
+						<div className='px-5 py-2 bg-muted text-muted-foreground'>
+							<p className='text-lg font-bold'>Payment Summary</p>
+						</div>
+						<div className='py-5 space-y-2'>
+							<div className='flex items-center justify-between px-5'>
+								<p>
+									Sub-total ({packs.length} pack
+									{packs.length > 1 ? 's' : ''})
+								</p>
+								<p className='font-semibold'>
+									{formatCurency(subTotal)}
+								</p>
+							</div>
+							<div className='flex items-center justify-between px-5'>
+								<p>Delivery fee</p>
+								<p className='font-semibold'>
+									{isLoadingDeliveryFeeData
+										? 'Loading...'
+										: formatCurency(deliveryFee)}
+								</p>
+							</div>
+							<div className='flex items-center justify-between px-5'>
+								<p>Service fee</p>
+								<p className='font-semibold'>
+									{isLoadingServiceFee
+										? 'Loading...'
+										: formatCurency(serviceFee)}
+								</p>
+							</div>
+							<div className='flex items-center justify-between px-5'>
+								<p className='font-semibold'>Total</p>
+								<p className='font-semibold'>
+									{isLoadingDeliveryFeeData ||
+									isLoadingServiceFee
+										? 'Loading...'
+										: formatCurency(total)}
+								</p>
+							</div>
+						</div>
+					</div>
+
+					{/* Checkout Button */}
+					<div className='px-5 py-2 bg-background sticky bottom-5'>
+						<Button
+							variant={'game'}
+							size={'lg'}
+							className='w-full'
+							onClick={handleCheckout}
+							disabled={
+								createOrderMutation.isPending ||
+								createPaymentMutation.isPending ||
+								!selectedAddressId || 
+								!prodileData?.phone
+							}>
+							{createOrderMutation.isPending ||
+							createPaymentMutation.isPending
+								? 'Processing...'
+								: 'Make Payment'}
+						</Button>
+					</div>
 				</div>
 			</div>
-		</div>
+			<AddressesDrawer
+				isAddressDialogOpen={isAddressDialogOpen}
+				setIsAddressDialogOpen={setIsAddressDialogOpen}
+				addresses={addresses}
+				selectedAddressId={selectedAddressId}
+				setSelectedAddressId={setSelectedAddressId}
+			/>
+			<AddPhoneNumberDrawer
+				isOpen={isAddPhoneDrawerOpen}
+				onClose={() => {
+					setIsAddPhoneDrawerOpen(false);
+					refetchProfile();
+				}}
+				redirectUrl={PAGES_DATA.checkout_page(vendorId)}
+			/>
+		</>
 	);
 };
 

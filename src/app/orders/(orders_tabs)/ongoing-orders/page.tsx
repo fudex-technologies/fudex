@@ -65,12 +65,12 @@ export default function OngoingOrdersPage() {
 	}
 
 	return (
-		<div className='w-full'>
+		<div className='w-full '>
 			{/* Empty state */}
 			{isEmpty && (
-				<div className='w-full max-w-md p-5 flex flex-col gap-5 items-center justify-center my-20'>
+				<div className='w-full max-w-md gap-5 flex flex-col items-center justify-center mx-auto px-5'>
 					<ImageWithFallback
-						src={'/assets/bike.png'}
+						src={'/assets/riderillustration.png'}
 						className='w-full'
 					/>
 					<div className='text-center'>
@@ -81,7 +81,7 @@ export default function OngoingOrdersPage() {
 					<Button
 						variant={'game'}
 						size={'lg'}
-						className='w-full mt-10 py-5'
+						className='w-full  py-5'
 						onClick={() => router.push(PAGES_DATA.home_page)}>
 						Order now
 					</Button>

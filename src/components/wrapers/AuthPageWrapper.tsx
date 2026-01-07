@@ -5,8 +5,10 @@ import { PAGES_DATA } from '@/data/pagesData';
 
 const AuthPageWrapper = ({
 	children,
+	skip,
 }: Readonly<{
 	children: React.ReactNode;
+	skip?:string
 }>) => {
 	return (
 		<PageWrapper
@@ -23,7 +25,7 @@ const AuthPageWrapper = ({
 							/>
 						</Link>
 						<Link
-							href={PAGES_DATA.home_page}
+							href={skip || PAGES_DATA.home_page}
 							className='text-white text-xl md:hidden'>
 							Skip
 						</Link>

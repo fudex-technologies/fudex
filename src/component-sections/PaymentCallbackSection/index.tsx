@@ -42,7 +42,7 @@ const PaymentCallbackSection = () => {
 	}, [reference]);
 
 	const handleContinue = () => {
-		router.push(PAGES_DATA.orders_page);
+		router.push(PAGES_DATA.ongoing_orders_page);
 	};
 	return (
 		<div className='flex flex-col items-center justify-center min-h-[60vh] gap-6 px-5'>

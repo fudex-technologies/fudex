@@ -16,6 +16,9 @@ const RESEND_COOLDOWN_SECONDS = 50;
 const MAX_ATTEMPTS = 5;
 const HMAC_SECRET = process.env.BETTER_AUTH_SECRET ?? 'secret';
 
+const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
+const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
+
 function signVerificationToken(payload: { phone: string; pvId: string; exp: number }) {
     const json = JSON.stringify(payload);
     const b64 = Buffer.from(json).toString('base64url');
@@ -37,10 +40,31 @@ function verifyVerificationToken(token: string) {
     }
 }
 
+export async function sendTwilioSms(phone234: string, otp: string) {
+    if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) throw new Error('TWILIO_ACCOUNT_SID or TWILIO_AUTH_TOKEN not configured');
+    const client = require('twilio')(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
+    const sms = `Your FUDEX verification code is ${otp}. It expires in 5 minutes.`;
+
+    console.log(sms);
+    
+
+    await client.messages.create({
+        body: sms,
+        messagingServiceSid: 'MG2d41fd1ddd9304add9c3213a2ff9aaf3',
+        to: `+${phone234}`
+    }).then((message: any) => {
+        console.log(message.sid)
+    }).catch((err: any) => {
+        console.log(err)
+    });
+
+    return Promise.resolve();
+}
+
 async function sendTermiiSms(phone234: string, otp: string) {
     if (!TERMII_API_KEY) throw new Error('TERMII_API_KEY not configured');
     if (!TERMII_BASE) throw new Error('TERMII_BASE not configured');
-    const sms = `Your FUDEX verification code is ${otp}. It expires in 5 minutes.`;
+    const sms = `This is a test without otp`;
     const url = `${TERMII_BASE}/api/sms/send`;
     const body = {
         api_key: TERMII_API_KEY,
@@ -108,12 +132,9 @@ export const phoneAuthRouter = createTRPCRouter({
 
             // send SMS
             try {
-                const res = await sendTermiiSms(phone, otp);
-                console.log("API RES: ", res);
+                await sendTermiiSms(phone, otp);
 
             } catch (e: any) {
-                console.log("Error: ", e);
-
                 throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'SMS_SEND_FAILED' });
             }
 
@@ -123,6 +144,8 @@ export const phoneAuthRouter = createTRPCRouter({
     verifyOtp: publicProcedure
         .input(z.object({ phone: z.string(), otp: z.string() }))
         .mutation(async ({ ctx, input }) => {
+            console.log(input);
+
             const phone = normalizePhoneNumber(input.phone);
             const pv = await ctx.prisma.phoneVerification.findFirst({
                 where: { phone }, orderBy: { createdAt: 'desc' }

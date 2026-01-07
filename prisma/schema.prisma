@@ -81,15 +81,16 @@ model User {
   updatedAt     DateTime @updatedAt
 
   // relations
-  sessions  Session[]
-  accounts  Account[]
-  addresses Address[]
-  vendors   Vendor[]   @relation("VendorOwner")
-  orders    Order[]
-  payments  Payment[]
-  operator  Operator? // if user is an operator, link record
-  roles     UserRole[]
-  reviews   Review[]
+  sessions        Session[]
+  accounts        Account[]
+  addresses       Address[]
+  vendors         Vendor[]         @relation("VendorOwner")
+  orders          Order[]
+  payments        Payment[]
+  operator        Operator? // if user is an operator, link record
+  roles           UserRole[]
+  reviews         Review[]
+  favoriteVendors FavoriteVendor[]
 
   @@unique([email])
   @@map("user")
@@ -274,6 +275,7 @@ model Vendor {
   vendorCategories VendorCategory[]
   openingHours     VendorOpeningHour[]
   vendorPayouts    VendorPayout[]
+  favoritedBy      FavoriteVendor[]
 
   @@index([name])
   @@index([city])
@@ -292,6 +294,20 @@ model VendorOpeningHour {
   vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 
   @@unique([vendorId, day])
+  @@index([vendorId])
+}
+
+model FavoriteVendor {
+  id        String   @id @default(uuid())
+  userId    String
+  vendorId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, vendorId])
+  @@index([userId])
   @@index([vendorId])
 }
 

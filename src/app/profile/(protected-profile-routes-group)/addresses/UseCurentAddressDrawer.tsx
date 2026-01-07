@@ -1,10 +1,6 @@
 'use client';
 
-import {
-	Drawer,
-	DrawerContent,
-	DrawerTrigger,
-} from '@/components/ui/drawer';
+import { Drawer, DrawerContent, DrawerTrigger } from '@/components/ui/drawer';
 import { cn } from '@/lib/utils';
 import { ChevronRight } from 'lucide-react';
 import { useEffect, useState, useCallback } from 'react';
@@ -12,12 +8,19 @@ import { FaLocationArrow } from 'react-icons/fa';
 import { savedAddressIcons } from './page';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { usePRofileActions } from '@/api-hooks/useProfileActions';
+import { useProfileActions } from '@/api-hooks/useProfileActions';
 import {
 	GeoResult,
 	reverseGeocode,
 } from '../../../../lib/location/reverseGeocode';
 import { Loader2 } from 'lucide-react';
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from '@/components/ui/select';
 
 interface AddressPayload {
 	label: string;
@@ -29,6 +32,7 @@ interface AddressPayload {
 	country?: string;
 	lat: number;
 	lng: number;
+	areaId: string;
 }
 
 const UseCurentAddressDrawer = ({
@@ -46,14 +50,18 @@ const UseCurentAddressDrawer = ({
 	const [resolvedAddress, setResolvedAddress] = useState<GeoResult | null>(
 		null
 	);
+	const [selectedAreaId, setSelectedAreaId] = useState<string | undefined>();
 
-	const { addAddress } = usePRofileActions();
+	const { addAddress, getAllAreasInEkiti } = useProfileActions();
 	const { mutate: addMutate, isPending: adding } = addAddress({
 		onSuccess: () => {
 			setIsOpen(false);
 			addAddressEffect && addAddressEffect();
 		},
 	});
+
+	const { data: listOfAreasInEkiti, isLoading: loadingAreas } =
+		getAllAreasInEkiti();
 
 	const handleFetchCurrentLocation = useCallback(() => {
 		setGeoLoading(true);
@@ -97,7 +105,7 @@ const UseCurentAddressDrawer = ({
 	}, [isOpen, handleFetchCurrentLocation]);
 
 	const handleSaveAddress = () => {
-		if (!resolvedAddress) return;
+		if (!resolvedAddress || !selectedAreaId) return;
 
 		const data: AddressPayload = {
 			label:
@@ -111,6 +119,7 @@ const UseCurentAddressDrawer = ({
 			country: resolvedAddress.country,
 			lat: resolvedAddress.lat,
 			lng: resolvedAddress.lng,
+			areaId: selectedAreaId,
 		};
 		addMutate(data);
 	};
@@ -159,6 +168,34 @@ const UseCurentAddressDrawer = ({
 								</>
 							)}
 						</div>
+
+						{resolvedAddress && (
+							<div className='space-y-2'>
+								<p className='font-semibold'>Select Area</p>
+								<Select
+									onValueChange={setSelectedAreaId}
+									defaultValue={selectedAreaId}>
+									<SelectTrigger>
+										<SelectValue placeholder='Select your area' />
+									</SelectTrigger>
+									<SelectContent>
+										{loadingAreas ? (
+											<div className='p-2'>
+												Loading areas...
+											</div>
+										) : (
+											listOfAreasInEkiti?.map((area) => (
+												<SelectItem
+													key={area.id}
+													value={area.id}>
+													{area.name}
+												</SelectItem>
+											))
+										)}
+									</SelectContent>
+								</Select>
+							</div>
+						)}
 
 						<div className='w-full space-y-2 my-5'>
 							<p className='font-semibold'>Address Label</p>
@@ -229,7 +266,12 @@ const UseCurentAddressDrawer = ({
 						<Button
 							variant={'game'}
 							className='w-full py-5 my-3'
-							disabled={!resolvedAddress || adding || geoLoading}
+							disabled={
+								!resolvedAddress ||
+								!selectedAreaId ||
+								adding ||
+								geoLoading
+							}
 							onClick={handleSaveAddress}>
 							{adding ? 'Saving...' : 'Select this address'}
 						</Button>

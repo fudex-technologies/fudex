@@ -25,6 +25,8 @@ export const PAGES_DATA = {
     profile_notifications_page: `/profile/notifications`,
     profile_faqs_page: `/profile/faqs`,
 
+    profile_verify_phone_page: `/profile/verify-phone`,
+
     profile_addresses_page: `/profile/addresses`,
     profile_set_address_manually: `/profile/addresses/set-manually`,
 

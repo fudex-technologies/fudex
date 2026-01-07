@@ -42,13 +42,10 @@ export function useAuthActions() {
         return useMutation(
             trpc.phoneAuth.requestOtp.mutationOptions({
                 onSuccess: async (data) => {
-                    router.replace(PAGES_DATA.onboarding_verify_number_page);
                     if (!options?.silent) toast.success("OTP sent");
                     options?.onSuccess?.(data);
                 },
                 onError: (err: unknown) => {
-                    console.log(err);
-
                     if (!options?.silent)
                         toast.error("OTP Failed to send", {
                             description:
@@ -75,7 +72,6 @@ export function useAuthActions() {
                         localStorageStrings.onboardingVerificationToken,
                         data?.token
                     );
-                    router.replace(PAGES_DATA.onboarding_verify_number_page);
                     if (!options?.silent) toast.success("OTP Verified successfully");
                     options?.onSuccess?.(data);
                 },

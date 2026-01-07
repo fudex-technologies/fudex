@@ -40,11 +40,32 @@ export default function RequirePhoneModal() {
 
 	useEffect(() => {
 		if (session && session.user && !(session.user as ExtendedUser)?.phone) {
-			setOpen(true);
+			const lastShownString = localStorage.getItem(
+				localStorageStrings.requirePhoneModalLastShown
+			);
+			if (lastShownString) {
+				const lastShown = new Date(lastShownString).getTime();
+				const now = new Date().getTime();
+				const oneHour = 60 * 60 * 1000;
+				if (now - lastShown > oneHour) {
+					setOpen(true);
+				}
+			} else {
+				setOpen(true);
+			}
 		} else {
 			setOpen(false);
 		}
 	}, [session]);
+
+	useEffect(() => {
+		if (open) {
+			localStorage.setItem(
+				localStorageStrings.requirePhoneModalLastShown,
+				new Date().toISOString()
+			);
+		}
+	}, [open]);
 
 	const { requestPhoneOtp } = useAuthActions();
 	const { mutate: requestOtpMutate, isPending } = requestPhoneOtp({

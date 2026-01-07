@@ -6,7 +6,10 @@ import { PAGES_DATA } from '@/data/pagesData';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { IoMail } from 'react-icons/io5';
-import ContinueWithGoogleButton from '../../ContinueWithGoogleButton';
+import ContinueWithGoogleButton, {
+	ContinueWithGoogleButtonSkeleton,
+} from '../../ContinueWithGoogleButton';
+import { Suspense } from 'react';
 
 export default function OnboardingStepThreePage() {
 	return (
@@ -23,9 +26,16 @@ export default function OnboardingStepThreePage() {
 					</h1>
 				</div>
 				<div className='w-full space-y-2 my-5'>
-					<ContinueWithGoogleButton
-						className={'bg-foreground text-background py-7'}
-					/>
+					<Suspense
+						fallback={
+							<ContinueWithGoogleButtonSkeleton
+								className={'bg-foreground text-background py-7'}
+							/>
+						}>
+						<ContinueWithGoogleButton
+							className={'bg-foreground text-background py-7'}
+						/>
+					</Suspense>
 					<Link
 						href={PAGES_DATA.onboarding_signup_page}
 						className={cn(

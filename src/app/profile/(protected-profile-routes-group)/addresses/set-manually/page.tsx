@@ -11,9 +11,9 @@ import InputField, { SelectField } from '@/components/InputComponent';
 import { nigeriaStatesData } from '@/lib/staticData/nigeriaStatesData';
 import { Button } from '@/components/ui/button';
 import ConfirmLocationModal from './ConfirmLocationModal';
-import { usePRofileActions } from '@/api-hooks/useProfileActions';
 import { useRouter } from 'next/navigation';
 import { PAGES_DATA } from '@/data/pagesData';
+import { useProfileActions } from '@/api-hooks/useProfileActions';
 
 interface IFormData {
 	address: string;
@@ -24,6 +24,7 @@ interface IFormTouchedData {
 	address?: boolean;
 	city?: boolean;
 	country?: boolean;
+	area?: boolean;
 }
 const initialFormData = {
 	address: '',
@@ -39,11 +40,18 @@ export default function SetAddressManually() {
 	>('home');
 	const [customLabel, setCustomLabel] = useState('');
 	const [confirmOpen, setConfirmOpen] = useState(false);
+	const [selectedAreaId, setSelectedAreaId] = useState<string | undefined>();
 	const router = useRouter();
 
-	const { addAddress } = usePRofileActions();
+	const { addAddress, getAllAreasInEkiti, getAddresses } =
+		useProfileActions();
+	const { refertch } = getAddresses();
+	const { data: listOfAreasInEkiti, isLoading: loadingAreas } =
+		getAllAreasInEkiti();
+
 	const { mutate: addAddressMutate, isPending: addingAddress } = addAddress({
 		onSuccess: () => {
+			refertch();
 			setConfirmOpen(false);
 			router.push(PAGES_DATA.profile_addresses_page);
 		},
@@ -54,6 +62,7 @@ export default function SetAddressManually() {
 		if (!form.address) newErrors.address = 'Address is required';
 		if (!form.city) newErrors.city = 'City is required';
 		if (!form.country) newErrors.country = 'Country is required';
+		if (!selectedAreaId) newErrors.area = 'Area is required';
 
 		return newErrors;
 	};
@@ -66,6 +75,7 @@ export default function SetAddressManually() {
 			address: true,
 			city: true,
 			country: true,
+			area: true,
 		});
 		if (!isFormValid) return;
 		setConfirmOpen(true);
@@ -102,6 +112,24 @@ export default function SetAddressManually() {
 						required
 					/>
 					<SelectField
+						data={
+							listOfAreasInEkiti?.map((area) => ({
+								label: area.name.toLocaleUpperCase(),
+								value: area.id,
+							})) || []
+						}
+						label='Area'
+						onChange={(value) => {
+							setSelectedAreaId(value as string);
+							setTouched({ ...touched, area: true });
+						}}
+						value={selectedAreaId || ''}
+						error={touched.area && errorsNow.area}
+						placeholder='Select your area'
+						disabled={loadingAreas}
+						required
+					/>
+					<SelectField
 						data={nigeriaStatesData.map((state) => ({
 							label: state,
 							value: state,
@@ -109,8 +137,9 @@ export default function SetAddressManually() {
 						label='City'
 						onChange={handleChange('city')}
 						value={form.city}
-						error={touched.address && errorsNow.address}
+						error={touched.city && errorsNow.city}
 						required
+						disabled
 					/>
 					<InputField
 						type='text'
@@ -120,6 +149,7 @@ export default function SetAddressManually() {
 						onChange={handleChange('country')}
 						error={touched.country && errorsNow.country}
 						required
+						disabled
 					/>
 
 					<div className='w-full space-y-2 my-5'>
@@ -200,6 +230,7 @@ export default function SetAddressManually() {
 				setOpen={setConfirmOpen}
 				locationData={form}
 				handleAddAddress={() => {
+					if (!selectedAreaId) return;
 					addAddressMutate({
 						city: form.city,
 						country: form.country,
@@ -208,6 +239,7 @@ export default function SetAddressManually() {
 							selectedLabel === 'other'
 								? customLabel || 'Other'
 								: selectedLabel,
+						areaId: selectedAreaId,
 					});
 				}}
 				pending={addingAddress}

@@ -3,7 +3,8 @@ import bcrypt from "bcryptjs";
 
 
 
-export const formatCurency = (price: number) => {
+export const formatCurency = (price: number, otherparams?: { ShowFree?: boolean }) => {
+    if (otherparams?.ShowFree && Number(price) === 0) return "FREE!"
     return new Intl.NumberFormat('en-NG', {
         style: 'currency',
         currency: 'NGN',

@@ -7,13 +7,13 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-	DialogTrigger,
 } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { signOut } from '@/lib/auth-client';
 import { toast } from 'sonner';
 import { Dispatch, SetStateAction } from 'react';
 import { Separator } from '../ui/separator';
+import { useCartStore } from '@/store/cart-store';
 
 const ConfirmLogoutModal = ({
 	open,
@@ -22,11 +22,14 @@ const ConfirmLogoutModal = ({
 	open: boolean;
 	setOpen: Dispatch<SetStateAction<boolean>>;
 }) => {
+	const { clearCart } = useCartStore();
 	const logoutHandler = async () => {
 		await signOut({
 			fetchOptions: {
 				onSuccess: () => {
 					toast.success('Logged out');
+					clearCart();
+					localStorage.clear();
 				},
 			},
 		});

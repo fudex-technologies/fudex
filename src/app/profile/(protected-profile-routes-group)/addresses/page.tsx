@@ -14,7 +14,7 @@ import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
 import UseCurentAddressDrawer from './UseCurentAddressDrawer';
 import Link from 'next/link';
 import { PAGES_DATA } from '@/data/pagesData';
-import { usePRofileActions } from '@/api-hooks/useProfileActions';
+import { useProfileActions } from '@/api-hooks/useProfileActions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { shortenText } from '@/lib/commonFunctions';
 import { Suspense } from 'react';
@@ -40,7 +40,7 @@ export const savedAddressIcons = {
 };
 
 export default function ProfileAddressesPage() {
-	const { getAddresses } = usePRofileActions();
+	const { getAddresses } = useProfileActions();
 	const {
 		data: addresses,
 		isLoading: addressesLoading,

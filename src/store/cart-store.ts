@@ -36,6 +36,7 @@ export interface CartState {
 	clearCart: () => void;
 
 	getTotalPacks: () => number;
+	getTotalVendors: () => number;
 	getVendorPacks: (vendorId: string) => CartPack[];
 	getVendorPackCount: (vendorId: string) => number;
 	getVendorsCount: () => number;
@@ -151,6 +152,9 @@ export const useCartStore = create<CartState>()(
 			},
 
 
+			getTotalVendors: () => {
+				return Object.values(get().vendors)?.length ?? 0;
+			},
 			getTotalPacks: () => {
 				return Object.values(get().vendors).reduce(
 					(sum, v) => sum + v.packs.length,

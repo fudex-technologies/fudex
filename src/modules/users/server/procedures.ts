@@ -75,7 +75,7 @@ export const userRouter = createTRPCRouter({
                 lat: z.number().optional(),
                 lng: z.number().optional(),
                 isDefault: z.boolean().optional(),
-                areaId: z.string().optional(),
+                areaId: z.string(),
                 customArea: z.string().optional(),
             })
         )
@@ -124,6 +124,80 @@ export const userRouter = createTRPCRouter({
         return ctx.prisma.address.delete({ where: { id: input.id } });
     }),
 
+
+    isVendorFavorited: protectedProcedure
+        .input(z.object({ vendorId: z.string() }))
+        .query(async ({ ctx, input }) => {
+            const userId = ctx.user.id;
+
+            const exists = await ctx.prisma.favoriteVendor.findUnique({
+                where: {
+                    userId_vendorId: {
+                        userId,
+                        vendorId: input.vendorId,
+                    },
+                },
+                select: { id: true },
+            });
+
+            return Boolean(exists);
+        }),
+
+    toggleFavoriteVendor: protectedProcedure
+        .input(z.object({ vendorId: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+            const userId = ctx.user.id;
+
+            const existing = await ctx.prisma.favoriteVendor.findUnique({
+                where: {
+                    userId_vendorId: {
+                        userId,
+                        vendorId: input.vendorId,
+                    },
+                },
+            });
+
+            if (existing) {
+                await ctx.prisma.favoriteVendor.delete({
+                    where: { id: existing.id },
+                });
+                return { favorited: false };
+            }
+
+            await ctx.prisma.favoriteVendor.create({
+                data: {
+                    userId,
+                    vendorId: input.vendorId,
+                },
+            });
+
+            return { favorited: true };
+        }),
+
+    getMyFavoriteVendors: protectedProcedure
+        .input(
+            z.object({
+                take: z.number().optional().default(20),
+                skip: z.number().optional().default(0),
+            })
+        )
+        .query(async ({ ctx, input }) => {
+            return ctx.prisma.favoriteVendor.findMany({
+                where: { userId: ctx.user.id },
+                take: input.take,
+                skip: input.skip,
+                orderBy: { createdAt: "desc" },
+                include: {
+                    vendor: {
+                        include: {
+                            openingHours: true,
+                        },
+                    },
+                },
+            });
+        }),
+
+
     // Check if user has vendor role
     checkVendorRole: protectedProcedure.query(async ({ ctx }) => {
         const userId = ctx.user!.id;
@@ -159,7 +233,10 @@ export const userRouter = createTRPCRouter({
         .query(({ ctx, input }) => {
             const where: any = {};
             if (input?.state) {
-                where.state = input.state;
+                where.state = {
+                    equals: input.state,
+                    mode: 'insensitive',
+                };
             }
             return ctx.prisma.area.findMany({
                 where,

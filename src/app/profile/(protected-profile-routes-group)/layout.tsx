@@ -11,12 +11,12 @@ export default function ProtectedPRofileRouteGroupLayout({
 }: Readonly<{
 	children: React.ReactNode;
 }>) {
-	const { data: session, error } = useSession();
+	const { data: session, isPending, error } = useSession();
 	const router = useRouter();
 
 	useEffect(() => {
 		// If user is not authenticated, redirect to sign-in
-		if (!session?.user || error) {
+		if ((!session?.user || error) && !isPending) {
 			toast.warning('Please Login first!');
 			router.push(PAGES_DATA.profile_page);
 			return;

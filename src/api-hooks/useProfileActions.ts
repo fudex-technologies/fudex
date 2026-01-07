@@ -6,7 +6,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { UseAPICallerOptions } from "./api-hook-types";
 import { toast } from "sonner";
 
-export function usePRofileActions() {
+export function useProfileActions() {
     const { data: session } = useSession();
     const trpc = useTRPC();
 
@@ -99,6 +99,11 @@ export function usePRofileActions() {
         ),
         getAddresses: () => useQuery(
             trpc.users.listAddresses.queryOptions(undefined, {
+                enabled: !!session,
+            })
+        ),
+        getAllAreasInEkiti: () => useQuery(
+            trpc.users.listAreas.queryOptions({state: "ekiti"}, {
                 enabled: !!session,
             })
         )

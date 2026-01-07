@@ -9,7 +9,7 @@ import { PAGES_DATA } from '@/data/pagesData';
 import { Store, Package, ShoppingBag } from 'lucide-react';
 import TabComponent from '@/components/TabComponent';
 import { useState } from 'react';
-import { usePRofileActions } from '@/api-hooks/useProfileActions';
+import { useProfileActions } from '@/api-hooks/useProfileActions';
 
 export default function VendorDashboardLayout({
 	children,
@@ -22,7 +22,7 @@ export default function VendorDashboardLayout({
 
 	// Check if user is a vendor
 	const { data: isVendor, isPending: isVendorPending } =
-		usePRofileActions().isUserAVendor();
+		useProfileActions().isUserAVendor();
 
 	if (isPending) {
 		return (

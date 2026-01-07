@@ -49,6 +49,7 @@ interface InputFieldProps {
 	accept?: string;
 	min?: string;
 	max?: string;
+	disabled?: boolean;
 }
 
 const InputField: React.FC<InputFieldProps> = ({
@@ -64,6 +65,7 @@ const InputField: React.FC<InputFieldProps> = ({
 	icon,
 	className,
 	accept,
+	disabled,
 
 	...props
 }) => {
@@ -113,6 +115,7 @@ const InputField: React.FC<InputFieldProps> = ({
           ${icon && 'pl-10'}
           `}
 				accept={accept}
+				disabled={disabled}
 				{...props}
 			/>
 			{hint && !error && (
@@ -185,6 +188,7 @@ interface SelectFieldProps {
 	hint?: string;
 	icon?: React.ReactElement;
 	data: { value: string; label: string }[];
+	disabled?: boolean;
 }
 
 export const SelectField: React.FC<SelectFieldProps> = ({
@@ -197,6 +201,7 @@ export const SelectField: React.FC<SelectFieldProps> = ({
 	data,
 	icon,
 	placeholder,
+	disabled = false,
 }) => {
 	return (
 		<div className='mb-4 w-full relative'>
@@ -204,7 +209,11 @@ export const SelectField: React.FC<SelectFieldProps> = ({
 
 			{icon && <span className='absolute top-9 left-3'>{icon}</span>}
 
-			<Select value={value} onValueChange={onChange} required={required}>
+			<Select
+				disabled={disabled}
+				value={value}
+				onValueChange={onChange}
+				required={required}>
 				<SelectTrigger
 					className={`
           w-full px-3 py-6 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 transition  bg-gray-50 resize-none 

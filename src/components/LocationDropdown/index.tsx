@@ -13,12 +13,12 @@ import { cn } from '@/lib/utils';
 import { useSession } from '@/lib/auth-client';
 import { useRouter } from 'next/navigation';
 import { PAGES_DATA } from '@/data/pagesData';
-import { usePRofileActions } from '@/api-hooks/useProfileActions';
 import { shortenText } from '@/lib/commonFunctions';
+import { useProfileActions } from '@/api-hooks/useProfileActions';
 
 const LocationDropdown = ({ className }: { className?: ClassNameValue }) => {
 	const { data: session } = useSession();
-	const { getAddresses, updateAddress } = usePRofileActions();
+	const { getAddresses, updateAddress } = useProfileActions();
 	const { data: addresses, isLoading: addressesLoading } = getAddresses();
 	const { mutate } = updateAddress({
 		silent: true,

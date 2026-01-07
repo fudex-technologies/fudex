@@ -1,5 +1,6 @@
 'use client';
 
+import { useProfileActions } from '@/api-hooks/useProfileActions';
 import MenuListComponent from '@/components/MenuListComponnt';
 import ConfirmLogoutModal from '@/components/Modals/ConfirmLogoutModal';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -20,18 +21,17 @@ import {
 	Settings,
 } from 'lucide-react';
 import { useState } from 'react';
-import { usePRofileActions } from '@/api-hooks/useProfileActions';
 
 const ProfileMenusSection = () => {
 	const [confirmLogout, setConfirmLogout] = useState(false);
 	const { data: session, isPending } = useSession();
 
 	// Check if user is a vendor
-	const { data: isVendor } = usePRofileActions().isUserAVendor();
+	const { data: isVendor } = useProfileActions().isUserAVendor();
 	// Check if user is an admin
-	const { data: isAdmin } = usePRofileActions().isUserAnAdmin();
+	const { data: isAdmin } = useProfileActions().isUserAnAdmin();
 	// Check if user is an operator
-	const { data: isOperator } = usePRofileActions().isUserAnOperator();
+	const { data: isOperator } = useProfileActions().isUserAnOperator();
 
 	if (isPending && !session) {
 		return <ProfileMenusSectionSkeleton />;

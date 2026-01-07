@@ -7,14 +7,17 @@ import AuthPageWrapper from '@/components/wrapers/AuthPageWrapper';
 import { PAGES_DATA } from '@/data/pagesData';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import {
 	validateEmailRegex,
 	validatePhoneNumberRegex,
 } from '@/lib/commonFunctions';
 import { localStorageStrings } from '@/constants/localStorageStrings';
 import { useAuthActions } from '@/api-hooks/useAuthActions';
-import ContinueWithGoogleButton from './ContinueWithGoogleButton';
+import ContinueWithGoogleButton, {
+	ContinueWithGoogleButtonSkeleton,
+} from './ContinueWithGoogleButton';
+import { useRouter } from 'next/navigation';
 
 interface IFormData {
 	phone: string;
@@ -43,6 +46,7 @@ const initialFormData = {
 export default function OnboardingSignUpPage() {
 	const [form, setForm] = useState<IFormData>(initialFormData);
 	const [touched, setTouched] = useState<IFormTouchedData>({});
+	const router = useRouter()
 
 	const { requestPhoneOtp } = useAuthActions();
 	const { mutate, isPending } = requestPhoneOtp({
@@ -53,6 +57,7 @@ export default function OnboardingSignUpPage() {
 				localStorageStrings.onboardingSignupString,
 				JSON.stringify({ ...form })
 			);
+			router.replace(PAGES_DATA.onboarding_verify_number_page);
 		},
 	});
 
@@ -173,7 +178,9 @@ export default function OnboardingSignUpPage() {
 						<div className='flex-1 h-1 bg-muted' /> <p>or</p>
 						<div className='flex-1 h-1 bg-muted' />
 					</div>
-					<ContinueWithGoogleButton />
+					<Suspense fallback={<ContinueWithGoogleButtonSkeleton />}>
+						<ContinueWithGoogleButton />
+					</Suspense>
 					<div className='w-full text-center flex gap-2 items-center justify-center'>
 						<p className='text-sm text-foreground/50'>
 							Already have an account?

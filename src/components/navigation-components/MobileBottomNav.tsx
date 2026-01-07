@@ -13,11 +13,12 @@ import { RiUser3Line } from 'react-icons/ri';
 import { RiUser3Fill } from 'react-icons/ri';
 import { RiShoppingBag2Line } from 'react-icons/ri';
 import { RiShoppingBag2Fill } from 'react-icons/ri';
-import { useSession } from '@/lib/auth-client';
+import { useCartStore } from '@/store/cart-store';
+import { Badge } from '../ui/badge';
 
 const MobileBottomNav = () => {
 	const pathname = usePathname();
-	const { data: session, isPending } = useSession();
+	const { getTotalVendors, isCartEmpty } = useCartStore();
 
 	const activeStyle = (baseUrl: string): ClassNameValue => {
 		if (baseUrl !== PAGES_DATA.home_page && pathname.startsWith(baseUrl)) {
@@ -100,18 +101,29 @@ const MobileBottomNav = () => {
 						activeStyle(PAGES_DATA.orders_page)
 					)}>
 					{isActive(PAGES_DATA.orders_page) ? (
-						<RiShoppingBag2Fill
-							width={20}
-							height={20}
-							className={cn('w-5 h-5')}
-						/>
+						<div className='relative'>
+							<RiShoppingBag2Fill
+								width={20}
+								height={20}
+								className={cn('w-5 h-5')}
+							/>
+						</div>
 					) : (
-						<RiShoppingBag2Line
-							width={20}
-							height={20}
-							className={cn('w-5 h-5')}
-							color='#858585'
-						/>
+						<div className='relative'>
+							{!isCartEmpty() && (
+								<Badge
+									className='text-xs h-5 min-w-5 rounded-full px-1 font-mono tabular-nums absolute -top-3 -right-3'
+									variant='destructive'>
+									{getTotalVendors()}
+								</Badge>
+							)}
+							<RiShoppingBag2Line
+								width={20}
+								height={20}
+								className={cn('w-5 h-5')}
+								color='#858585'
+							/>
+						</div>
 					)}
 
 					<p className=''>Orders</p>

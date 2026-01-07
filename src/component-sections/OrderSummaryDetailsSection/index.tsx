@@ -11,6 +11,7 @@ import { useCartStore } from '@/store/cart-store';
 import { useVendorProductActions } from '@/api-hooks/useVendorActions';
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
 
 const OrderSummaryDetailsSection = ({ vendorId }: { vendorId: string }) => {
 	const router = useRouter();
@@ -84,7 +85,11 @@ const OrderSummaryDetailsSection = ({ vendorId }: { vendorId: string }) => {
 
 	if (isEmpty) {
 		return (
-			<div className='w-full p-5 flex flex-col gap-5 items-center justify-center my-20'>
+			<div className='w-full max-w-md p-5 flex flex-col gap-5 items-center justify-center my-20 mx-auto'>
+				<ImageWithFallback
+					src={'/assets/empty-tray.png'}
+					className='w-full'
+				/>
 				<div className='text-center'>
 					<h1 className='font-bold text-xl'>Your tray is empty</h1>
 					<p className='text-sm font-light'>

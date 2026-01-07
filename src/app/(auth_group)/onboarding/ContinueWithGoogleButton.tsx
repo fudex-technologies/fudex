@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { ClassNameValue } from 'tailwind-merge';
 import { cn } from '@/lib/utils';
+import { useSearchParams } from 'next/navigation';
 
 const ContinueWithGoogleButton = ({
 	className,
@@ -15,11 +16,13 @@ const ContinueWithGoogleButton = ({
 	className?: ClassNameValue;
 }) => {
 	const [loading, setLoading] = useState(false);
+	const searchParams = useSearchParams();
+	const redirectTo = searchParams.get('redirect');
 
 	const signInWithGoogle = async () => {
 		return await signIn.social({
 			provider: 'google',
-			callbackURL: PAGES_DATA.home_page,
+			callbackURL: redirectTo || PAGES_DATA.home_page,
 		});
 	};
 
@@ -50,3 +53,19 @@ const ContinueWithGoogleButton = ({
 };
 
 export default ContinueWithGoogleButton;
+
+export const ContinueWithGoogleButtonSkeleton = ({
+	className,
+}: {
+	className?: ClassNameValue;
+}) => {
+	return (
+		<Button
+			variant={'outline'}
+			className={cn('w-full py-5', className)}
+			disabled={true}>
+			<FcGoogle />
+			Continue With Google
+		</Button>
+	);
+};

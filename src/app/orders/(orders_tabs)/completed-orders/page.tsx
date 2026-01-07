@@ -35,9 +35,9 @@ export default function CompletedOrdersPage() {
 		<div className='w-full'>
 			{/* Empty state */}
 			{isEmpty && (
-				<div className='w-full max-w-md mx-auto p-5 flex flex-col gap-5 items-center justify-center my-5'>
+				<div className='w-full max-w-md mx-auto px-5 flex flex-col gap-5 items-center justify-center my-5'>
 					<ImageWithFallback
-						src={'/assets/bike.png'}
+						src={'/assets/riderillustration.png'}
 						className='w-full'
 					/>
 					<div className='text-center'>

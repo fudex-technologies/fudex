@@ -8,9 +8,9 @@ import Link from 'next/link';
 export default function OnboardingSetAddressPAge() {
 	return (
 		<div className='w-screen h-screen flex items-center justify-center p-5 sm:p-10 relative'>
-            <div className="w-full absolute p-5 top-0 lrft-0">
-                <LocationDropdown className="max-w-[200px]" />
-            </div>
+			<div className='w-full absolute p-5 top-0 lrft-0'>
+				<LocationDropdown className='max-w-[200px]' />
+			</div>
 			<div className='w-full max-w-md rounded-4xl p-5 sm:p-10 bg-background flex flex-col gap-7 items-center'>
 				<ImageWithFallback
 					className='w-[150px] h-auto object-contain'
