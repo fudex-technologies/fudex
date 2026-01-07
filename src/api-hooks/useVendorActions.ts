@@ -1,7 +1,7 @@
 "use client";
 
 import { useTRPC } from "@/trpc/client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { RatingFilterType } from "@/modules/vendors/schema";
 
 export function useVendorProductActions() {
@@ -30,8 +30,35 @@ export function useVendorProductActions() {
             useQuery(trpc.vendors.getBySlug.queryOptions(input)),
         useVendorsSearch: (input: { q?: string; categoryId?: string; categoryIds?: string[]; take?: number; skip?: number }) =>
             useQuery(trpc.vendors.search.queryOptions(input)),
+        useInfiniteSearchVendors: (input: { q?: string; categoryId?: string; categoryIds?: string[]; limit?: number }) =>
+            useInfiniteQuery(
+                trpc.vendors.searchInfinite.infiniteQueryOptions(
+                    {
+                        ...input,
+                        limit: input.limit ?? 20,
+                    },
+                    {
+                        getNextPageParam: (lastPage) => lastPage.nextCursor,
+                        initialCursor: 0,
+                    }
+                )
+            ),
         useListVendors: (input?: { q?: string; take?: number; skip?: number, ratingFilter?: RatingFilterType }) =>
             useQuery(trpc.vendors.list.queryOptions(input ?? {})),
+        useInfiniteListVendors: (input?: { q?: string; limit?: number; ratingFilter?: RatingFilterType }) =>
+            useInfiniteQuery(
+                trpc.vendors.listInfinite.infiniteQueryOptions(
+                    {
+                        limit: input?.limit ?? 20,
+                        q: input?.q,
+                        ratingFilter: input?.ratingFilter,
+                    },
+                    {
+                        getNextPageParam: (lastPage) => lastPage.nextCursor,
+                        initialCursor: 0,
+                    }
+                )
+            ),
         usePopularVendors: (input?: { take?: number; skip?: number }) =>
             useQuery(trpc.vendors.getPopularVendors.queryOptions(input ?? {})),
     };

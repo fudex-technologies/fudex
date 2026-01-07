@@ -5,6 +5,7 @@ import { useSession } from '@/lib/auth-client';
 import InputField from '@/components/InputComponent';
 import { Button } from '@/components/ui/button';
 import { useAuthActions } from '@/api-hooks/useAuthActions';
+import { useProfileActions } from '@/api-hooks/useProfileActions';
 import { localStorageStrings } from '@/constants/localStorageStrings';
 import { PAGES_DATA } from '@/data/pagesData';
 import { useRouter } from 'next/navigation';
@@ -67,14 +68,12 @@ export default function RequirePhoneModal() {
 		}
 	}, [open]);
 
-	const { requestPhoneOtp } = useAuthActions();
-	const { mutate: requestOtpMutate, isPending } = requestPhoneOtp({
+	const { updateProfile } = useProfileActions();
+	const { mutate: updateProfileMutate, isPending } = updateProfile({
 		onSuccess: () => {
-			localStorage.setItem(
-				localStorageStrings.onboardingSignupString,
-				JSON.stringify({ phone: form.phone })
-			);
-			router.push(PAGES_DATA.onboarding_verify_number_page);
+			// Redirect to profile verification page
+			router.push(PAGES_DATA.profile_verify_phone_page);
+			setOpen(false);
 		},
 	});
 
@@ -95,7 +94,7 @@ export default function RequirePhoneModal() {
 		});
 		if (!isFormValid) return;
 
-		requestOtpMutate({ phone: form.phone });
+		updateProfileMutate({ phone: form.phone });
 	};
 
 	const handleChange =

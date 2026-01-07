@@ -25,6 +25,18 @@ const SearchInput = forwardRef<HTMLInputElement, Props>(
 			setLocalQuery(search.q || '');
 		}, [search.q]);
 
+		// Debounced search effect
+		useEffect(() => {
+			// Only auto-search on the search page
+			if (pathname === '/search') {
+				const timer = setTimeout(() => {
+					setSearch({ q: localQuery || null });
+				}, 500); // 500ms debounce
+
+				return () => clearTimeout(timer);
+			}
+		}, [localQuery, pathname, setSearch]);
+
 		const handleSearch = (value: string) => {
 			setLocalQuery(value);
 			if (pathname !== '/search') {

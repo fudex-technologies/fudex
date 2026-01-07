@@ -4,6 +4,12 @@ import withPWA from "@ducanh2912/next-pwa";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   turbopack: {},
+  images: {
+    domains: [
+      "res.cloudinary.com",
+      "6mq1ghe0xghnbs82.public.blob.vercel-storage.com",
+    ],
+  },
 };
 
 export default withPWA({

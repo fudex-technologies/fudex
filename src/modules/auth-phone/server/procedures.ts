@@ -45,9 +45,6 @@ export async function sendTwilioSms(phone234: string, otp: string) {
     const client = require('twilio')(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
     const sms = `Your FUDEX verification code is ${otp}. It expires in 5 minutes.`;
 
-    console.log(sms);
-    
-
     await client.messages.create({
         body: sms,
         messagingServiceSid: 'MG2d41fd1ddd9304add9c3213a2ff9aaf3',
@@ -64,7 +61,7 @@ export async function sendTwilioSms(phone234: string, otp: string) {
 async function sendTermiiSms(phone234: string, otp: string) {
     if (!TERMII_API_KEY) throw new Error('TERMII_API_KEY not configured');
     if (!TERMII_BASE) throw new Error('TERMII_BASE not configured');
-    const sms = `This is a test without otp`;
+    const sms = `Your FUDEX verification code is ${otp}. It expires in 5 minutes.`;
     const url = `${TERMII_BASE}/api/sms/send`;
     const body = {
         api_key: TERMII_API_KEY,
@@ -72,7 +69,7 @@ async function sendTermiiSms(phone234: string, otp: string) {
         from: 'FUDEX',
         sms,
         type: "plain",
-        channel: "generic"
+        channel: "dnd"
     };
 
     const res = await fetch(url, {
@@ -144,8 +141,6 @@ export const phoneAuthRouter = createTRPCRouter({
     verifyOtp: publicProcedure
         .input(z.object({ phone: z.string(), otp: z.string() }))
         .mutation(async ({ ctx, input }) => {
-            console.log(input);
-
             const phone = normalizePhoneNumber(input.phone);
             const pv = await ctx.prisma.phoneVerification.findFirst({
                 where: { phone }, orderBy: { createdAt: 'desc' }
@@ -174,6 +169,15 @@ export const phoneAuthRouter = createTRPCRouter({
 
             // mark verified
             await ctx.prisma.phoneVerification.update({ where: { id: pv.id }, data: { verified: true } });
+
+            // Update user record if exists
+            const existingUser = await ctx.prisma.user.findUnique({ where: { phone } });
+            if (existingUser) {
+                await ctx.prisma.user.update({
+                    where: { id: existingUser.id },
+                    data: { phoneVerified: true }
+                });
+            }
 
             const token = signVerificationToken({ phone, pvId: pv.id, exp: Date.now() + 5 * 60 * 1000 });
             return { token };
@@ -205,11 +209,12 @@ export const phoneAuthRouter = createTRPCRouter({
                 });
                 // BetterAuth returns the user (or session.user)
                 const userId = signUpRes.user.id;
-                // Attach phone to the user
+                // Attach phone to the user and mark verified
                 await ctx.prisma.user.update({
                     where: { id: userId },
                     data: {
                         phone,
+                        phoneVerified: true,
                     },
                 });
 
@@ -273,8 +278,82 @@ export const phoneAuthRouter = createTRPCRouter({
             const other = await ctx.prisma.user.findFirst({ where: { phone, id: { not: ctx.user!.id } } });
             if (other) throw new TRPCError({ code: 'CONFLICT', message: 'PHONE_ALREADY_IN_USE' });
 
-            const updated = await ctx.prisma.user.update({ where: { id: ctx.user!.id }, data: { phone } as any });
+            const updated = await ctx.prisma.user.update({
+                where: { id: ctx.user!.id },
+                data: { phone, phoneVerified: true }
+            });
             return { success: true, user: updated };
+        }),
+
+    // Protected: Request OTP for the currently logged-in user's phone
+    requestProfileOtp: protectedProcedure
+        .mutation(async ({ ctx }) => {
+            const user = await ctx.prisma.user.findUnique({ where: { id: ctx.user.id } });
+            if (!user?.phone) throw new TRPCError({ code: "BAD_REQUEST", message: "NO_PHONE_ON_PROFILE" });
+            const phone = normalizePhoneNumber(user.phone);
+
+            // Rate limit check
+            const last = await ctx.prisma.phoneVerification.findFirst({
+                where: { phone },
+                orderBy: { createdAt: 'desc' }
+            });
+            if (last) {
+                const secondsSince = (Date.now() - last.createdAt.getTime()) / 1000;
+                if (secondsSince < RESEND_COOLDOWN_SECONDS) {
+                    throw new TRPCError({ code: 'TOO_MANY_REQUESTS', message: 'RESEND_COOLDOWN' });
+                }
+            }
+
+            // Generate & Send
+            const otp = generateOTP();
+            const otpHash = await hashOTP(otp);
+            const expiresAt = new Date(Date.now() + VERIFICATION_EXP_MINUTES * 60 * 1000);
+
+            await ctx.prisma.phoneVerification.create({
+                data: { phone, otpHash, expiresAt }
+            });
+
+            try {
+                await sendTermiiSms(phone, otp);
+            } catch (e) {
+                throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'SMS_SEND_FAILED' });
+            }
+
+            return { success: true };
+        }),
+
+    // Protected: Verify OTP for the currently logged-in user
+    verifyProfileOtp: protectedProcedure
+        .input(z.object({ otp: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+            const user = await ctx.prisma.user.findUnique({ where: { id: ctx.user.id } });
+            if (!user?.phone) throw new TRPCError({ code: "BAD_REQUEST", message: "NO_PHONE_ON_PROFILE" });
+            const phone = normalizePhoneNumber(user.phone);
+
+            const pv = await ctx.prisma.phoneVerification.findFirst({
+                where: { phone },
+                orderBy: { createdAt: 'desc' }
+            });
+
+            if (!pv) throw new TRPCError({ code: 'UNAUTHORIZED', message: "OTP_INVALID" });
+            if (pv.verified) return { success: true }; // Already verified
+            if (pv.attempts >= MAX_ATTEMPTS) throw new TRPCError({ code: 'TOO_MANY_REQUESTS', message: "OTP_TOO_MANY_ATTEMPTS" });
+            if (pv.expiresAt.getTime() < Date.now()) throw new TRPCError({ code: 'BAD_REQUEST', message: "OTP_EXPIRED" });
+
+            const ok = await compareOTP(input.otp, pv.otpHash);
+            if (!ok) {
+                await ctx.prisma.phoneVerification.update({ where: { id: pv.id }, data: { attempts: { increment: 1 } } as any });
+                throw new TRPCError({ code: 'UNAUTHORIZED', message: "OTP_INVALID" });
+            }
+
+            // Success: Update PhoneVerification AND User
+            await ctx.prisma.phoneVerification.update({ where: { id: pv.id }, data: { verified: true } });
+            await ctx.prisma.user.update({
+                where: { id: ctx.user.id },
+                data: { phoneVerified: true }
+            });
+
+            return { success: true };
         }),
 });
 

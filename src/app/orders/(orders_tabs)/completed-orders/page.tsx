@@ -9,17 +9,48 @@ import { PAGES_DATA } from '@/data/pagesData';
 import { useRouter } from 'next/navigation';
 import { OrderStatus } from '@prisma/client';
 
+import { useRef, useEffect, useMemo } from 'react';
+
 export default function CompletedOrdersPage() {
 	const router = useRouter();
-	const { useListMyOrders } = useOrderingActions();
-	
-	// Get completed orders
-	const { data: orders = [], isLoading } = useListMyOrders({
-		take: 50,
-		status: OrderStatus.DELIVERED,
-	});
+	const { useInfiniteListMyOrders } = useOrderingActions();
+
+	// Get completed orders with infinite scroll
+	const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
+		useInfiniteListMyOrders({
+			limit: 12,
+			status: OrderStatus.DELIVERED,
+		});
+
+	const orders = useMemo(() => {
+		return data?.pages.flatMap((page) => page.items) ?? [];
+	}, [data]);
 
 	const isEmpty = !isLoading && orders.length === 0;
+
+	// Intersection observer
+	const observerTarget = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (
+					entries[0].isIntersecting &&
+					hasNextPage &&
+					!isFetchingNextPage
+				) {
+					fetchNextPage();
+				}
+			},
+			{ threshold: 0.5 }
+		);
+
+		if (observerTarget.current) {
+			observer.observe(observerTarget.current);
+		}
+
+		return () => observer.disconnect();
+	}, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
 	if (isLoading) {
 		return (
@@ -59,15 +90,47 @@ export default function CompletedOrdersPage() {
 			{!isEmpty && (
 				<div className='w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 px-5'>
 					{orders.map((order) => {
-						const itemCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
-						const deliveryDate = new Date(order.updatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-						const deliveryTime = new Date(order.updatedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+						const itemCount = order.items.reduce(
+							(sum, item) => sum + item.quantity,
+							0
+						);
+						const deliveryDate = new Date(
+							order.updatedAt
+						).toLocaleDateString('en-GB', {
+							day: 'numeric',
+							month: 'short',
+							year: 'numeric',
+						});
+						const deliveryTime = new Date(
+							order.updatedAt
+						).toLocaleTimeString('en-US', {
+							hour: 'numeric',
+							minute: '2-digit',
+							hour12: true,
+						});
 						const deliveryAddress = order.address
-							? `${order.address.line1}${order.address.line2 ? ', ' + order.address.line2 : ''}, ${order.address.city}${order.address.state ? ', ' + order.address.state : ''}`
+							? `${order.address.line1}${
+									order.address.line2
+										? ', ' + order.address.line2
+										: ''
+							  }, ${order.address.city}${
+									order.address.state
+										? ', ' + order.address.state
+										: ''
+							  }`
 							: 'Address not available';
-						const pickupTime = new Date(order.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-						const pickupAddress = order.vendor?.name || 'Vendor location';
-						const displayOrderId = order.id.slice(0, 8).toUpperCase();
+						const pickupTime = new Date(
+							order.createdAt
+						).toLocaleTimeString('en-US', {
+							hour: 'numeric',
+							minute: '2-digit',
+							hour12: true,
+						});
+						const pickupAddress =
+							order.vendor?.name || 'Vendor location';
+						const displayOrderId = order.id
+							.slice(0, 8)
+							.toUpperCase();
 
 						return (
 							<OngoingOrderItem

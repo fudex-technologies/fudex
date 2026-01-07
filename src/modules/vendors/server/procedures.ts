@@ -46,6 +46,51 @@ export const vendorRouter = createTRPCRouter({
             return ctx.prisma.vendor.findMany({ where, take: input.take, skip: input.skip, orderBy: { createdAt: "desc" } });
         }),
 
+    listInfinite: publicProcedure
+        .input(z.object({
+            q: z.string().optional(),
+            ratingFilter: z.string().optional(),
+            limit: z.number().min(1).max(100).default(20),
+            cursor: z.number().default(0), // skip/offset
+        }))
+        .query(async ({ ctx, input }) => {
+            const limit = input.limit;
+            const skip = input.cursor;
+
+            const where: any = input.q ? {
+                OR: [
+                    {
+                        name: { contains: input.q, mode: "insensitive" }
+                    },
+                    { description: { contains: input.q, mode: "insensitive" } }
+                ]
+            } : {};
+
+            if (input?.ratingFilter) {
+                where.reviewsAverage = {
+                    gte: input.ratingFilter === "2.0+" ? 2 : input.ratingFilter === "3.5+" ? 3.5 : input.ratingFilter === "4.0+" ? 4 : input.ratingFilter === "4.5+" ? 4.5 : 0
+                }
+            }
+
+            const items = await ctx.prisma.vendor.findMany({
+                where,
+                take: limit + 1, // fetch one more to check if there is a next page
+                skip: skip,
+                orderBy: { createdAt: "desc" }
+            });
+
+            let nextCursor: number | undefined = undefined;
+            if (items.length > limit) {
+                items.pop(); // remove the extra item
+                nextCursor = skip + limit;
+            }
+
+            return {
+                items,
+                nextCursor,
+            };
+        }),
+
     getById: publicProcedure
         .input(z.object({ id: z.string() }))
         .query(({ ctx, input }) => {
@@ -307,6 +352,77 @@ export const vendorRouter = createTRPCRouter({
             return { vendors, products };
         }),
 
+    searchInfinite: publicProcedure
+        .input(z.object({
+            q: z.string().optional(),
+            categoryId: z.string().optional(),
+            categoryIds: z.array(z.string()).optional(),
+            limit: z.number().optional().default(20),
+            cursor: z.number().default(0), // skip
+        }))
+        .query(async ({ ctx, input }) => {
+            const limit = input.limit;
+            const skip = input.cursor;
+
+            const vendorWhere: any = {};
+            if (input.q) {
+                vendorWhere.OR = [
+                    { name: { contains: input.q, mode: "insensitive" } },
+                    { description: { contains: input.q, mode: "insensitive" } },
+                ];
+            }
+            const categoryIds = input.categoryIds || (input.categoryId ? [input.categoryId] : []);
+            if (categoryIds.length > 0) {
+                vendorWhere.vendorCategories = {
+                    some: { categoryId: { in: categoryIds } }
+                };
+            }
+
+            const productWhere: any = { isActive: true };
+            if (input.q) {
+                productWhere.OR = [
+                    { name: { contains: input.q, mode: "insensitive" } },
+                    { description: { contains: input.q, mode: "insensitive" } },
+                ];
+            }
+            if (categoryIds.length > 0) {
+                productWhere.categories = {
+                    some: { categoryId: { in: categoryIds } }
+                };
+            }
+
+            const [vendors, products] = await Promise.all([
+                ctx.prisma.vendor.findMany({
+                    where: vendorWhere,
+                    take: limit + 1,
+                    skip: skip,
+                    orderBy: { createdAt: "desc" }
+                }),
+                ctx.prisma.productItem.findMany({
+                    where: productWhere,
+                    take: limit + 1,
+                    skip: skip,
+                    orderBy: { createdAt: "desc" },
+                    include: {
+                        product: true
+                    }
+                }),
+            ]);
+
+            // Determine next cursor (simplified: we move both lists by the same amount)
+            // If either list has more items, we have a next page.
+            let nextCursor: number | undefined = undefined;
+            if (vendors.length > limit || products.length > limit) {
+                nextCursor = skip + limit;
+            }
+
+            // Pop extra items
+            if (vendors.length > limit) vendors.pop();
+            if (products.length > limit) products.pop();
+
+            return { vendors, products, nextCursor };
+        }),
+
     // List vendors by approximate area using lat/lng bounding box
     listVendorsByArea: publicProcedure
         .input(z.object({
@@ -352,14 +468,19 @@ export const vendorRouter = createTRPCRouter({
                         }
                     }
                 },
+                orderBy: [
+                    {
+                        orders: {
+                            _count: 'desc',
+                        },
+                    },
+                    {
+                        reviewsAverage: 'desc',
+                    },
+                ],
             });
 
-            // Sort by orders count (descending) and then by reviewsAverage (descending)
-            return vendors.sort((a, b) => {
-                const orderDiff = b._count.orders - a._count.orders;
-                if (orderDiff !== 0) return orderDiff;
-                return b.reviewsAverage - a.reviewsAverage;
-            });
+            return vendors;
         }),
 
 

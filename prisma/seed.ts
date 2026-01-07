@@ -131,6 +131,82 @@ async function main() {
 		console.log('ℹ️  Sample product item already exists');
 	}
 
+	// --- Bulk Seeding (Infinite Scroll Testing) ---
+	console.log('\n🌱 Starting Bulk Seeding for Infinite Scroll...');
+
+	const adjectives = ['Tasty', 'Spicy', 'Delicious', 'Savory', 'Golden', 'Fresh', 'Hot', 'Sweet', 'Urban', 'Local', 'Royal'];
+	const nouns = ['Kitchen', 'Bistro', 'Diner', 'Eatery', 'Grill', 'Place', 'Spot', 'Corner', 'Haven', 'Palace'];
+	const cuisines = ['Pizza', 'Burger', 'Sushi', 'Tacos', 'Pasta', 'Curry', 'Noodles', 'Rice', 'BBQ', 'Salad'];
+
+	const foodAdjectives = ['Crispy', 'Tender', 'Juicy', 'Cheesy', 'Fluffy', 'Crunchy', 'Smoky'];
+	const foodItems = ['Chicken', 'Beef', 'Pork', 'Fish', 'Shrimp', 'Tofu', 'Vegetables', 'Combo', 'Platter'];
+
+	for (let i = 0; i < 50; i++) {
+		const randomAdjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+		const randomNoun = nouns[Math.floor(Math.random() * nouns.length)];
+		const randomCuisine = cuisines[Math.floor(Math.random() * cuisines.length)];
+
+		const vendorName = `${randomAdjective} ${randomCuisine} ${randomNoun} ${i + 1}`;
+		const vendorSlug = `${vendorName.toLowerCase().replace(/ /g, '-')}-${Date.now()}`;
+
+		// Check if exists (unlikely due to timestamp, but good practice)
+		const existing = await prisma.vendor.findFirst({ where: { slug: vendorSlug } });
+		if (existing) continue;
+
+		const vendor = await prisma.vendor.create({
+			data: {
+				name: vendorName,
+				slug: vendorSlug,
+				description: `Authentic ${randomCuisine} experience. Best in town!`,
+				phone: `+234${Math.floor(Math.random() * 10000000000)}`,
+				email: `vendor${i}@example.com`,
+				address: `${Math.floor(Math.random() * 100)} Random St, Lagos`,
+				city: 'Lagos',
+				country: 'NG',
+				reviewsAverage: Number((Math.random() * 2 + 3).toFixed(1)), // 3.0 to 5.0
+				reviewsCount: Math.floor(Math.random() * 100),
+				createdAt: new Date(Date.now() - Math.floor(Math.random() * 10000000000)), // Random past date
+			}
+		});
+
+		// Create 5-10 products per vendor
+		const numProducts = Math.floor(Math.random() * 6) + 5;
+		for (let j = 0; j < numProducts; j++) {
+			const prodAdj = foodAdjectives[Math.floor(Math.random() * foodAdjectives.length)];
+			const prodItem = foodItems[Math.floor(Math.random() * foodItems.length)];
+			const productName = `${prodAdj} ${prodItem} Special`;
+
+			const product = await prisma.product.create({
+				data: {
+					vendorId: vendor.id,
+					name: productName,
+					description: `Delicious ${productName} made with fresh ingredients.`,
+					inStock: true,
+				}
+			});
+
+			// Create 1-2 items
+			const numItems = Math.floor(Math.random() * 2) + 1;
+			for (let k = 0; k < numItems; k++) {
+				await prisma.productItem.create({
+					data: {
+						vendorId: vendor.id,
+						productId: product.id,
+						name: `${productName} ${k === 0 ? 'Regular' : 'Large'}`,
+						slug: `${productName.toLowerCase().replace(/ /g, '-')}-${vendor.id.substring(0, 4)}-${j}-${k}`,
+						description: 'Great portion size.',
+						price: Math.floor(Math.random() * 5000) + 1000,
+						currency: 'NGN',
+						isActive: true,
+						inStock: true,
+					}
+				});
+			}
+		}
+		if (i % 10 === 0) console.log(`   Processed ${i} vendors...`);
+	}
+	console.log('✅ Bulk seeding completed!');
+
 	console.log('\n📋 Seed Summary:');
 	console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 	console.log('Email:', vendorEmail);

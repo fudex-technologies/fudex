@@ -2,7 +2,7 @@
 
 import { Ellipsis, Search } from 'lucide-react';
 import { GoHeart } from 'react-icons/go';
-import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
+import VendorCover from '@/components/VendorCover';
 import GoBackButton from '@/components/GoBackButton';
 import { useVendorProductActions } from '@/api-hooks/useVendorActions';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -33,14 +33,12 @@ const SingleVendorTopSection = ({
 		);
 	}
 
-	const coverImage =
-		image || vendor?.coverImage || '/assets/restaurants/restaurant1.png';
-
 	return (
 		<div className='h-[180px] w-full relative'>
-			<ImageWithFallback
-				src={coverImage}
-				className='w-full h-full object-cover'
+			<VendorCover
+				src={image || vendor?.coverImage}
+				imageClassName='w-full h-full object-cover'
+				className='w-full h-full'
 				alt={vendor?.name || 'Vendor'}
 			/>
 			<div className='absolute top-0 left-0 w-full p-5 flex justify-between gap-5 text-white'>

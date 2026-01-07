@@ -1,7 +1,7 @@
 "use client";
 
 import { useTRPC } from "@/trpc/client";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { UseAPICallerOptions } from "./api-hook-types";
 import { OrderStatus } from "@prisma/client";
@@ -72,6 +72,19 @@ export function useOrderingActions() {
             useQuery(trpc.orders.getOrderPacks.queryOptions({ ...input })),
         useListMyOrders: (input?: { take?: number; skip?: number, status?: OrderStatus }) =>
             useQuery(trpc.orders.listMyOrders.queryOptions(input ?? {})),
+        useInfiniteListMyOrders: (input?: { limit?: number; status?: OrderStatus }) =>
+            useInfiniteQuery(
+                trpc.orders.listMyOrdersInfinite.infiniteQueryOptions(
+                    {
+                        limit: input?.limit ?? 20,
+                        status: input?.status,
+                    },
+                    {
+                        getNextPageParam: (lastPage) => lastPage.nextCursor,
+                        initialCursor: 0,
+                    }
+                )
+            ),
         useGetPaymentStatus: (input: { orderId: string }) =>
             useQuery(trpc.payments.getPaymentStatus.queryOptions({ ...input })),
 

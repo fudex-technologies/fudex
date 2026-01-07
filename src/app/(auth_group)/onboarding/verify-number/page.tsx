@@ -16,7 +16,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { localStorageStrings } from '@/constants/localStorageStrings';
 import { useAuthActions } from '@/api-hooks/useAuthActions';
-import { useSession } from '@/lib/auth-client';
 
 export default function VerifyPhonePage() {
 	const router = useRouter();
@@ -26,16 +25,12 @@ export default function VerifyPhonePage() {
 	const [isCounting, setIsCounting] = useState(true);
 
 	const { verifyPhoneOtp, requestPhoneOtp } = useAuthActions();
-	const { data: session } = useSession();
-
 
 	const { mutate: verifyOtpMutate, isPending: verifyOtpLoading } =
 		verifyPhoneOtp({
 			silent: false,
 			onSuccess: () => {
-				if (!session) {
-					router.push(PAGES_DATA.onboarding_create_password_page);
-				}
+				router.push(PAGES_DATA.onboarding_create_password_page);
 			},
 		});
 	const { mutate: requestOtpMutate, isPending: requestOtpLoading } =
@@ -94,7 +89,7 @@ export default function VerifyPhonePage() {
 				<div className='w-full space-y-2 text-center'>
 					<h1 className='font-bold text-xl'>Verify phone number</h1>
 					<p className='font-light text-foreground/50'>
-						We have sent a 4-digit code to {phone} via{' '}
+						We have sent a 6-digit code to {phone} via{' '}
 						<span className='text-primary'>SMS</span> and{' '}
 						<span className='text-primary'>Whatsapp</span>
 					</p>
@@ -113,11 +108,14 @@ export default function VerifyPhonePage() {
 							<InputOTPGroup>
 								<InputOTPSlot index={0} />
 								<InputOTPSlot index={1} />
-								<InputOTPSlot index={2} />
 							</InputOTPGroup>
 							<InputOTPSeparator />
 							<InputOTPGroup>
+								<InputOTPSlot index={2} />
 								<InputOTPSlot index={3} />
+							</InputOTPGroup>
+							<InputOTPSeparator />
+							<InputOTPGroup>
 								<InputOTPSlot index={4} />
 								<InputOTPSlot index={5} />
 							</InputOTPGroup>

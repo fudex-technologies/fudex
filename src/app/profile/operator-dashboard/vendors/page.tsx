@@ -15,16 +15,20 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/ui/dialog';
-import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
+import VendorCover from '@/components/VendorCover';
 
 export default function OperatorVendorsPage() {
 	const { useListVendors, updateVendor } = useOperatorActions();
 	const [searchQuery, setSearchQuery] = useState('');
-	const { data: vendors = [], isLoading, refetch } = useListVendors({
+	const {
+		data: vendors = [],
+		isLoading,
+		refetch,
+	} = useListVendors({
 		take: 100,
 		q: searchQuery || undefined,
 	});
-	
+
 	const [editingVendor, setEditingVendor] = useState<any>(null);
 
 	const updateMutation = updateVendor({
@@ -40,9 +44,9 @@ export default function OperatorVendorsPage() {
 		updateMutation.mutate({
 			id: editingVendor.id,
 			name: formData.get('name') as string,
-			description: formData.get('description') as string || undefined,
-			city: formData.get('city') as string || undefined,
-			coverImage: formData.get('coverImage') as string || undefined,
+			description: (formData.get('description') as string) || undefined,
+			city: (formData.get('city') as string) || undefined,
+			coverImage: (formData.get('coverImage') as string) || undefined,
 			isActive: formData.get('isActive') === 'true',
 		});
 	};
@@ -84,35 +88,47 @@ export default function OperatorVendorsPage() {
 						<div
 							key={vendor.id}
 							className='border rounded-lg p-4 flex items-center gap-4'>
-							{vendor.coverImage && (
-								<ImageWithFallback
-									src={vendor.coverImage}
-									alt={vendor.name}
-									className='w-20 h-20 object-cover rounded-md'
-								/>
-							)}
+							<VendorCover
+								src={vendor.coverImage}
+								alt={vendor.name}
+								className='w-20 h-20 rounded-md shrink-0'
+								imageClassName='w-full h-full object-cover rounded-md'
+							/>
 							<div className='flex-1'>
 								<div className='flex items-center gap-2 mb-1'>
-									<h3 className='font-semibold text-lg'>{vendor.name}</h3>
+									<h3 className='font-semibold text-lg'>
+										{vendor.name}
+									</h3>
 									{/* <Badge variant={vendor.isActive ? 'default' : 'secondary'}>
 										{vendor.isActive ? 'Active' : 'Inactive'}
 									</Badge> */}
 								</div>
 								{vendor.description && (
-									<p className='text-sm text-foreground/70 mb-1'>{vendor.description}</p>
+									<p className='text-sm text-foreground/70 mb-1'>
+										{vendor.description}
+									</p>
 								)}
 								{vendor.city && (
-									<p className='text-sm text-foreground/50'>City: {vendor.city}</p>
+									<p className='text-sm text-foreground/50'>
+										City: {vendor.city}
+									</p>
 								)}
 								{vendor.owner && (
-									<p className='text-sm text-foreground/50'>Owner: {vendor.owner.name} ({vendor.owner.email})</p>
+									<p className='text-sm text-foreground/50'>
+										Owner: {vendor.owner.name} (
+										{vendor.owner.email})
+									</p>
 								)}
 								<div className='flex gap-2 mt-2'>
 									<Badge variant='outline'>
-										{vendor._count?.products || 0} product{vendor._count?.products !== 1 ? 's' : ''}
+										{vendor._count?.products || 0} product
+										{vendor._count?.products !== 1
+											? 's'
+											: ''}
 									</Badge>
 									<Badge variant='outline'>
-										{vendor._count?.orders || 0} order{vendor._count?.orders !== 1 ? 's' : ''}
+										{vendor._count?.orders || 0} order
+										{vendor._count?.orders !== 1 ? 's' : ''}
 									</Badge>
 								</div>
 							</div>
@@ -129,7 +145,9 @@ export default function OperatorVendorsPage() {
 
 			{/* Edit Dialog */}
 			{editingVendor && (
-				<Dialog open={!!editingVendor} onOpenChange={(open) => !open && setEditingVendor(null)}>
+				<Dialog
+					open={!!editingVendor}
+					onOpenChange={(open) => !open && setEditingVendor(null)}>
 					<DialogContent>
 						<DialogHeader>
 							<DialogTitle>Edit Vendor</DialogTitle>
@@ -145,11 +163,15 @@ export default function OperatorVendorsPage() {
 								/>
 							</div>
 							<div>
-								<Label htmlFor='edit-description'>Description</Label>
+								<Label htmlFor='edit-description'>
+									Description
+								</Label>
 								<Input
 									id='edit-description'
 									name='description'
-									defaultValue={editingVendor.description || ''}
+									defaultValue={
+										editingVendor.description || ''
+									}
 								/>
 							</div>
 							<div>
@@ -161,12 +183,16 @@ export default function OperatorVendorsPage() {
 								/>
 							</div>
 							<div>
-								<Label htmlFor='edit-coverImage'>Cover Image URL</Label>
+								<Label htmlFor='edit-coverImage'>
+									Cover Image URL
+								</Label>
 								<Input
 									id='edit-coverImage'
 									name='coverImage'
 									type='url'
-									defaultValue={editingVendor.coverImage || ''}
+									defaultValue={
+										editingVendor.coverImage || ''
+									}
 								/>
 							</div>
 							<div>
@@ -174,7 +200,11 @@ export default function OperatorVendorsPage() {
 								<select
 									id='edit-isActive'
 									name='isActive'
-									defaultValue={editingVendor.isActive ? 'true' : 'false'}
+									defaultValue={
+										editingVendor.isActive
+											? 'true'
+											: 'false'
+									}
 									className='w-full px-3 py-2 border rounded-md'>
 									<option value='true'>Active</option>
 									<option value='false'>Inactive</option>
@@ -187,8 +217,12 @@ export default function OperatorVendorsPage() {
 									onClick={() => setEditingVendor(null)}>
 									Cancel
 								</Button>
-								<Button type='submit' disabled={updateMutation.isPending}>
-									{updateMutation.isPending ? 'Updating...' : 'Update'}
+								<Button
+									type='submit'
+									disabled={updateMutation.isPending}>
+									{updateMutation.isPending
+										? 'Updating...'
+										: 'Update'}
 								</Button>
 							</div>
 						</form>
@@ -198,4 +232,3 @@ export default function OperatorVendorsPage() {
 		</SectionWrapper>
 	);
 }
-

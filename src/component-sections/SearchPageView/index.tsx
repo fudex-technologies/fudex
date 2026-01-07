@@ -10,21 +10,22 @@ import VendorCard from '@/components/VendorCard';
 import ProductListItem from '@/components/ProductListItem';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
-import { Suspense, useEffect, useRef } from 'react';
-
+import { Suspense, useEffect, useRef, useMemo } from 'react';
 
 const SearchPageView = () => {
 	const [search] = useSearchQueries();
-	const { useVendorsSearch } = useVendorProductActions();
+	const { useInfiniteSearchVendors } = useVendorProductActions();
 	const searchInputRef = useRef<HTMLInputElement>(null);
 	// Use all selected category IDs for filtering
 	const categoryIds =
 		search.cat && search.cat.length > 0 ? search.cat : undefined;
-	const { data, isLoading } = useVendorsSearch({
-		q: search.q || undefined,
-		categoryIds: categoryIds,
-		take: 50,
-	});
+
+	const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
+		useInfiniteSearchVendors({
+			q: search.q || undefined,
+			categoryIds: categoryIds,
+			limit: 20,
+		});
 
 	useEffect(() => {
 		if (!categoryIds) {
@@ -32,8 +33,39 @@ const SearchPageView = () => {
 		}
 	}, [categoryIds]);
 
-	const vendors = data?.vendors || [];
-	const products = data?.products || [];
+	// Flatten results
+	const vendors = useMemo(
+		() => data?.pages.flatMap((p) => p.vendors) || [],
+		[data]
+	);
+	const products = useMemo(
+		() => data?.pages.flatMap((p) => p.products) || [],
+		[data]
+	);
+
+	// Intersection observer
+	const observerTarget = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (
+					entries[0].isIntersecting &&
+					hasNextPage &&
+					!isFetchingNextPage
+				) {
+					fetchNextPage();
+				}
+			},
+			{ threshold: 0.5 }
+		);
+
+		if (observerTarget.current) {
+			observer.observe(observerTarget.current);
+		}
+
+		return () => observer.disconnect();
+	}, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 	const hasSearchQuery =
 		!!search.q || (categoryIds && categoryIds.length > 0);
 
@@ -153,6 +185,15 @@ const SearchPageView = () => {
 										: 'No results found'}
 								</p>
 							)}
+
+							{/* Sentinel */}
+							<div
+								ref={observerTarget}
+								className='w-full py-4 flex justify-center'>
+								{isFetchingNextPage && (
+									<Skeleton className='h-8 w-32' />
+								)}
+							</div>
 						</SectionWrapper>
 					)}
 				</>

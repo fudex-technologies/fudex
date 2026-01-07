@@ -68,7 +68,7 @@ export const orderRouter = createTRPCRouter({
 
             // Calculate delivery fee based on area and current time
             const deliveryFee = await calculateDeliveryFee(ctx.prisma, address.areaId);
-            
+
             // Get service fee from platform settings
             const serviceFee = await getServiceFee(ctx.prisma);
 
@@ -205,6 +205,70 @@ export const orderRouter = createTRPCRouter({
                     }
                 }
             });
+        }),
+
+    listMyOrdersInfinite: protectedProcedure
+        .input(z.object({
+            limit: z.number().min(1).max(100).default(20),
+            cursor: z.number().default(0), // skip
+            status: z.enum(Object.values(OrderStatus)).optional(),
+        }))
+        .query(async ({ ctx, input }) => {
+            const limit = input.limit;
+            const skip = input.cursor;
+
+            const where: any = { userId: ctx.user!.id }
+            if (input.status) {
+                where.status = input.status;
+            }
+
+            const items = await ctx.prisma.order.findMany({
+                where,
+                take: limit + 1, // fetch one more
+                skip: skip,
+                orderBy: { createdAt: "desc" },
+                include: {
+                    vendor: {
+                        select: {
+                            id: true,
+                            name: true,
+                            coverImage: true,
+                        }
+                    },
+                    address: {
+                        select: {
+                            id: true,
+                            line1: true,
+                            line2: true,
+                            city: true,
+                            state: true,
+                        }
+                    },
+                    items: {
+                        select: {
+                            id: true,
+                            quantity: true,
+                        }
+                    },
+                    assignedRider: {
+                        select: {
+                            id: true,
+                            name: true,
+                        }
+                    }
+                }
+            });
+
+            let nextCursor: number | undefined = undefined;
+            if (items.length > limit) {
+                items.pop();
+                nextCursor = skip + limit;
+            }
+
+            return {
+                items,
+                nextCursor,
+            };
         }),
 
     getOrder: protectedProcedure

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { PAGES_DATA } from '@/data/pagesData';
 import { Separator } from '../ui/separator';
 import { formatCurency } from '@/lib/commonFunctions';
+import VendorCover from '../VendorCover';
 
 interface VendorData {
 	id: string;
@@ -20,11 +21,7 @@ interface Props {
 	deliveryPrice?: number; // Optional, defaults to 600
 	deliveryTime?: string;
 }
-const VendorCard = ({
-	vendor,
-	deliveryPrice = 600,
-	deliveryTime,
-}: Props) => {
+const VendorCard = ({ vendor, deliveryPrice = 600, deliveryTime }: Props) => {
 	const rating = vendor.reviewsAverage ?? undefined;
 	const numberFoRatings = vendor.reviewsCount ?? undefined;
 	const image = vendor.coverImage || '/assets/restaurants/restaurant1.png';
@@ -37,11 +34,12 @@ const VendorCard = ({
 				<GoHeart
 					width={25}
 					height={25}
-					className='absolute top-3 right-3 text-white font-bold'
+					className='absolute top-3 right-3 text-white font-bold z-10 filter drop-shadow-md'
 				/>
-				<ImageWithFallback
-					src={image}
-					className='rounded-lg h-full w-full object-cover'
+				<VendorCover
+					src={vendor.coverImage}
+					imageClassName='rounded-lg h-full w-full object-cover'
+					className='h-full w-full rounded-lg'
 					alt={vendor.name}
 				/>
 			</div>
@@ -74,7 +72,10 @@ const VendorCard = ({
 				</div>
 				{deliveryTime && (
 					<>
-						<Separator orientation='vertical' className='h-full mx-2' />
+						<Separator
+							orientation='vertical'
+							className='h-full mx-2'
+						/>
 						<p>{deliveryTime}</p>
 					</>
 				)}

@@ -63,11 +63,11 @@ export function useAuthActions() {
             trpc.phoneAuth.verifyOtp.mutationOptions({
                 onSuccess: async (data) => {
                     // data.token is the verification token
-                    if (session) {
-                        // user is signed in via Google — attach the verified phone
-                        attachPhoneMut.mutate({ token: data?.token });
-                        return;
-                    }
+                    // if (session) {
+                    // user is signed in via Google — attach the verified phone
+                    //     attachPhoneMut.mutate({ token: data?.token });
+                    //     return;
+                    // }
                     localStorage.setItem(
                         localStorageStrings.onboardingVerificationToken,
                         data?.token
@@ -110,28 +110,70 @@ export function useAuthActions() {
     }
 
     // for users that login through google
-    const attachPhoneMut = useMutation(
-        trpc.phoneAuth.attachVerifiedPhone.mutationOptions({
-            onSuccess: () => {
-                toast.success('Phone attached');
-                router.replace(PAGES_DATA.home_page);
-            },
-            onError: (err: unknown) => {
-                toast.error('Failed to attach phone', {
-                    description:
-                        err instanceof Error
-                            ? err.message
-                            : 'Something went wrong',
-                });
-            },
-            retry: false,
-        })
-    );
+    // Protected OTP actions
+    const requestProfileOtp = (
+        { onSuccess, onError }: { onSuccess?: () => void; onError?: (err: unknown) => void } = {}
+    ) => {
+        const mutation = useMutation(
+            trpc.phoneAuth.requestProfileOtp.mutationOptions({
+                onSuccess: () => {
+                    toast.success('OTP sent');
+                    onSuccess?.();
+                },
+                onError: (err) => {
+                    toast.error(err.message || 'Failed to send OTP');
+                    onError?.(err);
+                }
+            })
+        );
+        return mutation;
+    };
+
+    const verifyProfileOtp = (
+        { onSuccess, onError }: { onSuccess?: () => void; onError?: (err: unknown) => void } = {}
+    ) => {
+        const mutation = useMutation(
+            trpc.phoneAuth.verifyProfileOtp.mutationOptions({
+                onSuccess: () => {
+                    toast.success('Phone verified successfully');
+                    // Refresh session/profile
+                    router.refresh();
+                    onSuccess?.();
+                },
+                onError: (err) => {
+                    toast.error(err.message || 'Verification failed');
+                    onError?.(err);
+                }
+            })
+        );
+        return mutation;
+    };
+
+    // for users that login through google
+    // const attachPhoneMut = useMutation(
+    //     trpc.phoneAuth.attachVerifiedPhone.mutationOptions({
+    //         onSuccess: () => {
+    //             toast.success('Phone attached');
+    //             router.replace(PAGES_DATA.home_page);
+    //         },
+    //         onError: (err: unknown) => {
+    //             toast.error('Failed to attach phone', {
+    //                 description:
+    //                     err instanceof Error
+    //                         ? err.message
+    //                         : 'Something went wrong',
+    //             });
+    //         },
+    //         retry: false,
+    //     })
+    // );
 
     return {
         login,
         requestPhoneOtp,
         verifyPhoneOtp,
-        setPasswordAndCompleteSignUp
+        setPasswordAndCompleteSignUp,
+        requestProfileOtp,
+        verifyProfileOtp
     }
 }

@@ -6,7 +6,7 @@ import {
 	InputOTPSeparator,
 	InputOTPSlot,
 } from '@/components/ui/input-otp';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthActions } from '@/api-hooks/useAuthActions';
 import { useProfileActions } from '@/api-hooks/useProfileActions';
@@ -19,15 +19,14 @@ const ProfileVerifyPhonePageUi = () => {
 	const [countdown, setCountdown] = useState(60);
 	const [isCounting, setIsCounting] = useState(true);
 
-	const { verifyPhoneOtp, requestPhoneOtp } = useAuthActions();
+	const { verifyProfileOtp, requestProfileOtp } = useAuthActions();
 	const { getProfile } = useProfileActions();
 	const { data: profile } = getProfile();
 	const phone = profile?.phone;
 	const redirectUrl = searchParams.get('redirect');
 
 	const { mutate: verifyOtpMutate, isPending: verifyOtpLoading } =
-		verifyPhoneOtp({
-			silent: false,
+		verifyProfileOtp({
 			onSuccess: () => {
 				if (redirectUrl) {
 					router.push(redirectUrl);
@@ -37,19 +36,21 @@ const ProfileVerifyPhonePageUi = () => {
 			},
 		});
 	const { mutate: requestOtpMutate, isPending: requestOtpLoading } =
-		requestPhoneOtp({
-			silent: false,
+		requestProfileOtp({
 			onSuccess: () => {
 				setCountdown(60);
 				setIsCounting(true);
 			},
 		});
 
+	const otpRequestedRef = useRef(false);
+
 	useEffect(() => {
-		if (phone) {
-			requestOtpMutate({ phone });
+		if (phone && !otpRequestedRef.current) {
+			otpRequestedRef.current = true;
+			requestOtpMutate(undefined); // No input needed for protected route
 		}
-	}, [phone]);
+	}, [phone, requestOtpMutate]);
 
 	useEffect(() => {
 		if (!isCounting) return;
@@ -70,13 +71,13 @@ const ProfileVerifyPhonePageUi = () => {
 
 	const handleResendCode = () => {
 		if (phone) {
-			requestOtpMutate({ phone });
+			requestOtpMutate(undefined);
 		}
 	};
 
 	const handleVerify = () => {
 		if (phone) {
-			verifyOtpMutate({ otp, phone });
+			verifyOtpMutate({ otp });
 		}
 	};
 
@@ -89,7 +90,7 @@ const ProfileVerifyPhonePageUi = () => {
 			<div className='w-full space-y-2 text-center'>
 				<h1 className='font-bold text-xl'>Verify phone number</h1>
 				<p className='font-light text-foreground/50'>
-					We have sent a 4-digit code to {phone} via{' '}
+					We have sent a 6-digit code to {phone} via{' '}
 					<span className='text-primary'>SMS</span> and{' '}
 					<span className='text-primary'>Whatsapp</span>
 				</p>
@@ -106,11 +107,14 @@ const ProfileVerifyPhonePageUi = () => {
 						<InputOTPGroup>
 							<InputOTPSlot index={0} />
 							<InputOTPSlot index={1} />
-							<InputOTPSlot index={2} />
 						</InputOTPGroup>
 						<InputOTPSeparator />
 						<InputOTPGroup>
+							<InputOTPSlot index={2} />
 							<InputOTPSlot index={3} />
+						</InputOTPGroup>
+						<InputOTPSeparator />
+						<InputOTPGroup>
 							<InputOTPSlot index={4} />
 							<InputOTPSlot index={5} />
 						</InputOTPGroup>
