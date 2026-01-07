@@ -69,7 +69,7 @@ async function sendTermiiSms(phone234: string, otp: string) {
         from: 'FUDEX',
         sms,
         type: "plain",
-        channel: "dnd"
+        channel: "generic"
     };
 
     const res = await fetch(url, {
