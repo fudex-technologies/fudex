@@ -45,13 +45,13 @@ export default function SetAddressManually() {
 
 	const { addAddress, getAllAreasInEkiti, getAddresses } =
 		useProfileActions();
-	const { refertch } = getAddresses();
+	const { refetch } = getAddresses();
 	const { data: listOfAreasInEkiti, isLoading: loadingAreas } =
 		getAllAreasInEkiti();
 
 	const { mutate: addAddressMutate, isPending: addingAddress } = addAddress({
 		onSuccess: () => {
-			refertch();
+			refetch();
 			setConfirmOpen(false);
 			router.push(PAGES_DATA.profile_addresses_page);
 		},
