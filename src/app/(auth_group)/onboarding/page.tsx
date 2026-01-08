@@ -7,13 +7,15 @@ import AuthPageWrapper from '@/components/wrapers/AuthPageWrapper';
 import { PAGES_DATA } from '@/data/pagesData';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
 	validateEmailRegex,
 	validatePhoneNumberRegex,
 } from '@/lib/commonFunctions';
 import { localStorageStrings } from '@/constants/localStorageStrings';
 import { useAuthActions } from '@/api-hooks/useAuthActions';
+import { useTRPC } from '@/trpc/client';
 import ContinueWithGoogleButton, {
 	ContinueWithGoogleButtonSkeleton,
 } from './ContinueWithGoogleButton';
@@ -35,6 +37,11 @@ interface IFormTouchedData {
 	referralCode?: boolean;
 }
 
+interface IAvailabilityErrors {
+	phone?: string;
+	email?: string;
+}
+
 const initialFormData = {
 	phone: '',
 	email: '',
@@ -46,9 +53,38 @@ const initialFormData = {
 export default function OnboardingSignUpPage() {
 	const [form, setForm] = useState<IFormData>(initialFormData);
 	const [touched, setTouched] = useState<IFormTouchedData>({});
-	const router = useRouter()
+	const [availabilityErrors, setAvailabilityErrors] =
+		useState<IAvailabilityErrors>({});
+	const [debouncedPhone, setDebouncedPhone] = useState('');
+	const [debouncedEmail, setDebouncedEmail] = useState('');
+	const router = useRouter();
 
 	const { requestPhoneOtp } = useAuthActions();
+	const trpc = useTRPC();
+
+	// Check phone availability
+	const { data: phoneCheckData, isLoading: isCheckingPhone } = useQuery(
+		trpc.phoneAuth.checkPhoneInUse.queryOptions(
+			{ phone: debouncedPhone },
+			{
+				enabled:
+					!!debouncedPhone &&
+					validatePhoneNumberRegex(debouncedPhone),
+				retry: false,
+			}
+		)
+	);
+
+	// Check email availability
+	const { data: emailCheckData, isLoading: isCheckingEmail } = useQuery(
+		trpc.phoneAuth.checkEmailInUse.queryOptions(
+			{ email: debouncedEmail },
+			{
+				enabled: !!debouncedEmail && validateEmailRegex(debouncedEmail),
+				retry: false,
+			}
+		)
+	);
 	const { mutate, isPending } = requestPhoneOtp({
 		silent: false,
 		onSuccess: () => {
@@ -60,6 +96,47 @@ export default function OnboardingSignUpPage() {
 			router.replace(PAGES_DATA.onboarding_verify_number_page);
 		},
 	});
+
+	// Debounce phone input
+	useEffect(() => {
+		const timer = setTimeout(() => {
+			setDebouncedPhone(form.phone);
+		}, 800);
+
+		return () => clearTimeout(timer);
+	}, [form.phone]);
+
+	// Debounce email input
+	useEffect(() => {
+		const timer = setTimeout(() => {
+			setDebouncedEmail(form.email);
+		}, 800);
+
+		return () => clearTimeout(timer);
+	}, [form.email]);
+
+	// Update availability errors based on query results
+	useEffect(() => {
+		if (phoneCheckData?.inUse) {
+			setAvailabilityErrors((prev) => ({
+				...prev,
+				phone: 'This phone number is already in use',
+			}));
+		} else {
+			setAvailabilityErrors((prev) => ({ ...prev, phone: undefined }));
+		}
+	}, [phoneCheckData]);
+
+	useEffect(() => {
+		if (emailCheckData?.inUse) {
+			setAvailabilityErrors((prev) => ({
+				...prev,
+				email: 'This email is already in use',
+			}));
+		} else {
+			setAvailabilityErrors((prev) => ({ ...prev, email: undefined }));
+		}
+	}, [emailCheckData]);
 
 	const validate = () => {
 		const newErrors: any = {};
@@ -75,7 +152,11 @@ export default function OnboardingSignUpPage() {
 		return newErrors;
 	};
 	const errorsNow = validate();
-	const isFormValid = Object.keys(errorsNow).length === 0;
+	const hasAvailabilityErrors = !!(
+		availabilityErrors.phone || availabilityErrors.email
+	);
+	const isFormValid =
+		Object.keys(errorsNow).length === 0 && !hasAvailabilityErrors;
 
 	function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -124,7 +205,15 @@ export default function OnboardingSignUpPage() {
 								className='w-5 h-5'
 							/>
 						}
-						error={touched.phone && errorsNow.phone}
+						error={
+							touched.phone &&
+							(errorsNow.phone || availabilityErrors.phone)
+						}
+						hint={
+							isCheckingPhone
+								? 'Checking availability...'
+								: undefined
+						}
 						required
 					/>
 					<InputField
@@ -133,7 +222,15 @@ export default function OnboardingSignUpPage() {
 						value={form.email}
 						onChange={handleChange('email')}
 						placeholder='example@gmail.com'
-						error={touched.email && errorsNow.email}
+						error={
+							touched.email &&
+							(errorsNow.email || availabilityErrors.email)
+						}
+						hint={
+							isCheckingEmail
+								? 'Checking availability...'
+								: undefined
+						}
 						required
 					/>
 					<div className='flex gap-2'>
@@ -161,7 +258,7 @@ export default function OnboardingSignUpPage() {
 						type='text'
 						label='Referral code'
 						value={form.referralCode}
-						onChange={handleChange('handleChange')}
+						onChange={handleChange('referralCode')}
 						placeholder='Enter a referral code'
 						error={touched.referralCode && errorsNow.referralCode}
 					/>
@@ -169,7 +266,12 @@ export default function OnboardingSignUpPage() {
 						type='submit'
 						variant={'game'}
 						className='w-full py-5'
-						disabled={!isFormValid || isPending}>
+						disabled={
+							!isFormValid ||
+							isPending ||
+							isCheckingPhone ||
+							isCheckingEmail
+						}>
 						{isPending ? 'Sending...' : 'Continue'}
 					</Button>
 				</form>

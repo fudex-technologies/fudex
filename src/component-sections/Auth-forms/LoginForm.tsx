@@ -9,7 +9,6 @@ import { validatePhoneNumberRegex } from '@/lib/commonFunctions';
 import InputField from '@/components/InputComponent';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
-import { PAGES_DATA } from '@/data/pagesData';
 
 interface IFormData {
 	phone: string;
@@ -30,13 +29,12 @@ const LoginForm = () => {
 	const searchParams = useSearchParams();
 	const redirectTo = searchParams.get('redirect');
 
-	const router = useRouter();
 	const { login } = useAuthActions();
 	const { mutate: loginMutate, isPending: loginLoading } = login({
+		password: form.password,
+		rememberMe,
+		redirect: redirectTo || undefined,
 		silent: false,
-		onSuccess: () => {
-			router.replace(redirectTo || PAGES_DATA.home_page);
-		},
 	});
 
 	const validate = () => {
@@ -62,8 +60,6 @@ const LoginForm = () => {
 
 		loginMutate({
 			phone: form.phone,
-			password: form.password,
-			rememberMe,
 		});
 	};
 

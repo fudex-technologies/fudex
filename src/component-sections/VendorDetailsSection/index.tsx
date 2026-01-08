@@ -2,7 +2,7 @@
 
 import { Separator } from '@/components/ui/separator';
 import SectionWrapper from '@/components/wrapers/SectionWrapper';
-import { formatCurency } from '@/lib/commonFunctions';
+import { formatCurency, formatToAMPM } from '@/lib/commonFunctions';
 import { FaBicycle, FaBoltLightning, FaStar } from 'react-icons/fa6';
 import { GrAlarm } from 'react-icons/gr';
 import { useVendorProductActions } from '@/api-hooks/useVendorActions';
@@ -101,7 +101,7 @@ const VendorDetailsSection = ({
 						<Link
 							href={PAGES_DATA.single_vendor_info_page(vendor.id)}
 							className='flex gap-1 items-center'>
-							Open until {nextCloseTime}
+							Open until {formatToAMPM(nextCloseTime)}
 							<ChevronRight size={15} />
 						</Link>
 					)}
@@ -109,7 +109,7 @@ const VendorDetailsSection = ({
 						<Link
 							href={PAGES_DATA.single_vendor_info_page(vendor.id)}
 							className='flex gap-1 items-center'>
-							Closed until {nextOpenTime}
+							Closed until {formatToAMPM(nextOpenTime)}
 							<ChevronRight size={15} />
 						</Link>
 					)}

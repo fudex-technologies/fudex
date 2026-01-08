@@ -7,23 +7,44 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { UseAPICallerOptions } from "./api-hook-types";
 import { localStorageStrings } from "@/constants/localStorageStrings";
-import { useSession } from "@/lib/auth-client";
+import { signIn, signUp } from "@/lib/auth-client";
 
 
 export function useAuthActions() {
     const router = useRouter();
     const trpc = useTRPC();
-    const { data: session } = useSession();
 
 
-    const login = (options?: UseAPICallerOptions) => {
+    const login = (options?: UseAPICallerOptions & { password: string, redirect?: string, rememberMe?: boolean }) => {
         return useMutation(
-            trpc.phoneAuth.loginWithPhone.mutationOptions({
+            trpc.phoneAuth.loginWithPhoneResolver.mutationOptions({
                 onSuccess: async (data) => {
-                    if (!options?.silent) toast.success('Logged in successfully');
-                    // navigate to home/profile
-                    router.replace(PAGES_DATA.home_page);
+                    if (!options?.password) {
+                        toast.error("Please provide your password!")
+                        return;
+                    }
+                    const result = await signIn.email({
+                        email: data.email,
+                        password: options.password,
+                        rememberMe: options.rememberMe,
+                    });
+
+                    if (!result?.data) {
+                        if (!options?.silent) {
+                            toast.error("Login failed", {
+                                description:
+                                    result?.error?.message || "Invalid phone or password",
+                            });
+                        }
+                        options?.onError?.(result?.error);
+                        return;
+                    }
+
+                    if (!options?.silent) {
+                        toast.success("Logged in successfully");
+                    }
                     options?.onSuccess?.(data);
+                    router.replace(options?.redirect || PAGES_DATA.home_page);
                 },
                 onError: (err: unknown) => {
                     if (!options?.silent)
@@ -89,12 +110,26 @@ export function useAuthActions() {
     }
 
 
-    const setPasswordAndCompleteSignUp = (options?: UseAPICallerOptions) => {
+    const setPasswordAndCompleteSignUp = (options?: UseAPICallerOptions & { password: string, redirectTo: string, token: string }) => {
         return useMutation(
-            trpc.phoneAuth.completeSignup.mutationOptions({
+            trpc.phoneAuth.completeSignupPrepare.mutationOptions({
                 onSuccess: async (data) => {
+                    if (!options?.password) {
+                        toast.error("Please provide your password!")
+                        return;
+                    }
+                    await signUp.email({
+                        email: data.email,
+                        name: data.name,
+                        password: options.password,
+                    });
+
+                    // 2️⃣ Attach verified phone (now authenticated)
+                    await attachPhoneMut.mutateAsync({ token: options.token });
+
                     if (!options?.silent) toast.success("Account created successfully");
                     options?.onSuccess?.(data);
+                    router.replace(options?.redirectTo || PAGES_DATA.home_page)
                 },
                 onError: (err: unknown) => {
                     if (!options?.silent)
@@ -150,23 +185,20 @@ export function useAuthActions() {
     };
 
     // for users that login through google
-    // const attachPhoneMut = useMutation(
-    //     trpc.phoneAuth.attachVerifiedPhone.mutationOptions({
-    //         onSuccess: () => {
-    //             toast.success('Phone attached');
-    //             router.replace(PAGES_DATA.home_page);
-    //         },
-    //         onError: (err: unknown) => {
-    //             toast.error('Failed to attach phone', {
-    //                 description:
-    //                     err instanceof Error
-    //                         ? err.message
-    //                         : 'Something went wrong',
-    //             });
-    //         },
-    //         retry: false,
-    //     })
-    // );
+    const attachPhoneMut = useMutation(
+        trpc.phoneAuth.attachVerifiedPhone.mutationOptions({
+            onError: (err: unknown) => {
+                toast.error('Failed to attach phone', {
+                    description:
+                        err instanceof Error
+                            ? err.message
+                            : 'Something went wrong',
+                });
+            },
+            retry: false,
+        })
+    );
+
 
     return {
         login,

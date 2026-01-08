@@ -223,8 +223,6 @@ const ProductDetailsSelectionSection = ({
 		(item) => item.id === selectedItemId
 	);
 
-	console.log(selectedProductItem);
-
 	return (
 		<>
 			<div className='space-y-5'>

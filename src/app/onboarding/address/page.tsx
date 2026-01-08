@@ -7,7 +7,7 @@ import Link from 'next/link';
 
 export default function OnboardingSetAddressPAge() {
 	return (
-		<div className='w-screen h-screen flex items-center justify-center p-5 sm:p-10 relative'>
+		<div className='w-screen max-w-[1400px] mx-auto h-screen flex items-center justify-center p-5 sm:p-10 relative'>
 			<div className='w-full absolute p-5 top-0 lrft-0'>
 				<LocationDropdown className='max-w-[200px]' />
 			</div>
