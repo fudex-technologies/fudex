@@ -132,8 +132,6 @@ export function useAuthActions() {
                     router.replace(options?.redirectTo || PAGES_DATA.home_page)
                 },
                 onError: (err: unknown) => {
-                    console.log(err);
-
                     if (!options?.silent)
                         toast.error("Account creation failed", {
                             description:

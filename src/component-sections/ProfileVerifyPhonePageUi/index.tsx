@@ -21,7 +21,7 @@ const ProfileVerifyPhonePageUi = () => {
 
 	const { verifyProfileOtp, requestProfileOtp } = useAuthActions();
 	const { getProfile } = useProfileActions();
-	const { data: profile } = getProfile();
+	const { data: profile, refetch: refetchProfile } = getProfile();
 	const phone = profile?.phone;
 	const redirectUrl = searchParams.get('redirect');
 
@@ -29,6 +29,7 @@ const ProfileVerifyPhonePageUi = () => {
 		verifyProfileOtp({
 			onSuccess: () => {
 				if (redirectUrl) {
+					refetchProfile();
 					router.push(redirectUrl);
 				} else {
 					router.push(PAGES_DATA.profile_page);
