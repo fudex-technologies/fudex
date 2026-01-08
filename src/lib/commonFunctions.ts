@@ -12,13 +12,6 @@ export const formatCurency = (price: number, otherparams?: { ShowFree?: boolean 
     }).format(price);
 };
 
-export const formatCountDownTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
-};
-
-
 export const getInitials = (name: string) => {
     return name
         .split(' ')
@@ -27,32 +20,12 @@ export const getInitials = (name: string) => {
         .toUpperCase();
 };
 
-// Color mapping for different categories
-export const getCategoryColor = (category: string): string => {
-    const colorMap: { [key: string]: string } = {
-        'Cardiology': 'bg-red-100',
-        'Pediatrics': 'bg-blue-100',
-        'Neurology': 'bg-purple-100',
-        'General Practice': 'bg-green-100',
-        'Public Health': 'bg-yellow-100',
-        'Dermatology': 'bg-pink-100',
-        'Orthopedics': 'bg-indigo-100',
-        'Gynecology': 'bg-rose-100',
-        'Ophthalmology': 'bg-cyan-100',
-        'Psychiatry': 'bg-violet-100',
-        'Dentistry': 'bg-emerald-100',
-        'Endocrinology': 'bg-orange-100',
-    };
-    return colorMap[category] || 'bg-gray-100';
-};
-
 export const shortenText = (text: string, by?: number) => {
     if (text?.length > (by || 30)) {
         return `${text.slice(0, (by || 30))}...`;
     }
     return text;
 }
-
 
 // Helper function to format date
 export const formatDate = (dateString: string) => {
@@ -153,6 +126,9 @@ export const fileToBase64 = (file: File): Promise<string> => {
 export function normalizePhoneNumber(phone: string) {
     let cleaned = phone.replace(/\D/g, "");
 
+    if (cleaned.startsWith("+234")) {
+        cleaned = cleaned.slice(4);
+    }
     if (cleaned.startsWith("234")) {
         cleaned = cleaned.slice(3);
     }
@@ -188,7 +164,26 @@ export const validatepasswordRegex = (password: string) => /^(?=.*[a-z])(?=.*[A-
 export const getDoodleAvatarUrl = (id?: string) =>
     `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(id || 3)}&backgroundColor=D63C12`
 
-export const getFullName = (profile: any) => `${(profile?.firstName || profile?.lastName) &&
-    `${profile?.firstName} ${profile?.lastName}`
-    } 
-${(profile?.firstName || profile?.lastName) && '('}${profile?.name}${(profile?.firstName || profile?.lastName) && ')'}`;
+export const getFullName = (profile: any) => {
+    if (profile?.name) {
+        return profile?.name
+    }
+    if (profile?.firstName || profile?.lastName) {
+        return `${profile?.firstName} ${profile?.lastName}`
+    }
+    return "User"
+}
+
+export function formatToAMPM(time24: string) {
+    // time24 example: "14:30" or "09:05"
+    const [hours, minutes] = time24.split(":").map(Number);
+
+    const date = new Date();
+    date.setHours(hours, minutes);
+
+    return new Intl.DateTimeFormat("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+    }).format(date);
+}

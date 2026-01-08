@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useSession } from '@/lib/auth-client';
 import InputField from '@/components/InputComponent';
 import { Button } from '@/components/ui/button';
-import { useAuthActions } from '@/api-hooks/useAuthActions';
 import { useProfileActions } from '@/api-hooks/useProfileActions';
 import { localStorageStrings } from '@/constants/localStorageStrings';
 import { PAGES_DATA } from '@/data/pagesData';

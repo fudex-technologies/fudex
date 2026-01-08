@@ -183,58 +183,85 @@ export const phoneAuthRouter = createTRPCRouter({
             return { token };
         }),
 
-    completeSignup: publicProcedure
+    completeSignupPrepare: publicProcedure
         .input(completeRegistrationSchema)
         .mutation(async ({ ctx, input }) => {
             const payload = verifyVerificationToken(input.token);
-            if (!payload) throw new TRPCError({ code: 'BAD_REQUEST', message: 'INVALID_VERIFICATION_TOKEN' });
-
-            const phone = payload.phone;
-            const pv = await ctx.prisma.phoneVerification.findUnique({ where: { id: payload.pvId } });
-            if (!pv || !pv.verified) throw new TRPCError({ code: 'BAD_REQUEST', message: 'INVALID_VERIFICATION_TOKEN' });
-
-            // ensure unique phone
-            const existing = await ctx.prisma.user.findFirst({ where: { phone } });
-            if (existing) throw new TRPCError({ code: 'CONFLICT', message: 'PHONE_ALREADY_IN_USE' });
-
-            // create via BetterAuth server API
-            try {
-                const signUpRes = await auth.api.signUpEmail({
-                    body: {
-                        name: `${input.firstName} ${input.lastName}`,
-                        password: input.password,
-                        email: input.email,
-                        rememberMe: true,
-                    }
-                });
-                // BetterAuth returns the user (or session.user)
-                const userId = signUpRes.user.id;
-                // Attach phone to the user and mark verified
-                await ctx.prisma.user.update({
-                    where: { id: userId },
-                    data: {
-                        phone,
-                        phoneVerified: true,
-                    },
-                });
-
-                return { success: true, user: signUpRes.user };
-            } catch (e: any) {
-                throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: e?.message || 'SIGNUP_FAILED' });
+            if (!payload) {
+                throw new TRPCError({ code: "BAD_REQUEST", message: "INVALID_VERIFICATION_TOKEN" });
             }
+            const phone = payload.phone;
+            const pv = await ctx.prisma.phoneVerification.findUnique({
+                where: { id: payload.pvId },
+            });
+            if (!pv || !pv.verified) {
+                throw new TRPCError({ code: "BAD_REQUEST", message: "INVALID_VERIFICATION_TOKEN" });
+            }
+
+            const existing = await ctx.prisma.user.findFirst({
+                where: { phone },
+            });
+
+            if (existing) {
+                throw new TRPCError({ code: "CONFLICT", message: "PHONE_ALREADY_IN_USE" });
+            }
+
+            return {
+                phone,
+                email: input.email,
+                name: `${input.firstName} ${input.lastName}`,
+            };
         }),
 
-    loginWithPhone: publicProcedure
+
+    // completeSignup: publicProcedure
+    //     .input(completeRegistrationSchema)
+    //     .mutation(async ({ ctx, input }) => {
+    //         const payload = verifyVerificationToken(input.token);
+    //         if (!payload) throw new TRPCError({ code: 'BAD_REQUEST', message: 'INVALID_VERIFICATION_TOKEN' });
+
+    //         const phone = payload.phone;
+    //         const pv = await ctx.prisma.phoneVerification.findUnique({ where: { id: payload.pvId } });
+    //         if (!pv || !pv.verified) throw new TRPCError({ code: 'BAD_REQUEST', message: 'INVALID_VERIFICATION_TOKEN' });
+
+    //         // ensure unique phone
+    //         const existing = await ctx.prisma.user.findFirst({ where: { phone } });
+    //         if (existing) throw new TRPCError({ code: 'CONFLICT', message: 'PHONE_ALREADY_IN_USE' });
+
+    //         // create via BetterAuth server API
+    //         try {
+    //             const signUpRes = await auth.api.signUpEmail({
+    //                 body: {
+    //                     name: `${input.firstName} ${input.lastName}`,
+    //                     password: input.password,
+    //                     email: input.email,
+    //                     rememberMe: true,
+    //                 }
+    //             });
+    //             // BetterAuth returns the user (or session.user)
+    //             const userId = signUpRes.user.id;
+    //             // Attach phone to the user and mark verified
+    //             await ctx.prisma.user.update({
+    //                 where: { id: userId },
+    //                 data: {
+    //                     phone,
+    //                     phoneVerified: true,
+    //                 },
+    //             });
+
+    //             return { success: true, user: signUpRes.user };
+    //         } catch (e: any) {
+    //             throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: e?.message || 'SIGNUP_FAILED' });
+    //         }
+    //     }),
+
+    loginWithPhoneResolver: publicProcedure
         .input(z.object({
             phone: z.string(),
-            password: z.string(),
-            rememberMe: z.boolean().optional(),
-            callbackUrl: z.string().optional(),
         }))
         .mutation(async ({ ctx, input }) => {
             const phone = normalizePhoneNumber(input.phone);
 
-            // 1️⃣ Find user by phone
             const user = await ctx.prisma.user.findUnique({
                 where: { phone },
                 select: { email: true },
@@ -242,26 +269,68 @@ export const phoneAuthRouter = createTRPCRouter({
 
             if (!user?.email) {
                 throw new TRPCError({
-                    code: 'UNAUTHORIZED',
-                    message: 'INVALID_CREDENTIALS',
+                    code: "UNAUTHORIZED",
+                    message: "INVALID_CREDENTIALS",
                 });
             }
 
-            try {
-                const res = await auth.api.signInEmail({
-                    body: {
-                        email: user.email,
-                        password: input.password,
-                        rememberMe: input?.rememberMe ?? false,
-                        callbackURL: input?.callbackUrl ?? undefined,
-                    },
-                    // This endpoint requires session cookies.
-                    headers: await headers(),
-                });
-                return { success: true, res };
-            } catch (e: any) {
-                throw new TRPCError({ code: 'UNAUTHORIZED', message: e?.message || 'AUTH_FAILED' });
-            }
+            return { email: user.email };
+        }),
+
+    // loginWithPhone: publicProcedure
+    //     .input(z.object({
+    //         phone: z.string(),
+    //         password: z.string(),
+    //         rememberMe: z.boolean().optional(),
+    //         callbackUrl: z.string().optional(),
+    //     }))
+    //     .mutation(async ({ ctx, input }) => {
+    //         const phone = normalizePhoneNumber(input.phone);
+
+    //         // 1️⃣ Find user by phone
+    //         const user = await ctx.prisma.user.findUnique({
+    //             where: { phone },
+    //             select: { email: true },
+    //         });
+
+    //         if (!user?.email) {
+    //             throw new TRPCError({
+    //                 code: 'UNAUTHORIZED',
+    //                 message: 'INVALID_CREDENTIALS',
+    //             });
+    //         }
+
+    //         try {
+    //             const res = await auth.api.signInEmail({
+    //                 body: {
+    //                     email: user.email,
+    //                     password: input.password,
+    //                     rememberMe: input?.rememberMe ?? false,
+    //                     callbackURL: input?.callbackUrl ?? undefined,
+    //                 },
+    //                 // This endpoint requires session cookies.
+    //                 headers: await headers(),
+    //             });
+    //             return { success: true, res };
+    //         } catch (e: any) {
+    //             throw new TRPCError({ code: 'UNAUTHORIZED', message: e?.message || 'AUTH_FAILED' });
+    //         }
+    //     }),
+
+    checkPhoneInUse: publicProcedure
+        .input(z.object({ phone: z.string() }))
+        .query(async ({ ctx, input }) => {
+            const phone = normalizePhoneNumber(input.phone)
+            const other = await ctx.prisma.user.findFirst({ where: { phone } });
+            return { inUse: !!other };
+        }),
+
+    checkEmailInUse: publicProcedure
+        .input(z.object({ email: z.string() }))
+        .query(async ({ ctx, input }) => {
+            const email = input.email.toLowerCase().trim();
+            const other = await ctx.prisma.user.findFirst({ where: { email } });
+            return { inUse: !!other };
         }),
 
     // Attach a verified phone to the current (logged-in) user — used for Google users linking phone

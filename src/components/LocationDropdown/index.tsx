@@ -28,6 +28,10 @@ const LocationDropdown = ({ className }: { className?: ClassNameValue }) => {
 	return (
 		<Select
 			onValueChange={(value) => {
+				if (value === 'ADD_NEW_ADDRESS') {
+					router.push(PAGES_DATA.profile_addresses_page);
+					return;
+				}
 				session &&
 					mutate({
 						id: value,
@@ -43,7 +47,7 @@ const LocationDropdown = ({ className }: { className?: ClassNameValue }) => {
 						return;
 					}
 					if (session && addresses?.length === 0) {
-						router.push(PAGES_DATA.onboarding_set_address_page);
+						router.push(PAGES_DATA.profile_addresses_page);
 						return;
 					}
 				}}
@@ -61,15 +65,12 @@ const LocationDropdown = ({ className }: { className?: ClassNameValue }) => {
 					/>
 					{!session && <SelectValue placeholder='Explore Mode' />}
 					{session && addresses?.length === 0 && (
-						<SelectValue placeholder='Add Address' />
+						<SelectValue
+							placeholder='Add Address'
+						/>
 					)}
 					{session && defaultAddress && (
 						<SelectValue
-							onClick={() =>
-								router.push(
-									PAGES_DATA.onboarding_set_address_page
-								)
-							}
 							placeholder={shortenText(
 								`${defaultAddress?.label?.toUpperCase()} - ${
 									defaultAddress.line1
@@ -83,11 +84,6 @@ const LocationDropdown = ({ className }: { className?: ClassNameValue }) => {
 						addresses &&
 						addresses.length > 0 && (
 							<SelectValue
-								onClick={() =>
-									router.push(
-										PAGES_DATA.onboarding_set_address_page
-									)
-								}
 								placeholder={shortenText(
 									`${addresses?.[0]?.label?.toUpperCase()} - ${
 										addresses?.[0]?.line1
@@ -99,19 +95,25 @@ const LocationDropdown = ({ className }: { className?: ClassNameValue }) => {
 				</div>
 			</SelectTrigger>
 			<SelectContent>
-				{session &&
-					addresses?.map((address) => {
-						return (
-							<SelectItem key={address.id} value={address.id}>
-								{shortenText(
-									`${address?.label?.toUpperCase()} - ${
-										address.line1
-									} `,
-									55
-								)}
-							</SelectItem>
-						);
-					})}
+				{session && (
+					<>
+						{addresses?.map((address) => {
+							return (
+								<SelectItem key={address.id} value={address.id}>
+									{shortenText(
+										`${address?.label?.toUpperCase()} - ${
+											address.line1
+										} `,
+										55
+									)}
+								</SelectItem>
+							);
+						})}
+						<SelectItem value={'ADD_NEW_ADDRESS'}>
+							Add New Address
+						</SelectItem>
+					</>
+				)}
 			</SelectContent>
 		</Select>
 	);
