@@ -30,11 +30,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import AddressesDrawer from './AddressesDrawer';
 import AddPhoneNumberDrawer from './AddPhoneNumberDrawer';
 import { useProfileActions } from '@/api-hooks/useProfileActions';
+import { isVendorOpen } from '@/lib/vendorUtils';
 
 const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 	const router = useRouter();
 	const { data: session, isPending } = useSession();
-	const { getVendorPacks, clearCart } = useCartStore();
+	const { getVendorPacks, clearVendor } = useCartStore();
 	const trpc = useTRPC();
 	const [selectedAddressId, setSelectedAddressId] = useState<string>('');
 	const [noteToStore, setNoteToStore] = useState('');
@@ -54,6 +55,9 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 	const { data: vendor } = useVendorProductActions().useGetVendorById(
 		vendorId ? { id: vendorId } : { id: '' }
 	);
+
+	// Check if vendor is open
+	const vendorIsOpen = isVendorOpen(vendor?.openingHours);
 
 	// Set default address
 	useMemo(() => {
@@ -176,7 +180,7 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 			// Redirect to Paystack checkout
 			if (data.checkoutUrl) {
 				// Clear cart before redirecting (order is already created)
-				clearCart();
+				clearVendor(vendorId);
 				// Redirect to Paystack checkout page
 				window.location.href = data.checkoutUrl;
 			} else {
@@ -206,6 +210,17 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 		if (packs.length === 0) {
 			toast.error('Your cart is empty');
 			router.push(PAGES_DATA.tray_page);
+			return;
+		}
+
+		// Check if vendor is open
+		if (!vendorIsOpen) {
+			toast.error(
+				`${vendor?.name || 'This vendor'} is currently closed`,
+				{
+					description: 'Please try again when they are open',
+				}
+			);
 			return;
 		}
 
@@ -517,12 +532,15 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 							disabled={
 								createOrderMutation.isPending ||
 								createPaymentMutation.isPending ||
-								!selectedAddressId || 
-								!prodileData?.phone
+								!selectedAddressId ||
+								!prodileData?.phone ||
+								!vendorIsOpen
 							}>
 							{createOrderMutation.isPending ||
 							createPaymentMutation.isPending
 								? 'Processing...'
+								: !vendorIsOpen
+								? 'Vendor is Closed'
 								: 'Make Payment'}
 						</Button>
 					</div>

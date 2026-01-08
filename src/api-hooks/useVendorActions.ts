@@ -1,7 +1,7 @@
 "use client";
 
 import { useTRPC } from "@/trpc/client";
-import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import { RatingFilterType } from "@/modules/vendors/schema";
 
 export function useVendorProductActions() {
@@ -61,5 +61,21 @@ export function useVendorProductActions() {
             ),
         usePopularVendors: (input?: { take?: number; skip?: number }) =>
             useQuery(trpc.vendors.getPopularVendors.queryOptions(input ?? {})),
+        useGetMyOpeningHours: () => useQuery(trpc.vendors.getMyOpeningHours.queryOptions()),
+        useSetMyOpeningHours: () => useMutation(trpc.vendors.setMyOpeningHours.mutationOptions({
+            onError: (err) => {
+                // handle error
+            }
+        })),
+        useVendorReviewsInfinite: (vendorId: string, limit = 10) =>
+            useInfiniteQuery(
+                trpc.vendors.listVendorReviewsInfinite.infiniteQueryOptions(
+                    { vendorId, limit },
+                    {
+                        getNextPageParam: (lastPage) => lastPage.nextCursor,
+                        initialCursor: 0,
+                    }
+                )
+            ),
     };
 }

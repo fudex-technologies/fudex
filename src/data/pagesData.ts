@@ -5,6 +5,7 @@ export const PAGES_DATA = {
     profile_page: `/profile`,
 
     single_vendor_page: (id: string) => `/vendors/${id}`,
+    single_vendor_info_page: (id: string) => `/vendors/${id}/info`,
     single_vendor_product_page: (vendorId: string, prodId: string) => `/vendors/${vendorId}/${prodId}`,
     single_vendor_reviews_page: (vendorId: string) => `/vendors/${vendorId}/reviews`,
     single_vendor_rate_page: (vendorId: string) => `/vendors/${vendorId}/rate`,

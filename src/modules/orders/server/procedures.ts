@@ -56,6 +56,44 @@ export const orderRouter = createTRPCRouter({
                 if (!pi.isActive || !pi.inStock) throw new Error(`Addon not available: ${pi.name}`);
             }
 
+            // Check if vendor is currently open
+            if (vendorId) {
+                const vendor = await ctx.prisma.vendor.findUnique({
+                    where: { id: vendorId },
+                    include: { openingHours: true }
+                });
+
+                if (vendor && vendor.openingHours && vendor.openingHours.length > 0) {
+                    const now = new Date();
+                    const dayMap: Record<number, string> = {
+                        0: 'SUNDAY',
+                        1: 'MONDAY',
+                        2: 'TUESDAY',
+                        3: 'WEDNESDAY',
+                        4: 'THURSDAY',
+                        5: 'FRIDAY',
+                        6: 'SATURDAY',
+                    };
+                    const currentDay = dayMap[now.getDay()];
+                    const currentTime = now.toTimeString().slice(0, 5); // "HH:mm"
+
+                    const todayHours = vendor.openingHours.find(h => h.day === currentDay);
+
+                    // If there are opening hours set and vendor is closed, prevent order
+                    if (todayHours) {
+                        if (todayHours.isClosed) {
+                            throw new Error(`${vendor.name} is closed today. Please try again when they're open.`);
+                        }
+                        if (todayHours.openTime && todayHours.closeTime) {
+                            if (currentTime < todayHours.openTime || currentTime > todayHours.closeTime) {
+                                throw new Error(`${vendor.name} is currently closed. Open hours: ${todayHours.openTime} - ${todayHours.closeTime}`);
+                            }
+                        }
+                    }
+                }
+            }
+
+
             // Fetch address to get areaId for delivery fee calculation
             const address = await ctx.prisma.address.findUnique({
                 where: { id: input.addressId },

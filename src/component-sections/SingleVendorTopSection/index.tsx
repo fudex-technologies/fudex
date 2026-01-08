@@ -1,11 +1,11 @@
 'use client';
 
 import { Ellipsis, Search } from 'lucide-react';
-import { GoHeart } from 'react-icons/go';
 import VendorCover from '@/components/VendorCover';
 import GoBackButton from '@/components/GoBackButton';
 import { useVendorProductActions } from '@/api-hooks/useVendorActions';
 import { Skeleton } from '@/components/ui/skeleton';
+import { FavoriteToggle } from '@/components/FavoriteToggle';
 
 const SingleVendorTopSection = ({
 	vendorId,
@@ -41,16 +41,18 @@ const SingleVendorTopSection = ({
 				className='w-full h-full'
 				alt={vendor?.name || 'Vendor'}
 			/>
-			<div className='absolute top-0 left-0 w-full p-5 flex justify-between gap-5 text-white'>
+			<div className='absolute top-0 left-0 w-full p-5 flex justify-between gap-5 text-white z-10'>
 				<GoBackButton className='bg-[#0000004D]' />
 
 				<div className='flex gap-2 items-center'>
 					<div className='w-10 aspect-square flex justify-center items-center  rounded-full bg-[#0000004D]'>
 						<Search width={20} height={20} />
 					</div>
-					<div className='w-10 aspect-square flex justify-center items-center  rounded-full bg-[#0000004D]'>
-						<GoHeart width={20} height={20} />
-					</div>
+					<FavoriteToggle
+						vendorId={vendorId}
+						className='w-10 h-10 flex justify-center items-center rounded-full bg-[#0000004D]'
+						iconSize={20}
+					/>
 					<div className='w-10 aspect-square flex justify-center items-center  rounded-full bg-[#0000004D]'>
 						<Ellipsis width={20} height={20} />
 					</div>
