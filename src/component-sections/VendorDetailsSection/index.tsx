@@ -7,6 +7,14 @@ import { FaBicycle, FaBoltLightning, FaStar } from 'react-icons/fa6';
 import { GrAlarm } from 'react-icons/gr';
 import { useVendorProductActions } from '@/api-hooks/useVendorActions';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+	isVendorOpen,
+	getNextOpenTime,
+	getNextCloseTime,
+} from '@/lib/vendorUtils';
+import Link from 'next/link';
+import { PAGES_DATA } from '@/data/pagesData';
+import { ChevronRight } from 'lucide-react';
 
 const VendorDetailsSection = ({
 	vendorId,
@@ -27,13 +35,19 @@ const VendorDetailsSection = ({
 				</div>
 				{showDetails && (
 					<div className='flex flex-col'>
-						<Separator orientation={'horizontal'} className='w-full' />
+						<Separator
+							orientation={'horizontal'}
+							className='w-full'
+						/>
 						<div className='w-full flex flex-1 justify-between gap-2 py-5'>
 							<Skeleton className='flex-1 h-20' />
 							<Skeleton className='flex-1 h-20' />
 							<Skeleton className='flex-1 h-20' />
 						</div>
-						<Separator orientation={'horizontal'} className='w-full' />
+						<Separator
+							orientation={'horizontal'}
+							className='w-full'
+						/>
 					</div>
 				)}
 			</SectionWrapper>
@@ -52,28 +66,52 @@ const VendorDetailsSection = ({
 	const reviewCount = vendor.reviewsCount || 0;
 	const deliveryPrice = 600; // Default delivery price, can be calculated from area later
 
+	const isOpen = isVendorOpen(vendor?.openingHours);
+	const nextOpenTime = getNextOpenTime(vendor?.openingHours || []);
+	const nextCloseTime = getNextCloseTime(vendor?.openingHours || []);
+
 	return (
 		<SectionWrapper className='space-y-5'>
-			<div className=''>
+			<div className='space-y-2'>
 				<h1 className='text-2xl font-bold'>{vendor.name}</h1>
 				<div className='flex gap-5 text-[14px]'>
-					{rating > 0 && (
-						<div className='flex items-center gap-1'>
-							<FaStar
-								width={15}
-								height={15}
-								className='text-[#F9C300]'
-							/>
-							<p className='text-foreground/80'>
-								{rating.toFixed(1)}
-								{reviewCount > 0 && (
-									<span className='text-foreground/60'>({reviewCount})</span>
-								)}
-							</p>
-						</div>
+					<Link
+						href={PAGES_DATA.single_vendor_reviews_page(vendor.id)}
+						className='flex items-center gap-1'>
+						<FaStar
+							width={15}
+							height={15}
+							className='text-[#F9C300]'
+						/>
+						<p className='text-foreground/80'>
+							{rating.toFixed(1)}
+							{reviewCount > 0 && (
+								<span className='text-foreground/60'>
+									({reviewCount})
+								</span>
+							)}
+						</p>
+					</Link>
+					{/* {vendor.description && (
+						<p className='text-foreground/80'>
+							{vendor.description}
+						</p>
+					)} */}
+					{isOpen && nextCloseTime && (
+						<Link
+							href={PAGES_DATA.single_vendor_info_page(vendor.id)}
+							className='flex gap-1 items-center'>
+							Open until {nextCloseTime}
+							<ChevronRight size={15} />
+						</Link>
 					)}
-					{vendor.description && (
-						<p className='text-foreground/80'>{vendor.description}</p>
+					{!isOpen && nextOpenTime && (
+						<Link
+							href={PAGES_DATA.single_vendor_info_page(vendor.id)}
+							className='flex gap-1 items-center'>
+							Closed until {nextOpenTime}
+							<ChevronRight size={15} />
+						</Link>
 					)}
 				</div>
 			</div>

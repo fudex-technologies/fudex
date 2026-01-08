@@ -107,7 +107,10 @@ const VendorProfileSection = () => {
 		try {
 			const uploadFormData = new FormData();
 			uploadFormData.append('file', file);
-			uploadFormData.append('folder', vercelBlobFolderStructure.vendorCoverImages);
+			uploadFormData.append(
+				'folder',
+				vercelBlobFolderStructure.vendorCoverImages
+			);
 
 			const response = await fetch('/api/upload', {
 				method: 'POST',
@@ -184,25 +187,22 @@ const VendorProfileSection = () => {
 
 	return (
 		<div className='px-5 space-y-6 max-w-2xl mx-auto my-0'>
-				{/* Stats */}
-				<div className='grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg'>
-					<div>
-						<p className='text-sm text-foreground/70'>
-							Total Products
-						</p>
-						<p className='text-2xl font-semibold'>
-							{vendor._count?.productItems || 0}
-						</p>
-					</div>
-					<div>
-						<p className='text-sm text-foreground/70'>
-							Total Orders
-						</p>
-						<p className='text-2xl font-semibold'>
-							{vendor._count?.orders || 0}
-						</p>
-					</div>
+			{/* Stats */}
+			<div className='grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg'>
+				<div>
+					<p className='text-sm text-foreground/70'>Total Products</p>
+					<p className='text-2xl font-semibold'>
+						{vendor._count?.productItems || 0}
+					</p>
 				</div>
+				<div>
+					<p className='text-sm text-foreground/70'>Total Orders</p>
+					<p className='text-2xl font-semibold'>
+						{vendor._count?.orders || 0}
+					</p>
+				</div>
+			</div>
+
 			{/* Cover Image */}
 			<div className='space-y-2'>
 				<Label>Cover Image</Label>
@@ -244,7 +244,6 @@ const VendorProfileSection = () => {
 					</Button>
 				</div>
 			</div>
-
 			<form onSubmit={handleSubmit} className='space-y-4'>
 				{/* Basic Info */}
 				<InputField

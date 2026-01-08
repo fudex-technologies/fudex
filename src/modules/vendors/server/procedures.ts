@@ -43,7 +43,13 @@ export const vendorRouter = createTRPCRouter({
                 }
             }
 
-            return ctx.prisma.vendor.findMany({ where, take: input.take, skip: input.skip, orderBy: { createdAt: "desc" } });
+            return ctx.prisma.vendor.findMany({
+                where,
+                take: input.take,
+                skip: input.skip,
+                orderBy: { createdAt: "desc" },
+                include: { openingHours: true }
+            });
         }),
 
     listInfinite: publicProcedure
@@ -76,7 +82,8 @@ export const vendorRouter = createTRPCRouter({
                 where,
                 take: limit + 1, // fetch one more to check if there is a next page
                 skip: skip,
-                orderBy: { createdAt: "desc" }
+                orderBy: { createdAt: "desc" },
+                include: { openingHours: true }
             });
 
             let nextCursor: number | undefined = undefined;
@@ -97,6 +104,7 @@ export const vendorRouter = createTRPCRouter({
             return ctx.prisma.vendor.findUnique({
                 where: { id: input.id },
                 include: {
+                    openingHours: true,
                     products: true,
                     vendorCategories: {
                         include: {
@@ -337,7 +345,13 @@ export const vendorRouter = createTRPCRouter({
             }
 
             const [vendors, products] = await Promise.all([
-                ctx.prisma.vendor.findMany({ where: vendorWhere, take: input.take, skip: input.skip, orderBy: { createdAt: "desc" } }),
+                ctx.prisma.vendor.findMany({
+                    where: vendorWhere,
+                    take: input.take,
+                    skip: input.skip,
+                    orderBy: { createdAt: "desc" },
+                    include: { openingHours: true }
+                }),
                 ctx.prisma.productItem.findMany({
                     where: productWhere,
                     take: input.take,
@@ -396,7 +410,8 @@ export const vendorRouter = createTRPCRouter({
                     where: vendorWhere,
                     take: limit + 1,
                     skip: skip,
-                    orderBy: { createdAt: "desc" }
+                    orderBy: { createdAt: "desc" },
+                    include: { openingHours: true }
                 }),
                 ctx.prisma.productItem.findMany({
                     where: productWhere,
@@ -448,6 +463,7 @@ export const vendorRouter = createTRPCRouter({
                 take: input.take,
                 skip: input.skip,
                 orderBy: { createdAt: "desc" },
+                include: { openingHours: true }
             });
         }),
 
@@ -462,6 +478,7 @@ export const vendorRouter = createTRPCRouter({
                 take: input.take,
                 skip: input.skip,
                 include: {
+                    openingHours: true,
                     _count: {
                         select: {
                             orders: true,
@@ -989,5 +1006,44 @@ export const vendorRouter = createTRPCRouter({
                 where: { id: input.id },
                 data: { inStock: false }
             });
+        }),
+
+    // List vendor reviews with infinite scroll
+    listVendorReviewsInfinite: publicProcedure
+        .input(z.object({
+            vendorId: z.string(),
+            limit: z.number().min(1).max(50).default(10),
+            cursor: z.number().optional(),
+        }))
+        .query(async ({ ctx, input }) => {
+            const limit = input.limit;
+            const skip = input.cursor || 0;
+
+            const reviews = await ctx.prisma.review.findMany({
+                where: { vendorId: input.vendorId },
+                take: limit + 1,
+                skip: skip,
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            image: true,
+                        }
+                    }
+                }
+            });
+
+            let nextCursor: number | undefined = undefined;
+            if (reviews.length > limit) {
+                reviews.pop();
+                nextCursor = skip + limit;
+            }
+
+            return {
+                items: reviews,
+                nextCursor,
+            };
         }),
 });

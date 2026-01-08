@@ -8,10 +8,18 @@ import { cn } from '@/lib/utils';
 import { useCartStore } from '@/store/cart-store';
 import Link from 'next/link';
 import { useMemo } from 'react';
+import { isVendorOpen } from '@/lib/vendorUtils';
+import { toast } from 'sonner';
 
 const GoToCartBottom = ({ vendorId }: { vendorId: string }) => {
 	const { getVendorPacks, isVendorCartEmpty } = useCartStore();
 	const packs = getVendorPacks(vendorId);
+
+	// Fetch vendor to check if open
+	const { data: vendor } = useVendorProductActions().useGetVendorById({
+		id: vendorId,
+	});
+	const vendorIsOpen = isVendorOpen(vendor?.openingHours);
 
 	// Collect all product item IDs needed for price calculation
 	const allProductItemIds = useMemo(() => {
@@ -69,6 +77,19 @@ const GoToCartBottom = ({ vendorId }: { vendorId: string }) => {
 		return total;
 	}, [packs, productItemsMap]);
 
+	const handleGoToTray = (e: React.MouseEvent) => {
+		if (!vendorIsOpen) {
+			e.preventDefault();
+			toast.error(
+				`${vendor?.name || 'This vendor'} is currently closed`,
+				{
+					description:
+						'Please wait until they are open to place an order',
+				}
+			);
+		}
+	};
+
 	if (isVendorCartEmpty(vendorId)) return null;
 	return (
 		<>
@@ -83,14 +104,15 @@ const GoToCartBottom = ({ vendorId }: { vendorId: string }) => {
 					</div>
 					<Link
 						href={PAGES_DATA.tray_page}
+						onClick={handleGoToTray}
 						className={cn(
 							buttonVariants({
 								variant: 'game',
 								size: 'lg',
-								// disabled: isEmpty,
-							})
+							}),
+							!vendorIsOpen && 'opacity-50 cursor-not-allowed'
 						)}>
-						Go to tray
+						{vendorIsOpen ? 'Go to tray' : 'Vendor is Closed'}
 					</Link>
 				</div>
 			</div>

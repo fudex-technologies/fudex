@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation';
 import PageWrapper from '@/components/wrapers/PageWrapper';
 import GoBackButton from '@/components/GoBackButton';
 import { PAGES_DATA } from '@/data/pagesData';
-import { Store, Package, ShoppingBag } from 'lucide-react';
+import { Store, Package, ShoppingBag, CalendarClock } from 'lucide-react';
 import TabComponent from '@/components/TabComponent';
 import { useState } from 'react';
 import { useProfileActions } from '@/api-hooks/useProfileActions';
@@ -69,6 +69,11 @@ export default function VendorDashboardLayout({
 							id: 'orders',
 							label: 'Orders',
 							icon: <ShoppingBag size={18} />,
+						},
+						{
+							id: 'opening-hours',
+							label: 'Hours',
+							icon: <CalendarClock size={18} />,
 						},
 					]}
 					className={'border-b mb-0! p-0'}
