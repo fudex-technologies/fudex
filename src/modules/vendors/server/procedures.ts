@@ -3,22 +3,6 @@ import { DayOfWeek, OrderStatus } from "@prisma/client";
 import { z } from "zod";
 
 export const vendorRouter = createTRPCRouter({
-    // Create vendor - restricted (admin or vendors). Kept simple for now.
-    createVendor: operatorProcedure
-        .input(z.object({
-            name: z.string(),
-            slug: z.string(),
-            description: z.string().optional(),
-            phone: z.string().optional(),
-            email: z.string().optional(),
-            address: z.string().optional(),
-            city: z.string().optional(),
-            coverImage: z.string().optional()
-        }))
-        .mutation(({ ctx, input }) => {
-            return ctx.prisma.vendor.create({ data: input });
-        }),
-
     // Public listings with optional search / pagination
     list: publicProcedure
         .input(z.object({
@@ -500,9 +484,118 @@ export const vendorRouter = createTRPCRouter({
             return vendors;
         }),
 
+    // List vendor reviews with infinite scroll
+    listVendorReviewsInfinite: publicProcedure
+        .input(z.object({
+            vendorId: z.string(),
+            limit: z.number().min(1).max(50).default(10),
+            cursor: z.number().optional(),
+        }))
+        .query(async ({ ctx, input }) => {
+            const limit = input.limit;
+            const skip = input.cursor || 0;
+
+            const reviews = await ctx.prisma.review.findMany({
+                where: { vendorId: input.vendorId },
+                take: limit + 1,
+                skip: skip,
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            image: true,
+                        }
+                    }
+                }
+            });
+
+            let nextCursor: number | undefined = undefined;
+            if (reviews.length > limit) {
+                reviews.pop();
+                nextCursor = skip + limit;
+            }
+
+            return {
+                items: reviews,
+                nextCursor,
+            };
+        }),
+
+    createReview: protectedProcedure
+        .input(z.object({
+            vendorId: z.string(),
+            rating: z.number().min(1).max(5),
+            comment: z.string().optional(),
+        }))
+        .mutation(async ({ ctx, input }) => {
+            const userId = ctx.user.id;
+
+            const vendor = await ctx.prisma.vendor.findUnique({
+                where: { id: input.vendorId }
+            });
+
+            if (!vendor) {
+                throw new Error("Vendor not found");
+            }
+
+            const existingReview = await ctx.prisma.review.findFirst({
+                where: {
+                    userId: userId,
+                    vendorId: input.vendorId
+                }
+            });
+
+            if (existingReview) {
+                throw new Error("You have already reviewed this vendor");
+            }
+
+            const review = await ctx.prisma.review.create({
+                data: {
+                    userId: userId,
+                    vendorId: input.vendorId,
+                    rating: input.rating,
+                    comment: input.comment
+                }
+            });
+
+            const aggregations = await ctx.prisma.review.aggregate({
+                where: { vendorId: input.vendorId },
+                _avg: { rating: true },
+                _count: { _all: true }
+            });
+
+            await ctx.prisma.vendor.update({
+                where: { id: input.vendorId },
+                data: {
+                    reviewsAverage: aggregations._avg.rating || 0,
+                    reviewsCount: aggregations._count._all || 0
+                }
+            });
+
+            return review;
+        }),
+
 
 
     // ========== VENDOR DASHBOARD PROCEDURES ==========
+
+    // Create vendor - restricted (admin or vendors). Kept simple for now.
+    createVendor: operatorProcedure
+        .input(z.object({
+            name: z.string(),
+            slug: z.string(),
+            description: z.string().optional(),
+            phone: z.string().optional(),
+            email: z.string().optional(),
+            address: z.string().optional(),
+            city: z.string().optional(),
+            coverImage: z.string().optional()
+        }))
+        .mutation(({ ctx, input }) => {
+            return ctx.prisma.vendor.create({ data: input });
+        }),
 
     // Get vendor owned by current user
     getMyVendor: vendorProcedure.query(async ({ ctx }) => {
@@ -1006,44 +1099,5 @@ export const vendorRouter = createTRPCRouter({
                 where: { id: input.id },
                 data: { inStock: false }
             });
-        }),
-
-    // List vendor reviews with infinite scroll
-    listVendorReviewsInfinite: publicProcedure
-        .input(z.object({
-            vendorId: z.string(),
-            limit: z.number().min(1).max(50).default(10),
-            cursor: z.number().optional(),
-        }))
-        .query(async ({ ctx, input }) => {
-            const limit = input.limit;
-            const skip = input.cursor || 0;
-
-            const reviews = await ctx.prisma.review.findMany({
-                where: { vendorId: input.vendorId },
-                take: limit + 1,
-                skip: skip,
-                orderBy: { createdAt: 'desc' },
-                include: {
-                    user: {
-                        select: {
-                            id: true,
-                            name: true,
-                            image: true,
-                        }
-                    }
-                }
-            });
-
-            let nextCursor: number | undefined = undefined;
-            if (reviews.length > limit) {
-                reviews.pop();
-                nextCursor = skip + limit;
-            }
-
-            return {
-                items: reviews,
-                nextCursor,
-            };
         }),
 });

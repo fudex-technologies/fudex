@@ -15,10 +15,13 @@ import { RiShoppingBag2Line } from 'react-icons/ri';
 import { RiShoppingBag2Fill } from 'react-icons/ri';
 import { useCartStore } from '@/store/cart-store';
 import { Badge } from '../ui/badge';
+import { useOrderingActions } from '@/api-hooks/useOrderingActions';
 
 const MobileBottomNav = () => {
 	const pathname = usePathname();
 	const { getTotalVendors, isCartEmpty } = useCartStore();
+	const { useGetNumberOfMyOngoingOrders } = useOrderingActions();
+	const numberofOngoingOrders = useGetNumberOfMyOngoingOrders();
 
 	const activeStyle = (baseUrl: string): ClassNameValue => {
 		if (baseUrl !== PAGES_DATA.home_page && pathname.startsWith(baseUrl)) {
@@ -110,11 +113,11 @@ const MobileBottomNav = () => {
 						</div>
 					) : (
 						<div className='relative'>
-							{!isCartEmpty() && (
+							{(!isCartEmpty() || numberofOngoingOrders > 0) && (
 								<Badge
 									className='text-xs h-5 min-w-5 rounded-full px-1 font-mono tabular-nums absolute -top-3 -right-3'
 									variant='destructive'>
-									{getTotalVendors()}
+									{getTotalVendors() + numberofOngoingOrders}
 								</Badge>
 							)}
 							<RiShoppingBag2Line
