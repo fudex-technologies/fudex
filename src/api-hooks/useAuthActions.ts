@@ -200,12 +200,122 @@ export function useAuthActions() {
     );
 
 
+    // Email OTP Password Reset (New Flow)
+    const requestPasswordResetEmail = (options?: UseAPICallerOptions) => {
+        return useMutation(
+            trpc.phoneAuth.requestPasswordResetEmail.mutationOptions({
+                onSuccess: async (data) => {
+                    if (!options?.silent) toast.success("Reset code sent to your email");
+                    options?.onSuccess?.(data);
+                },
+                onError: (err: unknown) => {
+                    if (!options?.silent)
+                        toast.error("Failed to send reset code", {
+                            description:
+                                err instanceof Error ? err.message : "Something went wrong",
+                        });
+                    options?.onError?.(err);
+                },
+                retry: false,
+            }),
+        )
+    };
+
+    const resetPasswordWithEmailOTP = (options?: UseAPICallerOptions) => {
+        return useMutation(
+            trpc.phoneAuth.resetPasswordWithEmailOTP.mutationOptions({
+                onSuccess: async (data) => {
+                    if (!options?.silent) toast.success("Password reset successfully");
+                    options?.onSuccess?.(data);
+                },
+                onError: (err: unknown) => {
+                    if (!options?.silent)
+                        toast.error("Password reset failed", {
+                            description:
+                                err instanceof Error ? err.message : "Something went wrong",
+                        });
+                    options?.onError?.(err);
+                },
+                retry: false,
+            }),
+        )
+    };
+
+    // Phone OTP Password Reset (Legacy Flow)
+
+    const requestPasswordResetOtp = (options?: UseAPICallerOptions) => {
+        return useMutation(
+            trpc.phoneAuth.requestPasswordResetOtp.mutationOptions({
+                onSuccess: async (data) => {
+                    if (!options?.silent) toast.success("Reset code sent");
+                    options?.onSuccess?.(data);
+                },
+                onError: (err: unknown) => {
+                    if (!options?.silent)
+                        toast.error("Failed to send reset code", {
+                            description:
+                                err instanceof Error ? err.message : "Something went wrong",
+                        });
+                    options?.onError?.(err);
+                },
+                retry: false,
+            }),
+        )
+    };
+
+    const verifyPasswordResetOtp = (options?: UseAPICallerOptions) => {
+        return useMutation(
+            trpc.phoneAuth.verifyPasswordResetOtp.mutationOptions({
+                onSuccess: async (data) => {
+                    if (!options?.silent) toast.success("Code verified successfully");
+                    options?.onSuccess?.(data);
+                },
+                onError: (err: unknown) => {
+                    if (!options?.silent)
+                        toast.error("Verification failed", {
+                            description:
+                                err instanceof Error ? err.message : "Something went wrong",
+                        });
+                    options?.onError?.(err);
+                },
+                retry: false,
+            }),
+        )
+    };
+
+    const resetPasswordWithPhoneToken = (options?: UseAPICallerOptions) => {
+        return useMutation(
+            trpc.phoneAuth.resetPasswordWithPhoneToken.mutationOptions({
+                onSuccess: async (data) => {
+                    if (!options?.silent) toast.success("Password reset successfully");
+                    options?.onSuccess?.(data);
+                },
+                onError: (err: unknown) => {
+                    if (!options?.silent)
+                        toast.error("Password reset failed", {
+                            description:
+                                err instanceof Error ? err.message : "Something went wrong",
+                        });
+                    options?.onError?.(err);
+                },
+                retry: false,
+            }),
+        )
+    };
+
     return {
         login,
         requestPhoneOtp,
         verifyPhoneOtp,
         setPasswordAndCompleteSignUp,
         requestProfileOtp,
-        verifyProfileOtp
+        verifyProfileOtp,
+        // Email OTP Password Reset
+        requestPasswordResetEmail,
+        resetPasswordWithEmailOTP,
+        // Phone OTP Password Reset (Legacy)
+        requestPasswordResetOtp,
+        verifyPasswordResetOtp,
+        resetPasswordWithPhoneToken
     }
 }

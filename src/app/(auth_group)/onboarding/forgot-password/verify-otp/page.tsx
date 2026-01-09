@@ -16,25 +16,32 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { localStorageStrings } from '@/constants/localStorageStrings';
 import { useAuthActions } from '@/api-hooks/useAuthActions';
+import InputField from '@/components/InputComponent';
+import { toast } from 'sonner';
 
-export default function VerifyPhonePage() {
+export default function VerifyPasswordResetPage() {
 	const router = useRouter();
 	const [otp, setOtp] = useState('');
-	const [phone, setPhone] = useState('');
+	const [email, setEmail] = useState('');
+	const [password, setPassword] = useState('');
+	const [confirmPassword, setConfirmPassword] = useState('');
 	const [countdown, setCountdown] = useState(60);
 	const [isCounting, setIsCounting] = useState(true);
 
-	const { verifyPhoneOtp, requestPhoneOtp } = useAuthActions();
+	const { requestPasswordResetEmail, resetPasswordWithEmailOTP } =
+		useAuthActions();
 
-	const { mutate: verifyOtpMutate, isPending: verifyOtpLoading } =
-		verifyPhoneOtp({
+	const { mutate: resetPasswordMutate, isPending: resetPasswordLoading } =
+		resetPasswordWithEmailOTP({
 			silent: false,
 			onSuccess: () => {
-				router.push(PAGES_DATA.onboarding_create_password_page);
+				localStorage.removeItem(localStorageStrings.passwordResetEmail);
+				router.replace(PAGES_DATA.login_page);
 			},
 		});
+
 	const { mutate: requestOtpMutate, isPending: requestOtpLoading } =
-		requestPhoneOtp({
+		requestPasswordResetEmail({
 			silent: false,
 			onSuccess: () => {
 				setCountdown(60);
@@ -43,16 +50,16 @@ export default function VerifyPhonePage() {
 		});
 
 	useEffect(() => {
-		const raw = localStorage.getItem(
-			localStorageStrings.onboardingSignupString
+		const storedEmail = localStorage.getItem(
+			localStorageStrings.passwordResetEmail
 		);
-		if (raw) {
-			try {
-				const obj = JSON.parse(raw);
-				setPhone(obj.phone || '');
-			} catch (e) {}
+		if (storedEmail) {
+			setEmail(storedEmail);
+		} else {
+			// No email found, redirect back
+			router.replace(PAGES_DATA.onboarding_forgot_password_page);
 		}
-	}, []);
+	}, [router]);
 
 	useEffect(() => {
 		if (!isCounting) return;
@@ -72,26 +79,31 @@ export default function VerifyPhonePage() {
 	}, [isCounting]);
 
 	const handleResendCode = () => {
-		requestOtpMutate({ phone });
+		requestOtpMutate({ email });
 	};
 
-	const handleVerify = () => {
-		verifyOtpMutate({ otp, phone });
+	const handleResetPassword = () => {
+		if (password !== confirmPassword) {
+			toast.error('Passwords do not match');
+			return;
+		}
+		resetPasswordMutate({ otp, email, newPassword: password });
 	};
 
 	return (
-		<AuthPageWrapper canSkip={false}>
+		<AuthPageWrapper>
 			<div className='flex flex-col gap-5 w-full max-w-md'>
 				<div className='w-full'>
 					<GoBackButton />
 				</div>
 
 				<div className='w-full space-y-2 text-center'>
-					<h1 className='font-bold text-xl'>Verify phone number</h1>
+					<h1 className='font-bold text-xl'>Reset your password</h1>
 					<p className='font-light text-foreground/50'>
-						We have sent a 6-digit code to {phone} via{' '}
-						<span className='text-primary'>SMS</span> and{' '}
-						<span className='text-primary'>Whatsapp</span>
+						We have sent a 6-digit code to{' '}
+						<span className='font-semibold text-foreground'>
+							{email}
+						</span>
 					</p>
 				</div>
 
@@ -131,7 +143,7 @@ export default function VerifyPhonePage() {
 						</p>
 						<div className='w-full text-center flex gap-2 items-center justify-center'>
 							<p className='text-sm text-foreground/50'>
-								Didn’t get code?
+								Didn't get code?
 							</p>
 							<Button
 								variant='link'
@@ -145,21 +157,45 @@ export default function VerifyPhonePage() {
 							</Button>
 						</div>
 					</div>
+
+					<InputField
+						label='New Password'
+						type='password'
+						value={password}
+						onChange={(e) => setPassword(e.target.value)}
+						placeholder='********'
+						required
+					/>
+
+					<InputField
+						label='Confirm New Password'
+						type='password'
+						value={confirmPassword}
+						onChange={(e) => setConfirmPassword(e.target.value)}
+						placeholder='********'
+						required
+					/>
+
 					<Button
 						type='button'
 						variant={'game'}
-						onClick={handleVerify}
+						onClick={handleResetPassword}
 						className='w-full py-5'
-						disabled={verifyOtpLoading}>
-						{verifyOtpLoading
-							? 'Verifying...'
-							: 'Verify phone number'}
+						disabled={
+							resetPasswordLoading ||
+							otp.length !== 6 ||
+							!password ||
+							!confirmPassword
+						}>
+						{resetPasswordLoading
+							? 'Resetting...'
+							: 'Reset Password'}
 					</Button>
 				</div>
 				<div className='w-full space-y-2'>
 					<div className='w-full text-center flex gap-2 items-center justify-center'>
 						<p className='text-sm text-foreground/50'>
-							Already have an account?
+							Remember your password?
 						</p>
 						<Link
 							href={PAGES_DATA.login_page}

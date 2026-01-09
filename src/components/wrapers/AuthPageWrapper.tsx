@@ -6,9 +6,11 @@ import { PAGES_DATA } from '@/data/pagesData';
 const AuthPageWrapper = ({
 	children,
 	skip,
+	canSkip = true,
 }: Readonly<{
 	children: React.ReactNode;
-	skip?:string
+	skip?: string;
+	canSkip?: boolean;
 }>) => {
 	return (
 		<PageWrapper
@@ -24,11 +26,13 @@ const AuthPageWrapper = ({
 								className='w-[100px] md:w-[200px]'
 							/>
 						</Link>
-						<Link
-							href={skip || PAGES_DATA.home_page}
-							className='text-white text-xl md:hidden'>
-							Skip
-						</Link>
+						{canSkip && (
+							<Link
+								href={skip || PAGES_DATA.home_page}
+								className='text-white text-xl md:hidden'>
+								Skip
+							</Link>
+						)}
 					</div>
 				</div>
 				<div className='flex-2 w-full min-h-[90vh] md:min-h-screen flex justify-center md:items-center bg-background rounded-t-4xl md:rounded-4xl px-5 py-10'>

@@ -58,6 +58,8 @@ export const PAGES_DATA = {
     onboarding_verify_number_page: `/onboarding/verify-number`,
     onboarding_create_password_page: `/onboarding/create-password`,
     onboarding_set_address_page: `/onboarding/address`,
+    onboarding_forgot_password_page: `/onboarding/forgot-password`,
+    onboarding_verify_password_reset_page: `/onboarding/forgot-password/verify-otp`,
 
     onboarding_signup_page: `/onboarding`,
     login_page: `/sign-in`,
