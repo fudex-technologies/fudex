@@ -4,6 +4,7 @@ import { TRPCReactProvider } from '@/trpc/client';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import RequirePhoneModal from '@/components/RequirePhoneModal/RequirePhoneModal';
 import OnboardingRedirect from './OnboardingRedirect';
+import PwaInstallPrompt from '@/components/pwa/PwaInstallPrompt';
 
 export default function Providers({
 	children,
@@ -15,6 +16,7 @@ export default function Providers({
 			<NuqsAdapter>
 				{children}
 				<RequirePhoneModal />
+				<PwaInstallPrompt />
 				<PWAUpdateToast />
 				<OnboardingRedirect />
 				<Toaster position="top-center" />
