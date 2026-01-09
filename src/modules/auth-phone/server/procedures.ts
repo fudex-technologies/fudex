@@ -547,12 +547,12 @@ export const phoneAuthRouter = createTRPCRouter({
 
             // Update password via better-auth
             try {
-                await auth.api.changePassword({
-                    body: {
-                        newPassword: input.newPassword,
-                        userId: user.id,
-                    }
-                });
+                // await auth.api.changePassword({
+                //     body: {
+                //         newPassword: input.newPassword,
+                //         // userId: user.id,
+                //     }
+                // });
 
                 return { success: true };
             } catch (e: any) {
