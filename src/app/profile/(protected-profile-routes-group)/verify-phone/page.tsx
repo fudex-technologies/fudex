@@ -6,7 +6,7 @@ import { Suspense } from 'react';
 
 export default function VerifyPhonePage() {
 	return (
-		<AuthPageWrapper>
+		<AuthPageWrapper canSkip={false}>
 			<Suspense fallback={<div>Loading...</div>}>
 				<ProfileVerifyPhonePageUi />
 			</Suspense>

@@ -10,6 +10,7 @@ import ContinueWithGoogleButton, {
 	ContinueWithGoogleButtonSkeleton,
 } from '../../ContinueWithGoogleButton';
 import { Suspense } from 'react';
+import { Phone } from 'lucide-react';
 
 export default function OnboardingStepThreePage() {
 	return (
@@ -44,7 +45,7 @@ export default function OnboardingStepThreePage() {
 								className: 'w-full  text-foreground py-7',
 							})
 						)}>
-						<IoMail /> Continue with Email
+						<Phone /> Continue with Phone/Email
 					</Link>
 				</div>
 				<div className='w-full text-center flex gap-2 items-center justify-center'>
