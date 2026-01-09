@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { PAGES_DATA } from '@/data/pagesData';
 import { Button } from '../ui/button';
+import { OrderStatus } from '@prisma/client';
 
 const OngoingOrderItem = ({
 	vendorName,
@@ -23,7 +24,7 @@ const OngoingOrderItem = ({
 }: {
 	displayOrderId: string;
 	vendorName: string;
-	orderStatus: 'preparing' | 'on-the-way' | 'delivered';
+	orderStatus: 'preparing' | 'on-the-way' | 'pending' | 'delivered';
 	itemCount: number;
 	estimatedTime: string;
 	orderId: string;
@@ -37,10 +38,14 @@ const OngoingOrderItem = ({
 }) => {
 	// If orderId is short (8 chars), it's a display ID, otherwise use as-is
 	const linkOrderId = orderId.length === 8 ? orderId : orderId;
-	
+
 	return (
 		<Link
-			href={PAGES_DATA.order_info_page(linkOrderId)}
+			href={
+				orderStatus === 'delivered'
+					? PAGES_DATA.completed_order_info_page(linkOrderId)
+					: PAGES_DATA.order_info_page(linkOrderId)
+			}
 			className='p-5 border border-foreground/50 rounded-md flex flex-col gap-3'>
 			<div className='flex gap-2'>
 				<div className=''>

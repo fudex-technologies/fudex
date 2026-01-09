@@ -200,12 +200,12 @@ export const orderRouter = createTRPCRouter({
         .input(z.object({
             take: z.number().optional().default(20),
             skip: z.number().optional().default(0),
-            status: z.enum(Object.values(OrderStatus)).optional(),
+            status: z.array(z.nativeEnum(OrderStatus)).optional(),
         }))
         .query(({ ctx, input }) => {
             const where: any = { userId: ctx.user!.id }
             if (input.status) {
-                where.status = input.status;
+                where.status = { in: input.status };
             }
 
             return ctx.prisma.order.findMany({

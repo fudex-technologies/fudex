@@ -3,12 +3,31 @@
 import { useTRPC } from "@/trpc/client";
 import { useQuery, useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import { RatingFilterType } from "@/modules/vendors/schema";
+import { UseAPICallerOptions } from "./api-hook-types";
+import { toast } from "sonner";
 
 export function useVendorProductActions() {
     const trpc = useTRPC();
 
+
+    const addReview = (options?: UseAPICallerOptions) =>
+        useMutation(
+            trpc.vendors.createReview.mutationOptions({
+                onSuccess: (data) => {
+                    if (!options?.silent) toast.success("Review Added!!");
+                    options?.onSuccess?.(data);
+                },
+                onError: (err: unknown) => {
+                    if (!options?.silent) toast.error("Failed to add review", { description: err instanceof Error ? err.message : String(err) });
+                    options?.onError?.(err);
+                },
+                retry: false,
+            })
+        );
+
     return {
-        // read helpers
+        addReview,
+
         // products
         useListProductItems: (input: { vendorId: string; take?: number }) =>
             useQuery(trpc.vendors.listProductItems.queryOptions(input)),

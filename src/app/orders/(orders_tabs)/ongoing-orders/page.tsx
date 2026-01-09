@@ -11,33 +11,29 @@ import { OrderStatus } from '@prisma/client';
 
 export default function OngoingOrdersPage() {
 	const router = useRouter();
-	const { useListMyOrders } = useOrderingActions();
-	
+	const { useListOngoingOrders } = useOrderingActions();
+
 	// Get ongoing orders (PENDING, PAID, PREPARING, ASSIGNED)
-	const { data: orders = [], isLoading } = useListMyOrders({
+	const { data: ongoingOrders = [], isLoading } = useListOngoingOrders({
 		take: 50,
 	});
-
-	// Filter ongoing orders
-	const ongoingOrders = orders.filter(
-		(order) =>
-			order.status === OrderStatus.PENDING ||
-			order.status === OrderStatus.PAID ||
-			order.status === OrderStatus.PREPARING ||
-			order.status === OrderStatus.ASSIGNED
-	);
 
 	const isEmpty = !isLoading && ongoingOrders.length === 0;
 
 	// Map order status to component status
-	const getOrderStatus = (status: OrderStatus): 'preparing' | 'on-the-way' | 'delivered' => {
-		if (status === OrderStatus.PENDING || status === OrderStatus.PAID || status === OrderStatus.PREPARING) {
+	const getOrderStatus = (
+		status: OrderStatus
+	): 'pending' | 'preparing' | 'on-the-way' | 'delivered' => {
+		if (status === OrderStatus.PENDING) {
+			return 'pending';
+		}
+		if (status === OrderStatus.PAID || status === OrderStatus.PREPARING) {
 			return 'preparing';
 		}
 		if (status === OrderStatus.ASSIGNED) {
 			return 'on-the-way';
 		}
-		return 'delivered';
+		return 'pending';
 	};
 
 	// Calculate estimated time (placeholder - could be enhanced with actual delivery time estimates)
@@ -92,9 +88,14 @@ export default function OngoingOrdersPage() {
 			{!isEmpty && (
 				<div className='w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 px-5'>
 					{ongoingOrders.map((order) => {
-						const itemCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
-						const displayOrderId = order.id.slice(0, 8).toUpperCase();
-						
+						const itemCount = order.items.reduce(
+							(sum, item) => sum + item.quantity,
+							0
+						);
+						const displayOrderId = order.id
+							.slice(0, 8)
+							.toUpperCase();
+
 						return (
 							<OngoingOrderItem
 								key={order.id}
