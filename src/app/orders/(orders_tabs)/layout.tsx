@@ -33,7 +33,7 @@ export default function RootLayout({
 					<Link
 						href={PAGES_DATA.tray_page}
 						className={cn(
-							'flex-1 flex px-5 py-3 items-center justify-center rounded-lg',
+							'flex-1 flex px-5 py-3 items-center justify-center rounded-lg text-nowrap whitespace-nowrap',
 							isActiveStyle(PAGES_DATA.tray_page)
 						)}>
 						Tray {!isCartEmpty() && `(${getTotalVendors()})`}
@@ -41,7 +41,7 @@ export default function RootLayout({
 					<Link
 						href={PAGES_DATA.ongoing_orders_page}
 						className={cn(
-							'flex-1 flex px-5 py-3 items-center justify-center rounded-lg',
+							'flex-1 flex px-5 py-3 items-center justify-center rounded-lg text-nowrap whitespace-nowrap',
 							isActiveStyle(PAGES_DATA.ongoing_orders_page)
 						)}>
 						Ongoing{' '}
@@ -51,7 +51,7 @@ export default function RootLayout({
 					<Link
 						href={PAGES_DATA.completed_orders_page}
 						className={cn(
-							'flex-1 flex px-5 py-3 items-center justify-center rounded-lg',
+							'flex-1 flex px-5 py-3 items-center justify-center rounded-lg text-nowrap whitespace-nowrap',
 							isActiveStyle(PAGES_DATA.completed_orders_page)
 						)}>
 						Completed

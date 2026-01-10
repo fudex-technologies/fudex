@@ -175,15 +175,15 @@ export const getFullName = (profile: any) => {
 }
 
 export function formatToAMPM(time24: string) {
-    // time24 example: "14:30" or "09:05"
-    const [hours, minutes] = time24.split(":").map(Number);
+    if (!time24) return "";
+    const [h, m] = time24.split(":");
+    const hours = Number(h);
+    const minutes = Number(m);
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+        return "";
+    }
+    const period = hours >= 12 ? "PM" : "AM";
+    const hour12 = hours % 12 || 12;
 
-    const date = new Date();
-    date.setHours(hours, minutes);
-
-    return new Intl.DateTimeFormat("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-    }).format(date);
+    return `${hour12}:${minutes.toString().padStart(2, "0")} ${period}`;
 }

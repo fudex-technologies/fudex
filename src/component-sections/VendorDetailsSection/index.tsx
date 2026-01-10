@@ -101,7 +101,7 @@ const VendorDetailsSection = ({
 						<Link
 							href={PAGES_DATA.single_vendor_info_page(vendor.id)}
 							className='flex gap-1 items-center'>
-							Open until {formatToAMPM(nextCloseTime)}
+							Open until {formatToAMPM(nextCloseTime || '')}
 							<ChevronRight size={15} />
 						</Link>
 					)}
@@ -109,7 +109,7 @@ const VendorDetailsSection = ({
 						<Link
 							href={PAGES_DATA.single_vendor_info_page(vendor.id)}
 							className='flex gap-1 items-center'>
-							Closed until {formatToAMPM(nextOpenTime)}
+							Closed until {nextOpenTime}
 							<ChevronRight size={15} />
 						</Link>
 					)}
