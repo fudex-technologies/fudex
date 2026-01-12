@@ -24,6 +24,7 @@ export const PAGES_DATA = {
     profile_account_page: `/profile/account`,
     profile_favorites_page: `/profile/favorites`,
     profile_notifications_page: `/profile/notifications`,
+    profile_referral_page: `/profile/referral`,
     profile_faqs_page: `/profile/faqs`,
 
     profile_verify_phone_page: `/profile/verify-phone`,

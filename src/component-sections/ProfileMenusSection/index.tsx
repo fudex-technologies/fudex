@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import SectionWrapper from '@/components/wrapers/SectionWrapper';
 import { PAGES_DATA } from '@/data/pagesData';
 import { useSession } from '@/lib/auth-client';
+import { FUDEX_PHONE_NUMBER } from '@/lib/staticData/contactData';
 import {
 	Bell,
 	CircleQuestionMark,
@@ -19,6 +20,8 @@ import {
 	Store,
 	Shield,
 	Settings,
+	Headset,
+	Wallet,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -113,8 +116,21 @@ const ProfileMenusSection = () => {
 					menuItems={[
 						{
 							icon: <Gift />,
-							title: 'Promo codes',
+							title: 'Refer and Earn',
+							protected: true,
+							link: PAGES_DATA.profile_referral_page,
 							show: true,
+						},
+					]}
+				/>
+				<MenuListComponent
+					menuTitle='Payment'
+					menuItems={[
+						{
+							icon: <Wallet />,
+							title: 'Wallet',
+							show: true,
+							protected: true,
 						},
 					]}
 				/>
@@ -122,6 +138,23 @@ const ProfileMenusSection = () => {
 				<MenuListComponent
 					menuTitle='More'
 					menuItems={[
+						{
+							icon: <Headset />,
+							title: 'Contect support',
+							// link: PAGES_DATA.profile_notifications_page,
+							protected: false,
+							show: true,
+							onClick: () => {
+								const encodedMessage =
+									encodeURIComponent('Hi FUDEX');
+								const url = `https://wa.me/${FUDEX_PHONE_NUMBER}${
+									encodedMessage
+										? `?text=${encodedMessage}`
+										: ''
+								}`;
+								window.open(url, '_blank');
+							},
+						},
 						// {
 						// 	icon: <Bell />,
 						// 	title: 'Notifications',
