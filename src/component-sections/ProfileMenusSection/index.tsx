@@ -122,13 +122,13 @@ const ProfileMenusSection = () => {
 				<MenuListComponent
 					menuTitle='More'
 					menuItems={[
-						{
-							icon: <Bell />,
-							title: 'Notifications',
-							link: PAGES_DATA.profile_notifications_page,
-							protected: true,
-							show: true,
-						},
+						// {
+						// 	icon: <Bell />,
+						// 	title: 'Notifications',
+						// 	link: PAGES_DATA.profile_notifications_page,
+						// 	protected: true,
+						// 	show: true,
+						// },
 						{
 							icon: <CircleQuestionMark />,
 							title: 'FAQ',
@@ -144,13 +144,13 @@ const ProfileMenusSection = () => {
 							protected: true,
 							show: false,
 						},
-						{
-							icon: <Trash />,
-							title: 'Delete my account and data',
-							onClick: () => {},
-							protected: true,
-							show: false,
-						},
+						// {
+						// 	icon: <Trash />,
+						// 	title: 'Delete my account and data',
+						// 	onClick: () => {},
+						// 	protected: true,
+						// 	show: false,
+						// },
 					]}
 				/>
 			</div>
