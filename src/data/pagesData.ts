@@ -32,12 +32,6 @@ export const PAGES_DATA = {
     profile_addresses_page: `/profile/addresses`,
     profile_set_address_manually: `/profile/addresses/set-manually`,
 
-    // vendor dashboard pages
-    vendor_dashboard_page: `/profile/vendor-dashboard`,
-    vendor_dashboard_profile_page: `/profile/vendor-dashboard/profile`,
-    vendor_dashboard_products_page: `/profile/vendor-dashboard/products`,
-    vendor_dashboard_orders_page: `/profile/vendor-dashboard/orders`,
-
     // admin dashboard pages
     admin_dashboard_page: `/profile/admin-dashboard`,
     admin_dashboard_areas_page: `/profile/admin-dashboard/areas`,
@@ -65,4 +59,12 @@ export const PAGES_DATA = {
     onboarding_signup_page: `/onboarding`,
     login_page: `/sign-in`,
     auth_status_page: `/auth-status`,
+
+
+    // vendor dashboard pages
+    vendor_dashboard_page: `/profile/vendor-dashboard`,
+    vendor_dashboard_profile_page: `/profile/vendor-dashboard/profile`,
+    vendor_dashboard_products_page: `/profile/vendor-dashboard/products`,
+    vendor_dashboard_orders_page: `/profile/vendor-dashboard/orders`,
+    vendor_dashboard_payouts_page: `/profile/vendor-dashboard/payouts`,
 }
