@@ -60,19 +60,19 @@ const MobileBottomNav = () => {
 					)}>
 					{isActive(PAGES_DATA.home_page) ? (
 						<GoHomeFill
-							width={20}
-							height={20}
+							width={25}
+							height={25}
 							className={cn('w-5 h-5')}
 						/>
 					) : (
 						<GoHome
-							width={20}
-							height={20}
+							width={25}
+							height={25}
 							className={cn('w-5 h-5')}
 							color='#858585'
 						/>
 					)}
-					<p className=''>Home</p>
+					<p className='text-[14px]'>Home</p>
 				</Link>
 				<Link
 					href={PAGES_DATA.search_page}
@@ -82,20 +82,20 @@ const MobileBottomNav = () => {
 					)}>
 					{isActive(PAGES_DATA.search_page) ? (
 						<RiSearchFill
-							width={20}
-							height={20}
+							width={25}
+							height={25}
 							className={cn('w-5 h-5')}
 						/>
 					) : (
 						<RiSearchLine
-							width={20}
-							height={20}
+							width={25}
+							height={25}
 							className={cn('w-5 h-5')}
 							color='#858585'
 						/>
 					)}
 
-					<p className=''>Search</p>
+					<p className='text-[14px]'>Search</p>
 				</Link>
 				<Link
 					href={PAGES_DATA.tray_page}
@@ -106,8 +106,8 @@ const MobileBottomNav = () => {
 					{isActive(PAGES_DATA.orders_page) ? (
 						<div className='relative'>
 							<RiShoppingBag2Fill
-								width={20}
-								height={20}
+								width={25}
+								height={25}
 								className={cn('w-5 h-5')}
 							/>
 						</div>
@@ -121,15 +121,15 @@ const MobileBottomNav = () => {
 								</Badge>
 							)}
 							<RiShoppingBag2Line
-								width={20}
-								height={20}
+								width={25}
+								height={25}
 								className={cn('w-5 h-5')}
 								color='#858585'
 							/>
 						</div>
 					)}
 
-					<p className=''>Orders</p>
+					<p className='text-[14px]'>Orders</p>
 				</Link>
 				<Link
 					href={PAGES_DATA.profile_page}
@@ -139,20 +139,20 @@ const MobileBottomNav = () => {
 					)}>
 					{isActive(PAGES_DATA.profile_page) ? (
 						<RiUser3Fill
-							width={20}
-							height={20}
+							width={25}
+							height={25}
 							className={cn('w-5 h-5')}
 						/>
 					) : (
 						<RiUser3Line
-							width={20}
-							height={20}
+							width={25}
+							height={25}
 							className={cn('w-5 h-5')}
 							color='#858585'
 						/>
 					)}
 
-					<p className=''>Profile</p>
+					<p className='text-[14px]'>Profile</p>
 				</Link>
 			</div>
 		</>

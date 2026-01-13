@@ -228,3 +228,7 @@ html {
     }
   }
 }
+
+.lighteffect {
+  box-shadow: 0px 3px 4px 0px #FFFFFF73 inset;
+}

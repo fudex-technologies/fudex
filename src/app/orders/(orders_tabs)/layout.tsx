@@ -29,11 +29,11 @@ export default function RootLayout({
 		<PageWrapper className=''>
 			<div className='p-5'>
 				<h1 className='text-center font-bold text-2xl py-5'>Orders</h1>
-				<div className='w-full flex justify-between items-center p-3 bg-muted text-muted-foreground/50 rounded-lg gap-3 font-bold'>
+				<div className='w-full flex justify-between items-center p-3 bg-muted text-muted-foreground/50 rounded-lg gap-3 font-semibold'>
 					<Link
 						href={PAGES_DATA.tray_page}
 						className={cn(
-							'flex-1 flex px-5 py-3 items-center justify-center rounded-lg text-nowrap whitespace-nowrap',
+							'flex-1 flex px-3 py-3 items-center justify-center rounded-lg text-nowrap whitespace-nowrap',
 							isActiveStyle(PAGES_DATA.tray_page)
 						)}>
 						Tray {!isCartEmpty() && `(${getTotalVendors()})`}
@@ -41,7 +41,7 @@ export default function RootLayout({
 					<Link
 						href={PAGES_DATA.ongoing_orders_page}
 						className={cn(
-							'flex-1 flex px-5 py-3 items-center justify-center rounded-lg text-nowrap whitespace-nowrap',
+							'flex-1 flex px-3 py-3 items-center justify-center rounded-lg text-nowrap whitespace-nowrap',
 							isActiveStyle(PAGES_DATA.ongoing_orders_page)
 						)}>
 						Ongoing{' '}
@@ -51,7 +51,7 @@ export default function RootLayout({
 					<Link
 						href={PAGES_DATA.completed_orders_page}
 						className={cn(
-							'flex-1 flex px-5 py-3 items-center justify-center rounded-lg text-nowrap whitespace-nowrap',
+							'flex-1 flex px-3 py-3 items-center justify-center rounded-lg text-nowrap whitespace-nowrap',
 							isActiveStyle(PAGES_DATA.completed_orders_page)
 						)}>
 						Completed

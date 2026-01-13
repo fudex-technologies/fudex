@@ -1,4 +1,4 @@
-import { getDoodleAvatarUrl } from "@/lib/commonFunctions";
+import { getDoodleAvatarUrl, normalizePhoneNumber } from "@/lib/commonFunctions";
 import { createTRPCRouter, publicProcedure, protectedProcedure } from "@/trpc/init";
 import { z } from "zod";
 import { calculateDeliveryFee, getServiceFee } from "@/lib/deliveryFeeCalculator";
@@ -47,7 +47,7 @@ export const userRouter = createTRPCRouter({
             if (input.firstName) data.firstName = input.firstName;
             if (input.lastName) data.lastName = input.lastName;
             if (input.image) data.image = input.image;
-            if (input.phone) data.phone = input.phone;
+            if (input.phone) data.phone = normalizePhoneNumber(input.phone);
             if (input.email) data.email = input.email;
 
             const updated = await ctx.prisma.user.update({

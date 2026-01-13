@@ -1,8 +1,25 @@
-import { redirect } from 'next/navigation';
-import { PAGES_DATA } from '@/data/pagesData';
+import PageWrapper from '@/components/wrapers/PageWrapper';
+import SectionWrapper from '@/components/wrapers/SectionWrapper';
+import VendorDashboardProfileCircle from '@/components/vendor-dashboard-components/VendorDashboardProfileCircle';
+import VendorAvailabilityStatusSwitch from '@/components/vendor-dashboard-components/VendorAvailabilityStatusSwitch';
+import VendorDashboardOrdertats from '@/component-sections/vendor-dashboard-section-componnts/VendorDashboardOrderStats';
+import VendorDashboardQuickActionsSection from '@/component-sections/vendor-dashboard-section-componnts/VendorDashboardQuickActionsSection';
+import VendorDashboardTopSellingItems from '@/component-sections/vendor-dashboard-section-componnts/Vendor-dashboard-product-list-sections/VendorDashboardTopSellingItems';
+import VendorDashboardAvailableItems from '@/component-sections/vendor-dashboard-section-componnts/Vendor-dashboard-product-list-sections/VendorDashboardAvailableItems';
+import VendorDashboardMobileBottomNav from '@/components/navigation-components/VendorDashboardMobileBottomNav';
 
 export default function VendorDashboardPage() {
-	// Redirect to profile tab by default
-	redirect(PAGES_DATA.vendor_dashboard_profile_page);
+	return (
+		<PageWrapper>
+			<SectionWrapper className='w-full flex items-center gap-5 justify-between'>
+				<VendorDashboardProfileCircle />
+				<VendorAvailabilityStatusSwitch />
+			</SectionWrapper>
+			<VendorDashboardOrdertats />
+			<VendorDashboardQuickActionsSection />
+			<VendorDashboardTopSellingItems />
+			<VendorDashboardAvailableItems />
+			<VendorDashboardMobileBottomNav />
+		</PageWrapper>
+	);
 }
-
