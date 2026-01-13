@@ -7,6 +7,7 @@ import VendorDashboardQuickActionsSection from '@/component-sections/vendor-dash
 import VendorDashboardTopSellingItems from '@/component-sections/vendor-dashboard-section-componnts/Vendor-dashboard-product-list-sections/VendorDashboardTopSellingItems';
 import VendorDashboardAvailableItems from '@/component-sections/vendor-dashboard-section-componnts/Vendor-dashboard-product-list-sections/VendorDashboardAvailableItems';
 import VendorDashboardMobileBottomNav from '@/components/navigation-components/VendorDashboardMobileBottomNav';
+import VendorDashboardRecentOrderCardsSection from '@/component-sections/vendor-dashboard-section-componnts/VendorDashboardOrderListSections/VendorDashboardRecentOrderCardsSection';
 
 export default function VendorDashboardPage() {
 	return (
@@ -16,6 +17,7 @@ export default function VendorDashboardPage() {
 				<VendorAvailabilityStatusSwitch />
 			</SectionWrapper>
 			<VendorDashboardOrdertats />
+			<VendorDashboardRecentOrderCardsSection />
 			<VendorDashboardQuickActionsSection />
 			<VendorDashboardTopSellingItems />
 			<VendorDashboardAvailableItems />
