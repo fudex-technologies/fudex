@@ -78,7 +78,7 @@ const VendorDashboardMobileBottomNav = () => {
 				</Link>
 
 				<Link
-					href={PAGES_DATA.vendor_dashboard_orders_page}
+					href={PAGES_DATA.vendor_dashboard_new_orders_page}
 					className={cn(
 						'flex flex-1 flex-col justify-start pt-3 pb-5 items-center',
 						activeStyle(PAGES_DATA.vendor_dashboard_orders_page)
@@ -148,12 +148,12 @@ const VendorDashboardMobileBottomNav = () => {
 				</Link>
 
 				<Link
-					href={PAGES_DATA.vendor_dashboard_products_page}
+					href={PAGES_DATA.vendor_dashboard_menu_page}
 					className={cn(
 						'flex flex-1 flex-col justify-start pt-3 pb-5 items-center',
-						activeStyle(PAGES_DATA.vendor_dashboard_products_page)
+						activeStyle(PAGES_DATA.vendor_dashboard_menu_page)
 					)}>
-					{isActive(PAGES_DATA.vendor_dashboard_products_page) ? (
+					{isActive(PAGES_DATA.vendor_dashboard_menu_page) ? (
 						<div className='relative'>
 							<PiHamburgerFill
 								width={25}

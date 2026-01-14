@@ -1,17 +1,24 @@
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { productsDummyData } from '@/lib/dummyData';
+import VendorDashboardProductListItem from './VendorDashboardProductListItem';
 
 const VendorDashboardTopSellingItems = () => {
-	const items: any[] = [];
+	const items: any[] = productsDummyData.main;
 	return (
 		<div className='w-full flex flex-col gap-3 pb-5'>
-			<h2 className='text-lg font-semibold px-5'> <span className='rotate-12'>👑</span> Top Selling Items</h2>
+			<h2 className='text-lg font-semibold px-5'>
+				{' '}
+				<span className=''>👑</span> Top Selling Items
+			</h2>
 			{items.length > 0 ? (
 				<ScrollArea className='w-screen max-w-[1400px] whitespace-nowrap'>
 					<div className='flex w-max space-x-4 mx-5'>
 						{items.map((item, index) => (
 							<div className='w-[250px]' key={index}>
-								{/* <RestaurantCard vendor={vendor} /> */}
+								<VendorDashboardProductListItem
+									productItem={item}
+								/>
 							</div>
 						))}
 					</div>

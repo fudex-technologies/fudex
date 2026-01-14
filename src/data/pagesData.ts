@@ -60,11 +60,17 @@ export const PAGES_DATA = {
     login_page: `/sign-in`,
     auth_status_page: `/auth-status`,
 
-
     // vendor dashboard pages
     vendor_dashboard_page: `/profile/vendor-dashboard`,
     vendor_dashboard_profile_page: `/profile/vendor-dashboard/profile`,
-    vendor_dashboard_products_page: `/profile/vendor-dashboard/products`,
-    vendor_dashboard_orders_page: `/profile/vendor-dashboard/orders`,
+    vendor_dashboard_menu_page: `/profile/vendor-dashboard/menu`,
     vendor_dashboard_payouts_page: `/profile/vendor-dashboard/payouts`,
+    vendor_dashboard_payouts_history_page: `/profile/vendor-dashboard/payouts/earnings`,
+    vendor_dashboard_single_payout_page: (id: string) => `/profile/vendor-dashboard/payouts/${id}`,
+
+    vendor_dashboard_orders_page: `/profile/vendor-dashboard/orders`,
+    vendor_dashboard_new_orders_page: `/profile/vendor-dashboard/orders/new`,
+    vendor_dashboard_ongoing_orders_page: `/profile/vendor-dashboard/orders/ongoing`,
+    vendor_dashboard_ready_orders_page: `/profile/vendor-dashboard/orders/ready`,
+    vendor_dashboard_given_to_rider_orders_page: `/profile/vendor-dashboard/orders/given-to-rider`,
 }

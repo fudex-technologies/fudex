@@ -1,11 +1,13 @@
 import { buttonVariants } from '@/components/ui/button';
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { productsDummyData } from '@/lib/dummyData';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import VendorDashboardProductListItem from './VendorDashboardProductListItem';
 
 const VendorDashboardAvailableItems = () => {
-	const items: any[] = [];
+	const items: any[] = productsDummyData.swallow;
 	return (
 		<div className='w-full flex flex-col gap-3 pb-5'>
 			<h2 className='text-lg font-semibold px-5'>Available now</h2>
@@ -14,7 +16,9 @@ const VendorDashboardAvailableItems = () => {
 					<div className='flex w-max space-x-4 mx-5'>
 						{items.map((item, index) => (
 							<div className='w-[250px]' key={index}>
-								{/* <RestaurantCard vendor={vendor} /> */}
+								<VendorDashboardProductListItem
+									productItem={item}
+								/>
 							</div>
 						))}
 					</div>
