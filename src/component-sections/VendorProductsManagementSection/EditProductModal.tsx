@@ -12,54 +12,49 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus } from 'lucide-react';
+import { Edit } from 'lucide-react';
 import React, { useState } from 'react';
-import { toast } from 'sonner';
 
-export default function CreateProductModal({
+export default function EditProductModal({
+	product,
 	onSuccess,
 }: {
+	product: { id: string; name: string; description?: string | null };
 	onSuccess: () => void;
 }) {
 	const [open, setOpen] = useState(false);
-	const [name, setName] = useState('');
-	const [description, setDescription] = useState('');
-	const { createProduct, useGetMyVendor } = useVendorDashboardActions();
-	const { data: vendor } = useGetMyVendor();
+	const [name, setName] = useState(product.name);
+	const [description, setDescription] = useState(product.description || '');
+	const { updateProduct } = useVendorDashboardActions();
 
-	const createProductMutate = createProduct({
+	const updateProductMutate = updateProduct({
 		onSuccess: () => {
 			setOpen(false);
-			setName('');
-			setDescription('');
 			onSuccess();
 		},
 	});
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
-		if (!vendor) {
-			toast.error('Vendor not found');
-			return;
-		}
-		createProductMutate.mutate({
-			vendorId: vendor.id,
-			name,
-			description: description || undefined,
-			inStock: true,
+		updateProductMutate.mutate({
+			id: product.id,
+			data: {
+				name,
+				description: description || undefined,
+			},
 		});
 	};
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
 			<DialogTrigger asChild>
-				<Button variant='game' size='lg'>
-					     <Plus size={16} className='mr-2' />
-					     Add Menu Item				</Button>
+				<Button size={'sm'} variant={'link'}>
+					Edit Menu Item
+				</Button>
 			</DialogTrigger>
 			<DialogContent>
 				<DialogHeader>
-					<DialogTitle>Create New Menu Item</DialogTitle>
+					<DialogTitle>Edit Menu Item</DialogTitle>
 				</DialogHeader>
 				<form onSubmit={handleSubmit} className='space-y-4'>
 					<div className='space-y-2'>
@@ -78,7 +73,7 @@ export default function CreateProductModal({
 							id='product-desc'
 							value={description}
 							onChange={(e) => setDescription(e.target.value)}
-							placeholder='Product description...'
+							placeholder='Menu item description...'
 							rows={3}
 						/>
 					</div>
@@ -86,10 +81,10 @@ export default function CreateProductModal({
 						type='submit'
 						variant='game'
 						className='w-full'
-						disabled={createProductMutate.isPending}>
-						{createProductMutate.isPending
-							? 'Creating...'
-							: 'Create Menu Item'}
+						disabled={updateProductMutate.isPending}>
+						{updateProductMutate.isPending
+							? 'Updating...'
+							: 'Update Menu Item'}
 					</Button>
 				</form>
 			</DialogContent>

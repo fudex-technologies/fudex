@@ -2,6 +2,30 @@ import { createTRPCRouter, publicProcedure, operatorProcedure, vendorAndOperator
 import { DayOfWeek, OrderStatus } from "@prisma/client";
 import { z } from "zod";
 
+const generateUniqueSlug = async (prisma: any, name: string, vendorId: string): Promise<string> => {
+    let slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    let isUnique = false;
+    let counter = 1;
+    let baseSlug = slug;
+
+    while (!isUnique) {
+        const existing = await prisma.productItem.findFirst({
+            where: {
+                slug: slug,
+                vendorId: vendorId,
+            }
+        });
+
+        if (!existing) {
+            isUnique = true;
+        } else {
+            slug = `${baseSlug}-${counter}`;
+            counter++;
+        }
+    }
+    return slug;
+};
+
 export const vendorRouter = createTRPCRouter({
     // Public listings with optional search / pagination
     list: publicProcedure
@@ -868,7 +892,6 @@ export const vendorRouter = createTRPCRouter({
                 vendorId: z.string(),
                 productId: z.string().optional(),
                 name: z.string(),
-                slug: z.string(),
                 description: z.string().optional(),
                 price: z.number(),
                 currency: z.string().optional().default("NGN"),
@@ -891,7 +914,6 @@ export const vendorRouter = createTRPCRouter({
 
             if (!isOperator && !isSuper && !isVendorOwner) throw new Error("Forbidden: insufficient permissions");
 
-            // 🔍 Ensure categories exist
             const existingCategories = await ctx.prisma.category.findMany({
                 where: { id: { in: input.categories } },
                 select: { id: true },
@@ -900,10 +922,15 @@ export const vendorRouter = createTRPCRouter({
             if (existingCategories.length !== input.categories.length) {
                 throw new Error("One or more categories are invalid");
             }
+            
+            const slug = await generateUniqueSlug(ctx.prisma, input.name, input.vendorId);
+            
+            const { categories, ...restOfInput } = input;
 
             return ctx.prisma.productItem.create({
                 data: {
-                    ...input, // ✅ correct category relation
+                    ...restOfInput,
+                    slug,
                     categories: {
                         createMany: {
                             data: existingCategories.map((c) => ({
@@ -980,7 +1007,7 @@ export const vendorRouter = createTRPCRouter({
                 name: z.string().optional(),
                 price: z.number().optional(),
                 currency: z.string().optional(),
-                categories: z.array(z.string()).min(1),
+                categories: z.array(z.string()).min(1).optional(),
                 images: z.array(z.string()).optional(),
                 isActive: z.boolean().optional(),
                 inStock: z.boolean().optional(),
@@ -1001,21 +1028,24 @@ export const vendorRouter = createTRPCRouter({
             const isVendorOwner = vendor && vendor.ownerId === userId;
 
             if (!isOperator && !isSuper && !isVendorOwner) throw new Error("Forbidden: insufficient permissions");
+            
+            let categoryData = {};
+            if (input.data.categories) {
+                const existingCategories = await ctx.prisma.category.findMany({
+                    where: { id: { in: input.data.categories } },
+                    select: { id: true },
+                });
 
-            // 🔍 Ensure categories exist
-            const existingCategories = await ctx.prisma.category.findMany({
-                where: { id: { in: input.data.categories } },
-                select: { id: true },
-            });
+                if (existingCategories.length !== input.data.categories.length) {
+                    throw new Error("One or more categories are invalid");
+                }
+                
+                // disconnect old categories and connect new ones
+                await ctx.prisma.productItemCategory.deleteMany({
+                    where: { productItemId: input.id },
+                });
 
-            if (existingCategories.length !== input.data.categories.length) {
-                throw new Error("One or more categories are invalid");
-            }
-
-            return ctx.prisma.productItem.update({
-                where: { id: input.id },
-                data: {
-                    ...input.data, // ✅ correct category relation
+                categoryData = {
                     categories: {
                         createMany: {
                             data: existingCategories.map((c) => ({
@@ -1023,6 +1053,17 @@ export const vendorRouter = createTRPCRouter({
                             })),
                         },
                     },
+                }
+            }
+
+
+            const { categories, ...restOfData } = input.data;
+
+            return ctx.prisma.productItem.update({
+                where: { id: input.id },
+                data: {
+                    ...restOfData,
+                    ...categoryData,
                 }
             });
         }),
@@ -1068,10 +1109,9 @@ export const vendorRouter = createTRPCRouter({
                 throw new Error("Unauthorized: You don't own this product item");
             }
 
-            // Soft delete by setting isActive to false
-            return ctx.prisma.productItem.update({
+            // Hard delete
+            return ctx.prisma.productItem.delete({
                 where: { id: input.id },
-                data: { isActive: false }
             });
         }),
 
@@ -1089,15 +1129,17 @@ export const vendorRouter = createTRPCRouter({
                 throw new Error("Unauthorized: You don't own this product");
             }
 
-            // Soft delete by setting inStock to false for all items
-            await ctx.prisma.productItem.updateMany({
-                where: { productId: input.id },
-                data: { isActive: false, inStock: false }
-            });
+            // Hard delete in a transaction
+            return ctx.prisma.$transaction(async (prisma) => {
+                // Delete all items associated with the product
+                await prisma.productItem.deleteMany({
+                    where: { productId: input.id },
+                });
 
-            return ctx.prisma.product.update({
-                where: { id: input.id },
-                data: { inStock: false }
+                // Delete the product itself
+                return prisma.product.delete({
+                    where: { id: input.id },
+                });
             });
         }),
 });
