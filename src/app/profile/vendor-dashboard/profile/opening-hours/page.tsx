@@ -4,6 +4,8 @@ import { useVendorDashboardActions } from '@/api-hooks/useVendorDashboardActions
 import OpeningHoursSettings from '@/components/OpeningHoursSettings';
 import SectionWrapper from '@/components/wrapers/SectionWrapper';
 import { Skeleton } from '@/components/ui/skeleton';
+import PageWrapper from '@/components/wrapers/PageWrapper';
+import GoBackButton from '@/components/GoBackButton';
 
 export default function OpeningHoursPage() {
 	const { useGetMyVendor } = useVendorDashboardActions();
@@ -29,11 +31,12 @@ export default function OpeningHoursPage() {
 	}
 
 	return (
-		<SectionWrapper className='p-5 max-w-2xl mx-auto'>
-			<h2 className='text-xl font-semibold mb-6'>
-				Manage Weekly Opening Hours
-			</h2>
+		<PageWrapper className='p-5 max-w-2xl mx-auto '>
+			<div className='flex items-center gap-5 w-full'>
+				<GoBackButton />
+				<h1 className='font-semibold text-lg'>Manage Weekly Opening Hours</h1>
+			</div>
 			<OpeningHoursSettings vendorId={vendor.id} />
-		</SectionWrapper>
+		</PageWrapper>
 	);
 }
