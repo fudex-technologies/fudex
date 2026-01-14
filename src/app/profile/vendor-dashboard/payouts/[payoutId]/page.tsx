@@ -15,7 +15,7 @@ export default async function SinglePayoutPage({ params }: Props) {
 				'max-w-none w-full bg-secondary p-0 flex justify-center items-center'
 			}>
 			<div className='w-full max-w-[1400px] flex flex-col'>
-				<div className='flex-1 w-full flex md:h-screen items-center justify-center p-10 md:sticky top-0 '>
+				<div className='flex-1 w-full flex md:h-screen items-center justify-center p-10 '>
 					<div className='flex items-center gap-10 w-full px-5 text-white'>
 						<GoBackButton className='text-black! bg-white!' />
 						<h1 className='font-semibold text-xl'>
