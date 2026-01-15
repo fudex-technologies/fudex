@@ -1,7 +1,6 @@
 'use client';
 
 import { useCategoryActions } from '@/api-hooks/useCategoryActions';
-import { useOperatorActions } from '@/api-hooks/useOperatorActions';
 import { useVendorDashboardActions } from '@/api-hooks/useVendorDashboardActions';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -18,10 +17,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { vercelBlobFolderStructure } from '@/data/vercelBlobFolders';
 import { Plus } from 'lucide-react';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-// Create Product Item Dialog
 function CreateProductItemModal({
 	products,
 	onSuccess,
@@ -30,10 +28,12 @@ function CreateProductItemModal({
 	onSuccess: () => void;
 }) {
 	const [open, setOpen] = useState(false);
+	const [createdProductItemId, setCreatedProductItemId] = useState<
+		string | null
+	>(null);
 	const [formData, setFormData] = useState({
-		productId: '',
+		productId: products.length === 1 ? products[0].id : '',
 		name: '',
-		slug: '',
 		category: '',
 		description: '',
 		price: '',
@@ -45,20 +45,16 @@ function CreateProductItemModal({
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	const { useListCategories } = useCategoryActions();
-	const { data: categories = [] } = useListCategories({
-		take: 20,
-	});
-	const { createProductItem, useGetMyVendor } = useVendorDashboardActions();
+	const { data: categories = [] } = useListCategories({ take: 20 });
+	const { createProductItem, useGetMyVendor, updateProductItem } =
+		useVendorDashboardActions();
 	const { data: vendor } = useGetMyVendor();
 
-	const createProductMutate = createProductItem({
-		onSuccess: () => {
-			toast.success('Product item created');
-			setOpen(false);
+	useEffect(() => {
+		if (open) {
 			setFormData({
-				productId: '',
+				productId: products.length === 1 ? products[0].id : '',
 				name: '',
-				slug: '',
 				category: '',
 				description: '',
 				price: '',
@@ -66,7 +62,29 @@ function CreateProductItemModal({
 				isActive: true,
 				inStock: true,
 			});
-			onSuccess();
+			setCreatedProductItemId(null);
+		}
+	}, [open, products]);
+
+	const updateProductItemMutate = updateProductItem({
+		onSuccess: (data: any) => {
+			setFormData((prev) => ({ ...prev, images: data.images }));
+		},
+	});
+
+	const createProductMutate = createProductItem({
+		onSuccess: (data: any) => {
+			setCreatedProductItemId(data.id);
+			setFormData({
+				productId: data.productId ?? '',
+				name: data.name,
+				category: data.categories[0]?.id ?? '',
+				description: data.description ?? '',
+				price: String(data.price),
+				images: data.images,
+				isActive: data.isActive,
+				inStock: data.inStock,
+			});
 		},
 	});
 
@@ -75,6 +93,8 @@ function CreateProductItemModal({
 			toast.error('Please upload an image file');
 			return;
 		}
+		if (!createdProductItemId) return;
+
 		setIsUploading(true);
 		try {
 			const uploadFormData = new FormData();
@@ -91,11 +111,12 @@ function CreateProductItemModal({
 
 			if (!response.ok) throw new Error('Upload failed');
 			const data = await response.json();
-			setFormData((prev) => ({
-				...prev,
-				images: [...prev.images, data.url],
-			}));
-			toast.success('Image uploaded');
+			updateProductItemMutate.mutate({
+				id: createdProductItemId,
+				data: {
+					images: [data.url],
+				},
+			});
 		} catch (error) {
 			toast.error('Failed to upload image');
 		} finally {
@@ -103,8 +124,24 @@ function CreateProductItemModal({
 		}
 	};
 
+	const handleRemoveImage = () => {
+		if (!createdProductItemId) return;
+		updateProductItemMutate.mutate({
+			id: createdProductItemId,
+			data: {
+				images: [],
+			},
+		});
+	};
+
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
+		console.log(formData);
+
+		if (createdProductItemId) {
+			return;
+		}
+
 		if (!vendor) {
 			toast.error('Vendor not found');
 			return;
@@ -114,9 +151,6 @@ function CreateProductItemModal({
 			productId: formData.productId || undefined,
 			name: formData.name,
 			categories: [formData.category],
-			slug:
-				formData.slug ||
-				formData.name.toLowerCase().replace(/\s+/g, '-'),
 			description: formData.description || undefined,
 			price: parseFloat(formData.price),
 			images: formData.images,
@@ -125,27 +159,39 @@ function CreateProductItemModal({
 		});
 	};
 
+	const handleClose = () => {
+		setOpen(false);
+		onSuccess();
+	};
+
+	const isEditMode = !!createdProductItemId;
+
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
 			<DialogTrigger asChild>
-				<Button variant='outline'>
+				<Button size={'sm'}>
 					<Plus size={16} className='mr-2' />
-					Add Product Item
+					Add Menu Variation
 				</Button>
 			</DialogTrigger>
 			<DialogContent className='max-w-2xl max-h-[90vh] overflow-y-auto'>
 				<DialogHeader>
-					<DialogTitle>Create Product Item</DialogTitle>
+					<DialogTitle>
+						{isEditMode
+							? 'Update Menu Variation'
+							: 'Create Menu Variation'}
+					</DialogTitle>
 				</DialogHeader>
 				<form onSubmit={handleSubmit} className='space-y-4'>
-					{products.length > 0 && (
+					{products.length > 1 && (
 						<div className='space-y-2'>
 							<Label htmlFor='item-product'>
-								Product (Optional)
+								Menu Item (Optional)
 							</Label>
 							<select
 								id='item-product'
 								value={formData.productId}
+								disabled={isEditMode}
 								onChange={(e) =>
 									setFormData((prev) => ({
 										...prev,
@@ -168,6 +214,7 @@ function CreateProductItemModal({
 							<select
 								id='item-category'
 								value={formData.category}
+								disabled={isEditMode}
 								onChange={(e) =>
 									setFormData((prev) => ({
 										...prev,
@@ -188,6 +235,7 @@ function CreateProductItemModal({
 						<Input
 							id='item-name'
 							value={formData.name}
+							disabled={isEditMode}
 							onChange={(e) =>
 								setFormData((prev) => ({
 									...prev,
@@ -198,22 +246,7 @@ function CreateProductItemModal({
 							placeholder='e.g., Big Pack'
 						/>
 					</div>
-					<div className='space-y-2'>
-						<Label htmlFor='item-slug'>
-							Slug (auto-generated if empty)
-						</Label>
-						<Input
-							id='item-slug'
-							value={formData.slug}
-							onChange={(e) =>
-								setFormData((prev) => ({
-									...prev,
-									slug: e.target.value,
-								}))
-							}
-							placeholder='big-pack'
-						/>
-					</div>
+
 					<div className='space-y-2'>
 						<Label htmlFor='item-price'>Price (NGN) *</Label>
 						<Input
@@ -221,6 +254,7 @@ function CreateProductItemModal({
 							type='number'
 							step='0.01'
 							value={formData.price}
+							disabled={isEditMode}
 							onChange={(e) =>
 								setFormData((prev) => ({
 									...prev,
@@ -236,6 +270,7 @@ function CreateProductItemModal({
 						<Textarea
 							id='item-desc'
 							value={formData.description}
+							disabled={isEditMode}
 							onChange={(e) =>
 								setFormData((prev) => ({
 									...prev,
@@ -246,58 +281,66 @@ function CreateProductItemModal({
 							rows={3}
 						/>
 					</div>
-					<div className='space-y-2'>
-						<Label>Images</Label>
-						<div className='flex gap-2 flex-wrap'>
-							{formData.images.map((url, idx) => (
-								<div key={idx} className='relative'>
-									<ImageWithFallback
-										src={url}
-										alt={`Image ${idx + 1}`}
-										className='w-20 h-20 object-cover rounded border'
-									/>
+
+					{isEditMode && (
+						<div className='space-y-2'>
+							<Label>Image</Label>
+							<div className='flex gap-2 flex-wrap'>
+								{formData.images.length > 0 ? (
+									<div className='relative'>
+										<ImageWithFallback
+											src={formData.images[0]}
+											alt={`Product image`}
+											className='w-20 h-20 object-cover rounded border'
+										/>
+										<Button
+											type='button'
+											variant='destructive'
+											size='sm'
+											className='absolute -top-2 -right-2 h-5 w-5 p-0'
+											onClick={handleRemoveImage}
+											disabled={
+												updateProductItemMutate.isPending
+											}>
+											×
+										</Button>
+									</div>
+								) : (
 									<Button
 										type='button'
-										variant='destructive'
+										variant='outline'
 										size='sm'
-										className='absolute -top-2 -right-2 h-5 w-5 p-0'
-										onClick={() => {
-											setFormData((prev) => ({
-												...prev,
-												images: prev.images.filter(
-													(_, i) => i !== idx
-												),
-											}));
-										}}>
-										×
+										onClick={() =>
+											fileInputRef.current?.click()
+										}
+										disabled={isUploading}>
+										{isUploading ? (
+											'Uploading...'
+										) : (
+											<Plus size={16} />
+										)}
 									</Button>
-								</div>
-							))}
-							<Button
-								type='button'
-								variant='outline'
-								size='sm'
-								onClick={() => fileInputRef.current?.click()}
-								disabled={isUploading}>
-								<Plus size={16} />
-							</Button>
-							<input
-								ref={fileInputRef}
-								type='file'
-								accept='image/*'
-								className='hidden'
-								onChange={(e) => {
-									const file = e.target.files?.[0];
-									if (file) handleFileUpload(file);
-								}}
-							/>
+								)}
+								<input
+									ref={fileInputRef}
+									type='file'
+									accept='image/*'
+									className='hidden'
+									onChange={(e) => {
+										const file = e.target.files?.[0];
+										if (file) handleFileUpload(file);
+									}}
+								/>
+							</div>
 						</div>
-					</div>
+					)}
+
 					<div className='flex gap-4'>
 						<div className='flex items-center gap-2'>
 							<Checkbox
 								id='item-active'
 								checked={formData.isActive}
+								disabled={isEditMode}
 								onCheckedChange={(checked) =>
 									setFormData((prev) => ({
 										...prev,
@@ -315,6 +358,7 @@ function CreateProductItemModal({
 							<Checkbox
 								id='item-stock'
 								checked={formData.inStock}
+								disabled={isEditMode}
 								onCheckedChange={(checked) =>
 									setFormData((prev) => ({
 										...prev,
@@ -329,15 +373,26 @@ function CreateProductItemModal({
 							</Label>
 						</div>
 					</div>
-					<Button
-						type='submit'
-						variant='game'
-						className='w-full'
-						disabled={createProductMutate.isPending}>
-						{createProductMutate.isPending
-							? 'Creating...'
-							: 'Create Item'}
-					</Button>
+
+					{isEditMode ? (
+						<Button
+							type='button'
+							variant='game'
+							className='w-full'
+							onClick={handleClose}>
+							Done
+						</Button>
+					) : (
+						<Button
+							type='submit'
+							variant='game'
+							className='w-full'
+							disabled={createProductMutate.isPending}>
+							{createProductMutate.isPending
+								? 'Creating...'
+								: 'Create Variation'}
+						</Button>
+					)}
 				</form>
 			</DialogContent>
 		</Dialog>

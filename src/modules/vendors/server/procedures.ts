@@ -1,6 +1,31 @@
-import { createTRPCRouter, publicProcedure, operatorProcedure, vendorAndOperatorProcedure, vendorProcedure, protectedProcedure } from "@/trpc/init";
-import { DayOfWeek, OrderStatus } from "@prisma/client";
+import { createTRPCRouter, publicProcedure, adminProcedure, vendorProcedure, protectedProcedure, operatorProcedure, vendorAndOperatorProcedure } from "@/trpc/init";
+import { DayOfWeek, OrderStatus, VendorAvailabilityStatus } from "@prisma/client";
 import { z } from "zod";
+import { createPaystackRecipient, getPaystackBanks } from "@/lib/paystack";
+
+const generateUniqueSlug = async (prisma: any, name: string, vendorId: string): Promise<string> => {
+    let slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    let isUnique = false;
+    let counter = 1;
+    let baseSlug = slug;
+
+    while (!isUnique) {
+        const existing = await prisma.productItem.findFirst({
+            where: {
+                slug: slug,
+                vendorId: vendorId,
+            }
+        });
+
+        if (!existing) {
+            isUnique = true;
+        } else {
+            slug = `${baseSlug}-${counter}`;
+            counter++;
+        }
+    }
+    return slug;
+};
 
 export const vendorRouter = createTRPCRouter({
     // Public listings with optional search / pagination
@@ -603,6 +628,7 @@ export const vendorRouter = createTRPCRouter({
         const vendor = await ctx.prisma.vendor.findFirst({
             where: { ownerId: userId },
             include: {
+                openingHours: true,
                 products: {
                     include: {
                         items: {
@@ -637,6 +663,11 @@ export const vendorRouter = createTRPCRouter({
                 coverImage: z.string().url().optional(),
                 lat: z.number().optional(),
                 lng: z.number().optional(),
+                bankName: z.string().optional(),
+                bankCode: z.string().optional(),
+                bankAccountNumber: z.string().optional(),
+                accountName: z.string().optional(),
+                availabilityStatus: z.nativeEnum(VendorAvailabilityStatus).optional(),
             })
         )
         .mutation(async ({ ctx, input }) => {
@@ -646,11 +677,50 @@ export const vendorRouter = createTRPCRouter({
             });
             if (!vendor) throw new Error("Vendor not found or you don't own a vendor");
 
+            const { bankName, bankCode, bankAccountNumber, accountName, availabilityStatus, ...rest } = input;
+
+            let paystackRecipient = vendor.paystackRecipient;
+
+            // If bank details changed, create/update paystack recipient
+            if (bankCode && bankAccountNumber && accountName) {
+                try {
+                    const recipientRes = await createPaystackRecipient({
+                        name: accountName,
+                        account_number: bankAccountNumber,
+                        bank_code: bankCode,
+                    });
+
+                    if (recipientRes.status) {
+                        paystackRecipient = recipientRes.data.recipient_code;
+                    }
+                } catch (error) {
+                    console.error("Failed to create Paystack recipient:", error);
+                    // We might not want to block the update if Paystack is down, 
+                    // but for bank details it's better to be sure.
+                    throw new Error("Failed to verify bank details with Paystack. Please check the account number and bank.");
+                }
+            }
+
             return ctx.prisma.vendor.update({
                 where: { id: vendor.id },
-                data: input
+                data: {
+                    ...rest,
+                    bankName: bankName || undefined,
+                    bankCode: bankCode || undefined,
+                    bankAccountNumber: bankAccountNumber || undefined,
+                    paystackRecipient: paystackRecipient || undefined,
+                    availabilityStatus: availabilityStatus || undefined,
+                }
             });
         }),
+    getSupportedBanks: vendorProcedure.query(async () => {
+        try {
+            const res = await getPaystackBanks();
+            return res.data;
+        } catch (error) {
+            throw new Error("Failed to fetch supported banks");
+        }
+    }),
 
     getMyOpeningHours: vendorProcedure.query(async ({ ctx }) => {
         const vendor = await ctx.prisma.vendor.findFirst({
@@ -775,16 +845,16 @@ export const vendorRouter = createTRPCRouter({
             });
         }),
 
-    // Get vendor's orders
-    getMyOrders: vendorProcedure
-        .input(
-            z.object({
-                take: z.number().optional().default(50),
-                skip: z.number().optional().default(0),
-                status: z.enum(Object.values(OrderStatus)).optional()
-            })
-        )
+    getMyOrdersInfinite: vendorProcedure
+        .input(z.object({
+            limit: z.number().min(1).max(100).default(20),
+            cursor: z.number().default(0), // skip
+            status: z.array(z.enum(Object.values(OrderStatus))).optional()
+        }))
         .query(async ({ ctx, input }) => {
+            const limit = input.limit;
+            const skip = input.cursor;
+
             const userId = ctx.user!.id;
             const vendor = await ctx.prisma.vendor.findFirst({
                 where: { ownerId: userId }
@@ -792,22 +862,25 @@ export const vendorRouter = createTRPCRouter({
             if (!vendor) throw new Error("Vendor not found");
 
             const where: any = { vendorId: vendor.id };
-            if (input.status) {
-                where.status = input.status;
+            if (input.status && input.status.length > 0) {
+                where.status = { in: input.status };
             }
 
-            return ctx.prisma.order.findMany({
+            const items = await ctx.prisma.order.findMany({
                 where,
+                take: limit + 1,
+                skip: skip,
+                orderBy: { createdAt: "desc" },
                 include: {
-                    user: {
-                        select: {
-                            id: true,
-                            name: true,
-                            email: true,
-                            phone: true
-                        }
-                    },
-                    address: true,
+                    // user: {
+                    //     select: {
+                    //         id: true,
+                    //         name: true,
+                    //         email: true,
+                    //         phone: true
+                    //     }
+                    // },
+                    // address: true,
                     items: {
                         include: {
                             productItem: true,
@@ -818,7 +891,66 @@ export const vendorRouter = createTRPCRouter({
                             }
                         }
                     },
-                    payment: true
+                    // payment: true
+                }
+            });
+
+            let nextCursor: typeof skip | undefined = undefined;
+            if (items.length > limit) {
+                items.pop();
+                nextCursor = skip + limit;
+            }
+
+            return {
+                items,
+                nextCursor,
+            };
+        }),
+
+    // Get vendor's orders
+    getMyOrders: vendorProcedure
+        .input(
+            z.object({
+                take: z.number().optional().default(50),
+                skip: z.number().optional().default(0),
+                status: z.array(z.enum(Object.values(OrderStatus))).optional()
+            })
+        )
+        .query(async ({ ctx, input }) => {
+            const userId = ctx.user!.id;
+            const vendor = await ctx.prisma.vendor.findFirst({
+                where: { ownerId: userId }
+            });
+            if (!vendor) throw new Error("Vendor not found");
+
+            const where: any = { vendorId: vendor.id };
+            if (input.status && input.status.length > 0) {
+                where.status = { in: input.status };
+            }
+
+            return ctx.prisma.order.findMany({
+                where,
+                include: {
+                    // user: {
+                    //     select: {
+                    //         id: true,
+                    //         name: true,
+                    //         email: true,
+                    //         phone: true
+                    //     }
+                    // },
+                    // address: true,
+                    items: {
+                        include: {
+                            productItem: true,
+                            addons: {
+                                include: {
+                                    addonProductItem: true
+                                }
+                            }
+                        }
+                    },
+                    // payment: true
                 },
                 take: input.take,
                 skip: input.skip,
@@ -826,7 +958,29 @@ export const vendorRouter = createTRPCRouter({
             });
         }),
 
-    // Create a standalone product (vendor-level). Permission: vendor owner, operator, or super admin.
+    getMyOrderCounts: vendorProcedure
+        .query(async ({ ctx }) => {
+            const userId = ctx.user!.id;
+            const vendor = await ctx.prisma.vendor.findFirst({
+                where: { ownerId: userId }
+            });
+            if (!vendor) throw new Error("Vendor not found");
+
+            const counts = await ctx.prisma.order.groupBy({
+                by: ['status'],
+                where: { vendorId: vendor.id },
+                _count: {
+                    _all: true
+                }
+            });
+
+            return counts.map(c => ({
+                status: c.status as OrderStatus,
+                count: c._count._all
+            }));
+        }),
+
+    // Create a standalone product
     createProduct: vendorAndOperatorProcedure
         .input(z.object({
             vendorId: z.string(),
@@ -868,7 +1022,6 @@ export const vendorRouter = createTRPCRouter({
                 vendorId: z.string(),
                 productId: z.string().optional(),
                 name: z.string(),
-                slug: z.string(),
                 description: z.string().optional(),
                 price: z.number(),
                 currency: z.string().optional().default("NGN"),
@@ -891,7 +1044,6 @@ export const vendorRouter = createTRPCRouter({
 
             if (!isOperator && !isSuper && !isVendorOwner) throw new Error("Forbidden: insufficient permissions");
 
-            // 🔍 Ensure categories exist
             const existingCategories = await ctx.prisma.category.findMany({
                 where: { id: { in: input.categories } },
                 select: { id: true },
@@ -901,9 +1053,14 @@ export const vendorRouter = createTRPCRouter({
                 throw new Error("One or more categories are invalid");
             }
 
+            const slug = await generateUniqueSlug(ctx.prisma, input.name, input.vendorId);
+
+            const { categories, ...restOfInput } = input;
+
             return ctx.prisma.productItem.create({
                 data: {
-                    ...input, // ✅ correct category relation
+                    ...restOfInput,
+                    slug,
                     categories: {
                         createMany: {
                             data: existingCategories.map((c) => ({
@@ -980,7 +1137,7 @@ export const vendorRouter = createTRPCRouter({
                 name: z.string().optional(),
                 price: z.number().optional(),
                 currency: z.string().optional(),
-                categories: z.array(z.string()).min(1),
+                categories: z.array(z.string()).min(1).optional(),
                 images: z.array(z.string()).optional(),
                 isActive: z.boolean().optional(),
                 inStock: z.boolean().optional(),
@@ -1002,20 +1159,23 @@ export const vendorRouter = createTRPCRouter({
 
             if (!isOperator && !isSuper && !isVendorOwner) throw new Error("Forbidden: insufficient permissions");
 
-            // 🔍 Ensure categories exist
-            const existingCategories = await ctx.prisma.category.findMany({
-                where: { id: { in: input.data.categories } },
-                select: { id: true },
-            });
+            let categoryData = {};
+            if (input.data.categories) {
+                const existingCategories = await ctx.prisma.category.findMany({
+                    where: { id: { in: input.data.categories } },
+                    select: { id: true },
+                });
 
-            if (existingCategories.length !== input.data.categories.length) {
-                throw new Error("One or more categories are invalid");
-            }
+                if (existingCategories.length !== input.data.categories.length) {
+                    throw new Error("One or more categories are invalid");
+                }
 
-            return ctx.prisma.productItem.update({
-                where: { id: input.id },
-                data: {
-                    ...input.data, // ✅ correct category relation
+                // disconnect old categories and connect new ones
+                await ctx.prisma.productItemCategory.deleteMany({
+                    where: { productItemId: input.id },
+                });
+
+                categoryData = {
                     categories: {
                         createMany: {
                             data: existingCategories.map((c) => ({
@@ -1023,6 +1183,17 @@ export const vendorRouter = createTRPCRouter({
                             })),
                         },
                     },
+                }
+            }
+
+
+            const { categories, ...restOfData } = input.data;
+
+            return ctx.prisma.productItem.update({
+                where: { id: input.id },
+                data: {
+                    ...restOfData,
+                    ...categoryData,
                 }
             });
         }),
@@ -1068,10 +1239,9 @@ export const vendorRouter = createTRPCRouter({
                 throw new Error("Unauthorized: You don't own this product item");
             }
 
-            // Soft delete by setting isActive to false
-            return ctx.prisma.productItem.update({
+            // Hard delete
+            return ctx.prisma.productItem.delete({
                 where: { id: input.id },
-                data: { isActive: false }
             });
         }),
 
@@ -1089,15 +1259,17 @@ export const vendorRouter = createTRPCRouter({
                 throw new Error("Unauthorized: You don't own this product");
             }
 
-            // Soft delete by setting inStock to false for all items
-            await ctx.prisma.productItem.updateMany({
-                where: { productId: input.id },
-                data: { isActive: false, inStock: false }
-            });
+            // Hard delete in a transaction
+            return ctx.prisma.$transaction(async (prisma) => {
+                // Delete all items associated with the product
+                await prisma.productItem.deleteMany({
+                    where: { productId: input.id },
+                });
 
-            return ctx.prisma.product.update({
-                where: { id: input.id },
-                data: { inStock: false }
+                // Delete the product itself
+                return prisma.product.delete({
+                    where: { id: input.id },
+                });
             });
         }),
 });

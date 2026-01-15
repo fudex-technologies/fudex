@@ -63,30 +63,43 @@ export const orderRouter = createTRPCRouter({
                     include: { openingHours: true }
                 });
 
-                if (vendor && vendor.openingHours && vendor.openingHours.length > 0) {
-                    const now = new Date();
-                    const dayMap: Record<number, string> = {
-                        0: 'SUNDAY',
-                        1: 'MONDAY',
-                        2: 'TUESDAY',
-                        3: 'WEDNESDAY',
-                        4: 'THURSDAY',
-                        5: 'FRIDAY',
-                        6: 'SATURDAY',
-                    };
-                    const currentDay = dayMap[now.getDay()];
-                    const currentTime = now.toTimeString().slice(0, 5); // "HH:mm"
+                if (vendor) {
+                    // 1. Forced Closed
+                    if (vendor.availabilityStatus === "CLOSED") {
+                        throw new Error(`${vendor.name} is currently not accepting orders. Please try again later.`);
+                    }
 
-                    const todayHours = vendor.openingHours.find(h => h.day === currentDay);
+                    // 2. Forced Open (Ignore schedule if explicitly set to OPEN)
+                    if (vendor.availabilityStatus === "OPEN") {
+                        // Allow order
+                    } else {
+                        // 3. AUTO Mode: Check opening hours
+                        if (vendor.openingHours && vendor.openingHours.length > 0) {
+                            const now = new Date();
+                            const dayMap: Record<number, string> = {
+                                0: 'SUNDAY',
+                                1: 'MONDAY',
+                                2: 'TUESDAY',
+                                3: 'WEDNESDAY',
+                                4: 'THURSDAY',
+                                5: 'FRIDAY',
+                                6: 'SATURDAY',
+                            };
+                            const currentDay = dayMap[now.getDay()];
+                            const currentTime = now.toTimeString().slice(0, 5); // "HH:mm"
 
-                    // If there are opening hours set and vendor is closed, prevent order
-                    if (todayHours) {
-                        if (todayHours.isClosed) {
-                            throw new Error(`${vendor.name} is closed today. Please try again when they're open.`);
-                        }
-                        if (todayHours.openTime && todayHours.closeTime) {
-                            if (currentTime < todayHours.openTime || currentTime > todayHours.closeTime) {
-                                throw new Error(`${vendor.name} is currently closed. Open hours: ${todayHours.openTime} - ${todayHours.closeTime}`);
+                            const todayHours = vendor.openingHours.find(h => h.day === currentDay);
+
+                            // If there are opening hours set and vendor is closed, prevent order
+                            if (todayHours) {
+                                if (todayHours.isClosed) {
+                                    throw new Error(`${vendor.name} is closed today. Please try again when they're open.`);
+                                }
+                                if (todayHours.openTime && todayHours.closeTime) {
+                                    if (currentTime < todayHours.openTime || currentTime > todayHours.closeTime) {
+                                        throw new Error(`${vendor.name} is currently closed. Open hours: ${todayHours.openTime} - ${todayHours.closeTime}`);
+                                    }
+                                }
                             }
                         }
                     }
@@ -124,7 +137,8 @@ export const orderRouter = createTRPCRouter({
                     for (const a of it.addons) {
                         const addonPi = piMap[a.addonProductItemId];
                         const addonUnit = addonPi.price;
-                        const addonTotal = addonUnit * a.quantity;
+                        // Multiply addon quantity by main item quantity
+                        const addonTotal = addonUnit * a.quantity * it.quantity;
                         totalPrice += addonTotal;
                         addonsToCreate.push({ addonProductItemId: a.addonProductItemId, quantity: a.quantity, unitPrice: addonUnit });
                     }
@@ -457,11 +471,18 @@ export const orderRouter = createTRPCRouter({
         .input(z.object({
             id: z.string(),
             status: z.enum(Object.values(OrderStatus))
-        })).mutation(({ ctx, input }) => {
-            return ctx.prisma.order.update({
+        })).mutation(async ({ ctx, input }) => {
+            const updated = await ctx.prisma.order.update({
                 where: { id: input.id },
                 data: { status: input.status }
             });
+
+            // If delivered, check payout eligibility
+            if (input.status === "DELIVERED") {
+                await ensureOrderPayoutEligibility(ctx.prisma, input.id);
+            }
+
+            return updated;
         }),
 
     // Vendor update status for their own orders
@@ -488,9 +509,54 @@ export const orderRouter = createTRPCRouter({
                 throw new Error("Unauthorized: Order does not belong to your vendor");
             }
 
-            return ctx.prisma.order.update({
+            const updated = await ctx.prisma.order.update({
                 where: { id: input.id },
                 data: { status: input.status }
             });
+
+            // If delivered, check payout eligibility
+            if (input.status === "DELIVERED") {
+                await ensureOrderPayoutEligibility(ctx.prisma, input.id);
+            }
+
+            return updated;
         }),
 });
+
+/**
+ * Helper to ensure order is marked as PENDING for payout and a VendorPayout record exists.
+ * This should be called whenever an order's status or payment status changes to a state 
+ * that might make it eligible for payout.
+ */
+async function ensureOrderPayoutEligibility(prisma: any, orderId: string) {
+    const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        include: { payment: true, vendorPayout: true }
+    });
+
+    if (!order || !order.vendorId) return;
+
+    // Condition: Delivered and payment is completed
+    if (order.status === "DELIVERED" && order.payment?.status === "COMPLETED") {
+        // Update order payout status if not already set beyond NOT_ELIGIBLE
+        if (order.payoutStatus === "NOT_ELIGIBLE") {
+            await prisma.order.update({
+                where: { id: orderId },
+                data: { payoutStatus: "PENDING" }
+            });
+        }
+
+        // Create VendorPayout record if it doesn't exist (idempotent)
+        if (!order.vendorPayout) {
+            await prisma.vendorPayout.create({
+                data: {
+                    vendorId: order.vendorId,
+                    orderId: order.id,
+                    amount: order.productAmount,
+                    currency: order.currency,
+                    status: "PENDING"
+                }
+            });
+        }
+    }
+}

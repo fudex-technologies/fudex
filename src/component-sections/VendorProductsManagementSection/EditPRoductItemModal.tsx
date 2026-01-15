@@ -45,11 +45,18 @@ export default function EditProductItemModal({
 		take: 20,
 	});
 
-	const updateMutation = updateProductItem({
+	const updateDetailsMutation = updateProductItem({
 		onSuccess: () => {
-			toast.success('Product item updated');
+			toast.success('Menu variation updated');
 			setOpen(false);
 			onSuccess();
+		},
+	});
+
+	const updateImageMutation = updateProductItem({
+		onSuccess: (data: any) => {
+			toast.success('Image updated');
+			setFormData((prev) => ({ ...prev, images: data.images }));
 		},
 	});
 
@@ -74,11 +81,12 @@ export default function EditProductItemModal({
 
 			if (!response.ok) throw new Error('Upload failed');
 			const data = await response.json();
-			setFormData((prev) => ({
-				...prev,
-				images: [...prev.images, data.url],
-			}));
-			toast.success('Image uploaded');
+			updateImageMutation.mutate({
+				id: item.id,
+				data: {
+					images: [data.url],
+				},
+			});
 		} catch (error) {
 			toast.error('Failed to upload image');
 		} finally {
@@ -86,14 +94,25 @@ export default function EditProductItemModal({
 		}
 	};
 
+	const handleRemoveImage = () => {
+		updateImageMutation.mutate({
+			id: item.id,
+			data: {
+				images: [],
+			},
+		});
+	};
+
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
-		updateMutation.mutate({
+		updateDetailsMutation.mutate({
 			id: item.id,
 			data: {
 				name: formData.name,
 				categories: [formData.category],
 				price: parseFloat(formData.price),
+				// Images are handled by updateImageMutation separately
+				// ensure images are still passed, but only the current state
 				images: formData.images,
 				isActive: formData.isActive,
 				inStock: formData.inStock,
@@ -110,7 +129,7 @@ export default function EditProductItemModal({
 			</DialogTrigger>
 			<DialogContent className='max-w-2xl max-h-[90vh] overflow-y-auto'>
 				<DialogHeader>
-					<DialogTitle>Edit Product Item</DialogTitle>
+					<DialogTitle>Edit Menu Variation</DialogTitle>
 				</DialogHeader>
 				<form onSubmit={handleSubmit} className='space-y-4'>
 					<div className='space-y-2'>
@@ -169,13 +188,13 @@ export default function EditProductItemModal({
 						</div>
 					)}
 					<div className='space-y-2'>
-						<Label>Images</Label>
+						<Label>Image</Label>
 						<div className='flex gap-2 flex-wrap'>
-							{formData.images.map((url: string, idx: number) => (
-								<div key={idx} className='relative'>
+							{formData.images.length > 0 ? (
+								<div className='relative'>
 									<ImageWithFallback
-										src={url}
-										alt={`Image ${idx + 1}`}
+										src={formData.images[0]}
+										alt={`Product image`}
 										className='w-20 h-20 object-cover rounded border'
 									/>
 									<Button
@@ -183,27 +202,29 @@ export default function EditProductItemModal({
 										variant='destructive'
 										size='sm'
 										className='absolute -top-2 -right-2 h-5 w-5 p-0'
-										onClick={() => {
-											setFormData((prev) => ({
-												...prev,
-												images: prev.images.filter(
-													(_: any, i: number) =>
-														i !== idx
-												),
-											}));
-										}}>
+										onClick={handleRemoveImage}
+										disabled={
+											updateImageMutation.isPending
+										}>
 										×
 									</Button>
 								</div>
-							))}
-							<Button
-								type='button'
-								variant='outline'
-								size='sm'
-								onClick={() => fileInputRef.current?.click()}
-								disabled={isUploading}>
-								<Plus size={16} />
-							</Button>
+							) : (
+								<Button
+									type='button'
+									variant='outline'
+									size='sm'
+									onClick={() =>
+										fileInputRef.current?.click()
+									}
+									disabled={isUploading}>
+									{isUploading ? (
+										'Uploading...'
+									) : (
+										<Plus size={16} />
+									)}
+								</Button>
+							)}
 							<input
 								ref={fileInputRef}
 								type='file'
@@ -256,10 +277,10 @@ export default function EditProductItemModal({
 						type='submit'
 						variant='game'
 						className='w-full'
-						disabled={updateMutation.isPending}>
-						{updateMutation.isPending
+						disabled={updateDetailsMutation.isPending}>
+						{updateDetailsMutation.isPending
 							? 'Updating...'
-							: 'Update Item'}
+							: 'Update Variation'}
 					</Button>
 				</form>
 			</DialogContent>

@@ -24,13 +24,20 @@ export default function OngoingOrdersPage() {
 	const getOrderStatus = (
 		status: OrderStatus
 	): 'pending' | 'preparing' | 'on-the-way' | 'delivered' => {
-		if (status === OrderStatus.PENDING) {
+		if (status === OrderStatus.PENDING || status === OrderStatus.PAID) {
 			return 'pending';
 		}
-		if (status === OrderStatus.PAID || status === OrderStatus.PREPARING) {
+		if (
+			status === OrderStatus.ACCEPTED ||
+			status === OrderStatus.PREPARING ||
+			status === OrderStatus.READY
+		) {
 			return 'preparing';
 		}
-		if (status === OrderStatus.ASSIGNED) {
+		if (
+			status === OrderStatus.ASSIGNED ||
+			status === OrderStatus.OUT_FOR_DELIVERY
+		) {
 			return 'on-the-way';
 		}
 		return 'pending';
@@ -41,11 +48,20 @@ export default function OngoingOrdersPage() {
 		if (status === OrderStatus.PENDING || status === OrderStatus.PAID) {
 			return '10 - 15 mins';
 		}
-		if (status === OrderStatus.PREPARING) {
+		if (
+			status === OrderStatus.ACCEPTED ||
+			status === OrderStatus.PREPARING
+		) {
+			return '10 - 20 mins';
+		}
+		if (status === OrderStatus.READY) {
 			return '5 - 10 mins';
 		}
-		if (status === OrderStatus.ASSIGNED) {
-			return '5 - 10 mins';
+		if (
+			status === OrderStatus.ASSIGNED ||
+			status === OrderStatus.OUT_FOR_DELIVERY
+		) {
+			return '5 - 15 mins';
 		}
 		return '5 - 10 mins';
 	};

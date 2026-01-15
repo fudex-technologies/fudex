@@ -1,14 +1,38 @@
+"use client"
+
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { productsDummyData } from '@/lib/dummyData';
 import VendorDashboardProductListItem from './VendorDashboardProductListItem';
+import { useVendorDashboardActions } from '@/api-hooks/useVendorDashboardActions';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const VendorDashboardTopSellingItems = () => {
-	const items: any[] = productsDummyData.main;
+	const { useGetMyProductItems } = useVendorDashboardActions();
+	const { data: items = [], isLoading } = useGetMyProductItems({
+		take: 10,
+	});
+
+	if (isLoading) {
+		return (
+			<div className='w-full flex flex-col gap-3 pb-5'>
+				<h2 className='text-lg font-semibold px-5'>
+					<span className=''>👑</span> Top Selling Items
+				</h2>
+				<div className='flex space-x-4 mx-5 overflow-hidden'>
+					{[1, 2, 3].map((i) => (
+						<Skeleton
+							key={i}
+							className='h-[200px] w-[250px] shrink-0'
+						/>
+					))}
+				</div>
+			</div>
+		);
+	}
+
 	return (
 		<div className='w-full flex flex-col gap-3 pb-5'>
 			<h2 className='text-lg font-semibold px-5'>
-				{' '}
 				<span className=''>👑</span> Top Selling Items
 			</h2>
 			{items.length > 0 ? (
@@ -17,7 +41,7 @@ const VendorDashboardTopSellingItems = () => {
 						{items.map((item, index) => (
 							<div className='w-[250px]' key={index}>
 								<VendorDashboardProductListItem
-									productItem={item}
+									productItem={item as any}
 								/>
 							</div>
 						))}

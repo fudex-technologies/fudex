@@ -5,6 +5,7 @@ import DynamicCover from '../VendorCover';
 import { formatCurency, shortenText } from '@/lib/commonFunctions';
 import Link from 'next/link';
 import { PAGES_DATA } from '@/data/pagesData';
+import { cn } from '@/lib/utils';
 
 interface ProductData {
 	id: string;
@@ -22,6 +23,8 @@ interface ProductItemData {
 	productId?: string | null;
 	product?: ProductData | null;
 	slug?: string;
+	isActive?: boolean;
+	inStock?: boolean;
 }
 
 const ProductListItem = ({ productItem }: { productItem: ProductItemData }) => {
@@ -43,23 +46,41 @@ const ProductListItem = ({ productItem }: { productItem: ProductItemData }) => {
 		? `${baseUrl}?variant=${encodeURIComponent(productItem.slug)}`
 		: baseUrl;
 
+	const isAvailable =
+		productItem?.isActive !== false && productItem?.inStock !== false;
+
 	return (
 		<Link
 			href={url}
-			className='w-full min-h-[100px] flex relative gap-2 p-5'>
-			<DynamicCover
-				src={
-					productItem?.images && productItem?.images?.length > 0
-						? productItem?.images[0]
-						: null
-				}
-				alt={displayName}
-				className='w-[100px] h-[100px] rounded-md overflow-hidden shrink-0'
-				imageClassName='object-cover'
-			/>
+			onClick={(e) => !isAvailable && e.preventDefault()}
+			className={cn(
+				'w-full min-h-[100px] flex relative gap-2 p-5 transition-all',
+				!isAvailable && 'opacity-60 cursor-not-allowed grayscale-[0.5]'
+			)}>
+			<div className='relative w-[100px] h-[100px] shrink-0'>
+				<DynamicCover
+					src={
+						productItem?.images && productItem?.images?.length > 0
+							? productItem?.images[0]
+							: null
+					}
+					alt={displayName}
+					className='w-full h-full rounded-md overflow-hidden'
+					imageClassName='object-cover'
+				/>
+				{!isAvailable && (
+					<div className='absolute inset-0 bg-black/40 flex items-center justify-center rounded-md'>
+						<p className='text-[10px] font-bold text-white px-2 py-1 bg-black/60 rounded uppercase'>
+							{productItem?.isActive === false
+								? 'Unavailable'
+								: 'Sold Out'}
+						</p>
+					</div>
+				)}
+			</div>
 			<div className='flex-1 flex justify-between flex-wrap gap-x-2 py-1'>
 				<div className='flex flex-col'>
-					<p className=''>
+					<p className='font-medium'>
 						{shortenText(
 							`${productItem?.product?.name} (${productItem?.name})`,
 							30
@@ -76,9 +97,11 @@ const ProductListItem = ({ productItem }: { productItem: ProductItemData }) => {
 				</p>
 			</div>
 
-			<div className='absolute bottom-5 right-5 p-1 rounded-full flex items-center justify-center bg-primary text-primary-foreground'>
-				<Plus width={15} height={15} />
-			</div>
+			{isAvailable && (
+				<div className='absolute bottom-5 right-5 p-1 rounded-full flex items-center justify-center bg-primary text-primary-foreground'>
+					<Plus width={15} height={15} />
+				</div>
+			)}
 		</Link>
 	);
 };

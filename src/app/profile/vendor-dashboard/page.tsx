@@ -12,7 +12,7 @@ import VendorDashboardRecentOrderCardsSection from '@/component-sections/vendor-
 export default function VendorDashboardPage() {
 	return (
 		<PageWrapper>
-			<SectionWrapper className='w-full flex items-center gap-5 justify-between'>
+			<SectionWrapper className='w-full flex flex-wrap items-center gap-5 justify-between'>
 				<VendorDashboardProfileCircle />
 				<VendorAvailabilityStatusSwitch />
 			</SectionWrapper>

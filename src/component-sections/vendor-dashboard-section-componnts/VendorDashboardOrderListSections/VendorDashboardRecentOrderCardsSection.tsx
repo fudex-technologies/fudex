@@ -1,7 +1,33 @@
+"use client"
+
 import SectionWrapper from '@/components/wrapers/SectionWrapper';
 import VendorDashboardOrderItem from './VendorDashboardOrderCardItem';
+import { useVendorDashboardActions } from '@/api-hooks/useVendorDashboardActions';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const VendorDashboardRecentOrderCardsSection = () => {
+	const { useGetMyOrders } = useVendorDashboardActions();
+	const {
+		data: orders = [],
+		isLoading,
+		refetch,
+	} = useGetMyOrders({
+		take: 1,
+		status: ['PAID'],
+	});
+
+	if (isLoading) {
+		return (
+			<SectionWrapper className='w-full space-y-2'>
+				<Skeleton className='h-32 w-full' />
+			</SectionWrapper>
+		);
+	}
+
+	if (orders.length === 0) {
+		return null; // Don't show the "New Order" section if there are none
+	}
+
 	return (
 		<SectionWrapper className='w-full space-y-2'>
 			<div className='w-full'>
@@ -11,7 +37,10 @@ const VendorDashboardRecentOrderCardsSection = () => {
 							<p>New Order</p>
 						</div>
 					</div>
-					<VendorDashboardOrderItem isNew={true} status='PAID' />
+					<VendorDashboardOrderItem
+						order={orders[0]}
+						refetch={refetch}
+					/>
 				</div>
 			</div>
 		</SectionWrapper>

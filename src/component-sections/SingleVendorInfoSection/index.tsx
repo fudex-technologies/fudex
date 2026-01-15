@@ -123,7 +123,20 @@ const SingleVendorInfoSection = ({ vendorId }: { vendorId: string }) => {
 			</div>
 			<Separator orientation='horizontal' />
 			<div className='w-full p-5 space-y-3'>
-				<h3 className='font-semibold text-lg'>Opening hours</h3>
+				<div className='flex justify-between items-center'>
+					<h3 className='font-semibold text-lg'>Opening hours</h3>
+					{vendor.availabilityStatus === 'CLOSED' && (
+						<span className='text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full font-bold uppercase'>
+							Temporarily Closed
+						</span>
+					)}
+				</div>
+				{vendor.availabilityStatus === 'CLOSED' && (
+					<p className='text-sm text-red-600 font-medium px-1'>
+						This vendor has manually paused orders for now. Regular
+						hours below.
+					</p>
+				)}
 				{vendor.openingHours && vendor.openingHours.length > 0 ? (
 					DAY_ORDER.map((day) => {
 						const dayHours = vendor.openingHours?.find(

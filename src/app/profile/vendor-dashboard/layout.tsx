@@ -28,7 +28,7 @@ export default function VendorDashboardLayout({
 		return (
 			<PageWrapper>
 				<div className='flex items-center gap-3 px-5 py-4 border-b'>
-					<GoBackButton />
+					<GoBackButton link={PAGES_DATA.profile_page} />
 					<h1 className='text-xl font-semibold'>Vendor Dashboard</h1>
 				</div>
 				<div className='p-5'>Loading...</div>

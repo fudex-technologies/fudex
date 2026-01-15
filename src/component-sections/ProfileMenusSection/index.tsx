@@ -164,7 +164,7 @@ const ProfileMenusSection = () => {
 						// },
 						{
 							icon: <CircleQuestionMark />,
-							title: 'FAQ',
+							title: 'FAQs',
 							link: PAGES_DATA.profile_faqs_page,
 							show: true,
 						},

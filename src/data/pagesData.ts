@@ -62,7 +62,6 @@ export const PAGES_DATA = {
 
     // vendor dashboard pages
     vendor_dashboard_page: `/profile/vendor-dashboard`,
-    vendor_dashboard_profile_page: `/profile/vendor-dashboard/profile`,
     vendor_dashboard_menu_page: `/profile/vendor-dashboard/menu`,
     vendor_dashboard_payouts_page: `/profile/vendor-dashboard/payouts`,
     vendor_dashboard_payouts_history_page: `/profile/vendor-dashboard/payouts/earnings`,
@@ -73,4 +72,13 @@ export const PAGES_DATA = {
     vendor_dashboard_ongoing_orders_page: `/profile/vendor-dashboard/orders/ongoing`,
     vendor_dashboard_ready_orders_page: `/profile/vendor-dashboard/orders/ready`,
     vendor_dashboard_given_to_rider_orders_page: `/profile/vendor-dashboard/orders/given-to-rider`,
+    vendor_dashboard_out_for_delivery_orders_page: `/profile/vendor-dashboard/orders/out-for-delivery`,
+    vendor_dashboard_completed_orders_page: `/profile/vendor-dashboard/orders/completed`,
+    vendor_dashboard_cancelled_orders_page: `/profile/vendor-dashboard/orders/cancelled`,
+
+    vendor_dashboard_profile_page: `/profile/vendor-dashboard/profile`,
+    vendor_dashboard_profile_details_page: `/profile/vendor-dashboard/profile/details`,
+    vendor_dashboard_profile_addresses_page: `/profile/vendor-dashboard/profile/addresses`,
+    vendor_dashboard_profile_opening_hours_page: `/profile/vendor-dashboard/profile/opening-hours`,
+    vendor_dashboard_profile_bank_details_page: `/profile/vendor-dashboard/profile/bank-details`,
 }

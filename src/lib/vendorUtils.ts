@@ -1,6 +1,11 @@
-import { VendorOpeningHour, DayOfWeek } from '@prisma/client';
+import { VendorOpeningHour, DayOfWeek, VendorAvailabilityStatus } from '@prisma/client';
 
-export const isVendorOpen = (openingHours: VendorOpeningHour[] | undefined | null): boolean => {
+export const isVendorOpen = (openingHours: VendorOpeningHour[] | undefined | null, status: VendorAvailabilityStatus = 'AUTO'): boolean => {
+    // Manual Overrides
+    if (status === 'CLOSED') return false;
+    if (status === 'OPEN') return true;
+
+    // AUTO Mode: Follow schedule
     if (!openingHours || openingHours.length === 0) return true;
 
     const now = new Date();
