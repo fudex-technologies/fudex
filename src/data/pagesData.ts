@@ -72,6 +72,9 @@ export const PAGES_DATA = {
     vendor_dashboard_ongoing_orders_page: `/profile/vendor-dashboard/orders/ongoing`,
     vendor_dashboard_ready_orders_page: `/profile/vendor-dashboard/orders/ready`,
     vendor_dashboard_given_to_rider_orders_page: `/profile/vendor-dashboard/orders/given-to-rider`,
+    vendor_dashboard_out_for_delivery_orders_page: `/profile/vendor-dashboard/orders/out-for-delivery`,
+    vendor_dashboard_completed_orders_page: `/profile/vendor-dashboard/orders/completed`,
+    vendor_dashboard_cancelled_orders_page: `/profile/vendor-dashboard/orders/cancelled`,
 
     vendor_dashboard_profile_page: `/profile/vendor-dashboard/profile`,
     vendor_dashboard_profile_details_page: `/profile/vendor-dashboard/profile/details`,

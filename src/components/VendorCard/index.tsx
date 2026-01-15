@@ -8,6 +8,7 @@ import { PAGES_DATA } from '@/data/pagesData';
 import { Separator } from '../ui/separator';
 import { formatCurency } from '@/lib/commonFunctions';
 import VendorCover from '../VendorCover';
+import { VendorAvailabilityStatus } from '@prisma/client';
 
 interface VendorData {
 	id: string;
@@ -15,6 +16,7 @@ interface VendorData {
 	coverImage?: string | null;
 	reviewsAverage?: number | null;
 	reviewsCount?: number | null;
+	availabilityStatus?: VendorAvailabilityStatus;
 	openingHours?: any[]; // Using any[] to avoid strict type dependency for now, or import type
 }
 
@@ -28,7 +30,10 @@ const VendorCard = ({ vendor, deliveryPrice = 600, deliveryTime }: Props) => {
 	const numberFoRatings = vendor.reviewsCount ?? undefined;
 	const image = vendor.coverImage || '/assets/restaurants/restaurant1.png';
 
-	const isOpen = isVendorOpen(vendor.openingHours);
+	const isOpen = isVendorOpen(
+		vendor.openingHours,
+		vendor.availabilityStatus || 'AUTO'
+	);
 	const nextOpenTime = !isOpen
 		? getNextOpenTime(vendor?.openingHours || [])
 		: null;

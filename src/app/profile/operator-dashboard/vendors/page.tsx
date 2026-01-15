@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useInView } from 'react-intersection-observer';
 import { useOperatorActions } from '@/api-hooks/useOperatorActions';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -18,17 +19,29 @@ import {
 import VendorCover from '@/components/VendorCover';
 
 export default function OperatorVendorsPage() {
-	const { useListVendors, updateVendor } = useOperatorActions();
+	const { useInfiniteListVendors, updateVendor } = useOperatorActions();
 	const [searchQuery, setSearchQuery] = useState('');
 	const {
-		data: vendors = [],
+		data,
 		isLoading,
 		refetch,
-	} = useListVendors({
-		take: 100,
+		fetchNextPage,
+		hasNextPage,
+		isFetchingNextPage,
+	} = useInfiniteListVendors({
+		limit: 20,
 		q: searchQuery || undefined,
 	});
 
+	const { ref, inView } = useInView();
+
+	useEffect(() => {
+		if (inView && hasNextPage && !isFetchingNextPage) {
+			fetchNextPage();
+		}
+	}, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+	const vendors = data?.pages.flatMap((page) => page.items) || [];
 	const [editingVendor, setEditingVendor] = useState<any>(null);
 
 	const updateMutation = updateVendor({
@@ -87,7 +100,7 @@ export default function OperatorVendorsPage() {
 					{vendors.map((vendor) => (
 						<div
 							key={vendor.id}
-							className='border rounded-lg p-4 flex items-center gap-4'>
+							className='border rounded-lg p-4 flex items-center gap-4 bg-card'>
 							<VendorCover
 								src={vendor.coverImage}
 								alt={vendor.name}
@@ -99,12 +112,9 @@ export default function OperatorVendorsPage() {
 									<h3 className='font-semibold text-lg'>
 										{vendor.name}
 									</h3>
-									{/* <Badge variant={vendor.isActive ? 'default' : 'secondary'}>
-										{vendor.isActive ? 'Active' : 'Inactive'}
-									</Badge> */}
 								</div>
 								{vendor.description && (
-									<p className='text-sm text-foreground/70 mb-1'>
+									<p className='text-sm text-foreground/70 mb-1 line-clamp-1'>
 										{vendor.description}
 									</p>
 								)}
@@ -120,26 +130,40 @@ export default function OperatorVendorsPage() {
 									</p>
 								)}
 								<div className='flex gap-2 mt-2'>
-									<Badge variant='outline'>
+									<Badge
+										variant='outline'
+										className='bg-muted/50'>
 										{vendor._count?.products || 0} product
 										{vendor._count?.products !== 1
 											? 's'
 											: ''}
 									</Badge>
-									<Badge variant='outline'>
+									<Badge
+										variant='outline'
+										className='bg-muted/50'>
 										{vendor._count?.orders || 0} order
 										{vendor._count?.orders !== 1 ? 's' : ''}
 									</Badge>
 								</div>
 							</div>
 							<Button
-								variant='outline'
+								variant='ghost'
 								size='sm'
 								onClick={() => setEditingVendor(vendor)}>
 								<Edit size={16} />
 							</Button>
 						</div>
 					))}
+
+					{hasNextPage && (
+						<div ref={ref} className='py-4 flex justify-center'>
+							{isFetchingNextPage ? (
+								<Skeleton className='h-32 w-full rounded-lg' />
+							) : (
+								<div className='h-1' />
+							)}
+						</div>
+					)}
 				</div>
 			)}
 

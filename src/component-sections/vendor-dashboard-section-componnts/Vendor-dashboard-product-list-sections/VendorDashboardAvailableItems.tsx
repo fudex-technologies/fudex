@@ -1,13 +1,37 @@
+"use client"
+
+import { useVendorDashboardActions } from '@/api-hooks/useVendorDashboardActions';
 import { buttonVariants } from '@/components/ui/button';
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { productsDummyData } from '@/lib/dummyData';
+import { Skeleton } from '@/components/ui/skeleton';
+import { PAGES_DATA } from '@/data/pagesData';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import VendorDashboardProductListItem from './VendorDashboardProductListItem';
 
 const VendorDashboardAvailableItems = () => {
-	const items: any[] = productsDummyData.swallow;
+	const { useGetMyProductItems } = useVendorDashboardActions();
+	const { data: items = [], isLoading } = useGetMyProductItems({
+		take: 10,
+	});
+
+	if (isLoading) {
+		return (
+			<div className='w-full flex flex-col gap-3 pb-5'>
+				<h2 className='text-lg font-semibold px-5'>Available now</h2>
+				<div className='flex space-x-4 mx-5 overflow-hidden'>
+					{[1, 2, 3].map((i) => (
+						<Skeleton
+							key={i}
+							className='h-[200px] w-[250px] shrink-0'
+						/>
+					))}
+				</div>
+			</div>
+		);
+	}
+
 	return (
 		<div className='w-full flex flex-col gap-3 pb-5'>
 			<h2 className='text-lg font-semibold px-5'>Available now</h2>
@@ -17,7 +41,7 @@ const VendorDashboardAvailableItems = () => {
 						{items.map((item, index) => (
 							<div className='w-[250px]' key={index}>
 								<VendorDashboardProductListItem
-									productItem={item}
+									productItem={item as any}
 								/>
 							</div>
 						))}
@@ -42,7 +66,7 @@ const VendorDashboardAvailableItems = () => {
 
 					<div className='w-full px-5 flex justify-center'>
 						<Link
-							href={'#'}
+							href={PAGES_DATA.vendor_dashboard_menu_page}
 							className={cn(
 								buttonVariants({
 									variant: 'game',

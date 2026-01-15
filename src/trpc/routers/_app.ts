@@ -7,6 +7,7 @@ import { orderRouter } from "@/modules/orders/server/procedures";
 import { paymentRouter } from "@/modules/payments/server/procedures";
 import { operatorRouter } from "@/modules/operators/server/procedures";
 import { adminRouter } from "@/modules/admin/server/procedures";
+import { payoutRouter } from "@/modules/payouts/server/procedures";
 
 export const appRouter = createTRPCRouter({
   users: userRouter,
@@ -17,6 +18,7 @@ export const appRouter = createTRPCRouter({
   payments: paymentRouter,
   operators: operatorRouter,
   admin: adminRouter,
+  payouts: payoutRouter,
 });
 // export type definition of API
 export type AppRouter = typeof appRouter;

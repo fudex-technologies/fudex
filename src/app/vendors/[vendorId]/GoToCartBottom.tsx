@@ -19,7 +19,10 @@ const GoToCartBottom = ({ vendorId }: { vendorId: string }) => {
 	const { data: vendor } = useVendorProductActions().useGetVendorById({
 		id: vendorId,
 	});
-	const vendorIsOpen = isVendorOpen(vendor?.openingHours);
+	const vendorIsOpen = isVendorOpen(
+		vendor?.openingHours,
+		vendor?.availabilityStatus
+	);
 
 	// Collect all product item IDs needed for price calculation
 	const allProductItemIds = useMemo(() => {

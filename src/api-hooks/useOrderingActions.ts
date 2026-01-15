@@ -60,7 +60,7 @@ export function useOrderingActions() {
         return data?.length || 0
     }
     const useGetNumberOfMyOngoingOrders = () => {
-        const { data } = useQuery(trpc.orders.listMyOrders.queryOptions({ status: ["PREPARING", "PAID", "PENDING", "ASSIGNED"] }))
+        const { data } = useQuery(trpc.orders.listMyOrders.queryOptions({ status: ["PREPARING", "PAID", "PENDING", "ASSIGNED", "ACCEPTED", "READY", "OUT_FOR_DELIVERY"] }))
         return data?.length || 0
     }
 
@@ -78,7 +78,7 @@ export function useOrderingActions() {
             useQuery(trpc.orders.listMyOrders.queryOptions(input ?? {})),
         useListOngoingOrders: (input?: { take?: number; skip?: number, status?: OrderStatus }) =>
             useQuery(trpc.orders.listMyOrders.queryOptions({
-                ...input, status: ["PREPARING", "PAID", "PENDING", "ASSIGNED"]
+                ...input, status: ["PREPARING", "PAID", "PENDING", "ASSIGNED", "ACCEPTED", "READY", "OUT_FOR_DELIVERY"]
             })),
         useListDeliveredOrders: (input?: { take?: number; skip?: number, status?: OrderStatus }) =>
             useQuery(trpc.orders.listMyOrders.queryOptions({

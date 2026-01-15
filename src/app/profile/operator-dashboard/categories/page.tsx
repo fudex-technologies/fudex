@@ -1,5 +1,6 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import { useInView } from 'react-intersection-observer';
 import { useOperatorActions } from '@/api-hooks/useOperatorActions';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -137,16 +138,29 @@ function CategoryForm({
 
 export default function OperatorCategoriesPage() {
 	const {
-		useListCategories,
+		useInfiniteListCategories,
 		createCategory,
 		updateCategory,
 		deleteCategory,
 	} = useOperatorActions();
 	const {
-		data: categories = [],
+		data,
 		isLoading,
 		refetch,
-	} = useListCategories({ take: 100 });
+		fetchNextPage,
+		hasNextPage,
+		isFetchingNextPage,
+	} = useInfiniteListCategories({ limit: 100 });
+
+	const { ref, inView } = useInView();
+
+	useEffect(() => {
+		if (inView && hasNextPage && !isFetchingNextPage) {
+			fetchNextPage();
+		}
+	}, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+	const categories = data?.pages.flatMap((page) => page.items) || [];
 
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 	const [editingCategory, setEditingCategory] = useState<Category | null>(
@@ -201,9 +215,14 @@ export default function OperatorCategoriesPage() {
 			<SectionWrapper className='p-5'>
 				<div className='space-y-4'>
 					<Skeleton className='h-10 w-32' />
-					{Array.from({ length: 5 }).map((_, i) => (
-						<Skeleton key={i} className='h-20 w-full' />
-					))}
+					<div className='flex flex-wrap gap-4'>
+						{Array.from({ length: 8 }).map((_, i) => (
+							<Skeleton
+								key={i}
+								className='h-[100px] w-[100px] rounded-lg'
+							/>
+						))}
+					</div>
 				</div>
 			</SectionWrapper>
 		);
@@ -256,42 +275,24 @@ export default function OperatorCategoriesPage() {
 								/>
 							</div>
 						</div>
-
-						// <div
-						// 	key={category.id}
-						// 	className='border rounded-lg overflow-hidden group'>
-						// 	<div className='relative w-full h-40'>
-						// 		<ImageWithFallback
-						// 			src={category?.image || ''}
-						// 			alt={category.name}
-						// 			className='object-cover w-full h-full'
-						// 		/>
-						// 	</div>
-						// 	<div className='p-4'>
-						// 		<h3 className='font-semibold text-lg truncate'>
-						// 			{category.name}
-						// 		</h3>
-						// 	</div>
-						// 	<div className='p-2 bg-muted/50 flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity'>
-						// 		<Button
-						// 			variant='outline'
-						// 			size='sm'
-						// 			onClick={() =>
-						// 				setEditingCategory(category)
-						// 			}>
-						// 			<Edit size={16} />
-						// 		</Button>
-						// 		<Button
-						// 			variant='destructive'
-						// 			size='sm'
-						// 			onClick={() =>
-						// 				setDeletingCategoryId(category.id)
-						// 			}>
-						// 			<Trash2 size={16} />
-						// 		</Button>
-						// 	</div>
-						// </div>
 					))}
+
+					{hasNextPage && (
+						<div
+							ref={ref}
+							className='w-full py-4 flex flex-wrap gap-4'>
+							{isFetchingNextPage ? (
+								Array.from({ length: 4 }).map((_, i) => (
+									<Skeleton
+										key={i}
+										className='h-[100px] w-[100px] rounded-lg'
+									/>
+								))
+							) : (
+								<div className='h-1' />
+							)}
+						</div>
+					)}
 				</div>
 			)}
 

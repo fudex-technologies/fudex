@@ -66,7 +66,10 @@ const VendorDetailsSection = ({
 	const reviewCount = vendor.reviewsCount || 0;
 	const deliveryPrice = 600; // Default delivery price, can be calculated from area later
 
-	const isOpen = isVendorOpen(vendor?.openingHours);
+	const isOpen = isVendorOpen(
+		vendor?.openingHours,
+		vendor?.availabilityStatus
+	);
 	const nextOpenTime = getNextOpenTime(vendor?.openingHours || []);
 	const nextCloseTime = getNextCloseTime(vendor?.openingHours || []);
 

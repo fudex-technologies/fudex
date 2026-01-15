@@ -57,7 +57,10 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 	);
 
 	// Check if vendor is open
-	const vendorIsOpen = isVendorOpen(vendor?.openingHours);
+	const vendorIsOpen = isVendorOpen(
+		vendor?.openingHours,
+		vendor?.availabilityStatus
+	);
 
 	// Set default address
 	useMemo(() => {

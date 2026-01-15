@@ -49,14 +49,13 @@ const VendorDashboardProductListItem = ({
 		: baseUrl;
 
 	return (
-		<Link href={url} className='w-full flex flex-col shrink-0 space-y-1'>
+		<div className='w-full flex flex-col shrink-0 space-y-1'>
 			<div className='relative h-[150px] w-full'>
 				<DynamicCover
 					src={
-						(productItem as any)?.image
-						// productItem?.images && productItem?.images?.length > 0
-						// 	? productItem?.images[0]
-						// 	: null
+						productItem?.images && productItem?.images?.length > 0
+							? productItem?.images[0]
+							: null
 					}
 					alt={displayName}
 					className='h-full w-full rounded-lg'
@@ -83,7 +82,7 @@ const VendorDashboardProductListItem = ({
 					</p>
 				)}
 			</div>
-		</Link>
+		</div>
 	);
 };
 
