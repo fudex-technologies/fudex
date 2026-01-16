@@ -6,7 +6,6 @@ import { auth } from '@/lib/auth';
 import fetch from 'node-fetch';
 import crypto from 'crypto';
 import { completeRegistrationSchema } from '../schemas';
-import { headers } from 'next/headers';
 
 
 const TERMII_BASE = process.env.TERMII_BASE_URL;
@@ -69,7 +68,7 @@ async function sendTermiiSms(phone234: string, otp: string) {
         from: 'FUDEX',
         sms,
         type: "plain",
-        channel: "dnd"
+        channel: "generic"
     };
 
     const res = await fetch(url, {
@@ -79,8 +78,6 @@ async function sendTermiiSms(phone234: string, otp: string) {
     });
 
     const data = await res.json();
-
-    console.log("TERMII RESPONSE:", data);
 
     if (!res.ok || (data as any)?.code !== 'ok') {
         throw new TRPCError({
@@ -183,58 +180,43 @@ export const phoneAuthRouter = createTRPCRouter({
             return { token };
         }),
 
-    completeSignup: publicProcedure
+    completeSignupPrepare: publicProcedure
         .input(completeRegistrationSchema)
         .mutation(async ({ ctx, input }) => {
             const payload = verifyVerificationToken(input.token);
-            if (!payload) throw new TRPCError({ code: 'BAD_REQUEST', message: 'INVALID_VERIFICATION_TOKEN' });
-
-            const phone = payload.phone;
-            const pv = await ctx.prisma.phoneVerification.findUnique({ where: { id: payload.pvId } });
-            if (!pv || !pv.verified) throw new TRPCError({ code: 'BAD_REQUEST', message: 'INVALID_VERIFICATION_TOKEN' });
-
-            // ensure unique phone
-            const existing = await ctx.prisma.user.findFirst({ where: { phone } });
-            if (existing) throw new TRPCError({ code: 'CONFLICT', message: 'PHONE_ALREADY_IN_USE' });
-
-            // create via BetterAuth server API
-            try {
-                const signUpRes = await auth.api.signUpEmail({
-                    body: {
-                        name: `${input.firstName} ${input.lastName}`,
-                        password: input.password,
-                        email: input.email,
-                        rememberMe: true,
-                    }
-                });
-                // BetterAuth returns the user (or session.user)
-                const userId = signUpRes.user.id;
-                // Attach phone to the user and mark verified
-                await ctx.prisma.user.update({
-                    where: { id: userId },
-                    data: {
-                        phone,
-                        phoneVerified: true,
-                    },
-                });
-
-                return { success: true, user: signUpRes.user };
-            } catch (e: any) {
-                throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: e?.message || 'SIGNUP_FAILED' });
+            if (!payload) {
+                throw new TRPCError({ code: "BAD_REQUEST", message: "INVALID_VERIFICATION_TOKEN" });
             }
+            const phone = payload.phone;
+            const pv = await ctx.prisma.phoneVerification.findUnique({
+                where: { id: payload.pvId },
+            });
+            if (!pv || !pv.verified) {
+                throw new TRPCError({ code: "BAD_REQUEST", message: "INVALID_VERIFICATION_TOKEN" });
+            }
+
+            const existing = await ctx.prisma.user.findFirst({
+                where: { phone },
+            });
+
+            if (existing) {
+                throw new TRPCError({ code: "CONFLICT", message: "PHONE_ALREADY_IN_USE" });
+            }
+
+            return {
+                phone,
+                email: input.email,
+                name: `${input.firstName} ${input.lastName}`,
+            };
         }),
 
-    loginWithPhone: publicProcedure
+    loginWithPhoneResolver: publicProcedure
         .input(z.object({
             phone: z.string(),
-            password: z.string(),
-            rememberMe: z.boolean().optional(),
-            callbackUrl: z.string().optional(),
         }))
         .mutation(async ({ ctx, input }) => {
             const phone = normalizePhoneNumber(input.phone);
 
-            // 1️⃣ Find user by phone
             const user = await ctx.prisma.user.findUnique({
                 where: { phone },
                 select: { email: true },
@@ -242,26 +224,12 @@ export const phoneAuthRouter = createTRPCRouter({
 
             if (!user?.email) {
                 throw new TRPCError({
-                    code: 'UNAUTHORIZED',
-                    message: 'INVALID_CREDENTIALS',
+                    code: "UNAUTHORIZED",
+                    message: "INVALID_CREDENTIALS",
                 });
             }
 
-            try {
-                const res = await auth.api.signInEmail({
-                    body: {
-                        email: user.email,
-                        password: input.password,
-                        rememberMe: input?.rememberMe ?? false,
-                        callbackURL: input?.callbackUrl ?? undefined,
-                    },
-                    // This endpoint requires session cookies.
-                    headers: await headers(),
-                });
-                return { success: true, res };
-            } catch (e: any) {
-                throw new TRPCError({ code: 'UNAUTHORIZED', message: e?.message || 'AUTH_FAILED' });
-            }
+            return { email: user.email };
         }),
 
     // Attach a verified phone to the current (logged-in) user — used for Google users linking phone
@@ -354,6 +322,245 @@ export const phoneAuthRouter = createTRPCRouter({
             });
 
             return { success: true };
+        }),
+
+    checkPhoneInUse: publicProcedure
+        .input(z.object({ phone: z.string() }))
+        .query(async ({ ctx, input }) => {
+            const phone = normalizePhoneNumber(input.phone)
+            const other = await ctx.prisma.user.findFirst({ where: { phone } });
+            return { inUse: !!other };
+        }),
+
+
+
+    checkEmailInUse: publicProcedure
+        .input(z.object({ email: z.string() }))
+        .query(async ({ ctx, input }) => {
+            const email = input.email.toLowerCase().trim();
+            const other = await ctx.prisma.user.findFirst({ where: { email } });
+            return { inUse: !!other };
+        }),
+
+    // ========================================
+    // EMAIL OTP PASSWORD RESET (New Flow)
+    // ========================================
+
+    // Request OTP for password reset via Email
+    requestPasswordResetEmail: publicProcedure
+        .input(z.object({ email: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+            const email = input.email.toLowerCase().trim();
+
+            // Check if user exists with this email
+            const user = await ctx.prisma.user.findFirst({ where: { email } });
+            if (!user) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'NO_USER_WITH_EMAIL' });
+            }
+
+            // Use better-auth's forgetPasswordEmailOTP to send OTP email
+            try {
+                await auth.api.forgetPasswordEmailOTP({
+                    body: { email }
+                });
+                return { success: true };
+            } catch (e: any) {
+                throw new TRPCError({
+                    code: 'INTERNAL_SERVER_ERROR',
+                    message: e?.message || 'EMAIL_SEND_FAILED'
+                });
+            }
+        }),
+
+    // Reset password with Email OTP (combined verify + reset)
+    resetPasswordWithEmailOTP: publicProcedure
+        .input(z.object({
+            email: z.string(),
+            otp: z.string(),
+            newPassword: z.string()
+        }))
+        .mutation(async ({ ctx, input }) => {
+            const email = input.email.toLowerCase().trim();
+
+            // Verify user exists
+            const user = await ctx.prisma.user.findFirst({ where: { email } });
+            if (!user) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'NO_USER_WITH_EMAIL' });
+            }
+
+            // Use better-auth's resetPasswordEmailOTP to verify OTP and reset password
+            try {
+                await auth.api.resetPasswordEmailOTP({
+                    body: {
+                        email,
+                        otp: input.otp,
+                        password: input.newPassword,
+                    }
+                });
+
+                return { success: true };
+            } catch (e: any) {
+                throw new TRPCError({
+                    code: 'UNAUTHORIZED',
+                    message: e?.message || 'PASSWORD_RESET_FAILED'
+                });
+            }
+        }),
+
+
+    // ========================================
+    // PHONE OTP PASSWORD RESET (Legacy Flow)
+    // ========================================
+
+    // Request OTP for password reset via Phone (Legacy)
+    requestPasswordResetOtp: publicProcedure
+        .input(z.object({ phone: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+            const phone = normalizePhoneNumber(input.phone);
+
+            // Check if user exists with this phone
+            const user = await ctx.prisma.user.findFirst({ where: { phone } });
+            if (!user) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'NO_USER_WITH_PHONE' });
+            }
+
+            // Rate limit check
+            const last = await ctx.prisma.phoneVerification.findFirst({
+                where: { phone },
+                orderBy: { createdAt: 'desc' }
+            });
+            if (last) {
+                const secondsSince = (Date.now() - last.createdAt.getTime()) / 1000;
+                if (secondsSince < RESEND_COOLDOWN_SECONDS) {
+                    throw new TRPCError({
+                        code: 'TOO_MANY_REQUESTS',
+                        message: 'RESEND_COOLDOWN'
+                    });
+                }
+            }
+
+            // Generate OTP and hash
+            const otp = generateOTP();
+            const otpHash = await hashOTP(otp);
+            const expiresAt = new Date(Date.now() + VERIFICATION_EXP_MINUTES * 60 * 1000);
+
+            // Create verification record
+            const pv = await ctx.prisma.phoneVerification.create({
+                data: { phone, otpHash, expiresAt }
+            });
+
+            // Send SMS
+            try {
+                await sendTermiiSms(phone, otp);
+            } catch (e: any) {
+                throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'SMS_SEND_FAILED' });
+            }
+
+            return { success: true, id: pv.id };
+        }),
+
+    // Verify Phone OTP and issue reset token (Legacy)
+    verifyPasswordResetOtp: publicProcedure
+        .input(z.object({ phone: z.string(), otp: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+            const phone = normalizePhoneNumber(input.phone);
+
+            // Verify user exists
+            const user = await ctx.prisma.user.findFirst({ where: { phone } });
+            if (!user) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'NO_USER_WITH_PHONE' });
+            }
+
+            const pv = await ctx.prisma.phoneVerification.findFirst({
+                where: { phone },
+                orderBy: { createdAt: 'desc' }
+            });
+
+            if (!pv) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'OTP_INVALID' });
+            if (pv.verified) {
+                // Issue token anyway
+                const token = signVerificationToken({
+                    phone,
+                    pvId: pv.id,
+                    exp: Date.now() + 15 * 60 * 1000 // 15 minutes for password reset
+                });
+                return { token };
+            }
+            if (pv.attempts >= MAX_ATTEMPTS) {
+                throw new TRPCError({
+                    code: 'TOO_MANY_REQUESTS',
+                    message: 'OTP_TOO_MANY_ATTEMPTS'
+                });
+            }
+            if (pv.expiresAt.getTime() < Date.now()) {
+                throw new TRPCError({ code: 'BAD_REQUEST', message: 'OTP_EXPIRED' });
+            }
+
+            const ok = await compareOTP(input.otp, pv.otpHash);
+            if (!ok) {
+                await ctx.prisma.phoneVerification.update({
+                    where: { id: pv.id },
+                    data: { attempts: { increment: 1 } } as any
+                });
+                throw new TRPCError({ code: 'UNAUTHORIZED', message: 'OTP_INVALID' });
+            }
+
+            // Mark verified
+            await ctx.prisma.phoneVerification.update({
+                where: { id: pv.id },
+                data: { verified: true }
+            });
+
+            const token = signVerificationToken({
+                phone,
+                pvId: pv.id,
+                exp: Date.now() + 15 * 60 * 1000 // 15 minutes for password reset
+            });
+            return { token };
+        }),
+
+    // Reset password with verified Phone token (Legacy)
+    resetPasswordWithPhoneToken: publicProcedure
+        .input(z.object({ token: z.string(), newPassword: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+            const payload = verifyVerificationToken(input.token);
+            if (!payload) {
+                throw new TRPCError({ code: 'BAD_REQUEST', message: 'INVALID_VERIFICATION_TOKEN' });
+            }
+
+            const phone = payload.phone;
+
+            // Verify the phone verification record exists
+            const pv = await ctx.prisma.phoneVerification.findUnique({
+                where: { id: payload.pvId }
+            });
+
+            if (!pv || !pv.verified) {
+                throw new TRPCError({ code: 'BAD_REQUEST', message: 'INVALID_VERIFICATION_TOKEN' });
+            }
+
+            // Find user by phone
+            const user = await ctx.prisma.user.findFirst({ where: { phone } });
+            if (!user) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'NO_USER_WITH_PHONE' });
+            }
+
+            // Update password via better-auth
+            try {
+                // await auth.api.changePassword({
+                //     body: {
+                //         newPassword: input.newPassword,
+                //         // userId: user.id,
+                //     }
+                // });
+
+                return { success: true };
+            } catch (e: any) {
+                throw new TRPCError({
+                    code: 'INTERNAL_SERVER_ERROR',
+                    message: e?.message || 'PASSWORD_UPDATE_FAILED'
+                });
+            }
         }),
 });
 

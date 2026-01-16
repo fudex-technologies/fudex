@@ -1,23 +1,467 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
-
-// generator client {
-//   provider = "prisma-client"
-//   output   = "../src/generated/prisma"
-// }
 
 datasource db {
   provider = "postgresql"
 }
 
-// --- Roles / Authorization ---
+model User {
+  id              String           @id @default(uuid())
+  name            String
+  email           String           @unique
+  emailVerified   Boolean          @default(false)
+  image           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  firstName       String?
+  lastName        String?
+  phone           String?          @unique
+  phoneVerified   Boolean          @default(false)
+  addresses       Address[]
+  favoriteVendors FavoriteVendor[]
+  operator        Operator?
+  orders          Order[]
+  payments        Payment[]
+  payoutBatches   PayoutBatch[]
+  reviews         Review[]
+  roles           UserRole[]
+  vendors         Vendor[]         @relation("VendorOwner")
+  accounts        Account[]
+  sessions        Session[]
+
+  @@map("user")
+}
+
+model UserRole {
+  id         String   @id @default(uuid())
+  userId     String
+  role       Role
+  assignedAt DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role])
+  @@index([userId, role])
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+model Area {
+  id           String            @id @default(uuid())
+  name         String
+  state        String
+  meta         Json?
+  createdAt    DateTime          @default(now())
+  addresses    Address[]
+  deliveryFees DeliveryFeeRule[]
+  operators    Operator[]
+
+  @@unique([name, state])
+  @@index([state])
+}
+
+model DeliveryFeeRule {
+  id        String   @id @default(uuid())
+  areaId    String
+  startTime String
+  endTime   String
+  fee       Float
+  createdAt DateTime @default(now())
+  area      Area     @relation(fields: [areaId], references: [id], onDelete: Cascade)
+
+  @@index([areaId])
+}
+
+model Operator {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  areaId    String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  area      Area?    @relation(fields: [areaId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders    Order[]
+  riders    Rider[]
+
+  @@index([areaId])
+}
+
+model Rider {
+  id         String    @id @default(uuid())
+  operatorId String?
+  name       String
+  phone      String?
+  isActive   Boolean   @default(true)
+  notes      String?
+  createdAt  DateTime  @default(now())
+  orders     Order[]
+  operator   Operator? @relation(fields: [operatorId], references: [id])
+
+  @@index([operatorId])
+  @@index([isActive])
+}
+
+model Address {
+  id         String   @id @default(uuid())
+  userId     String
+  label      String?
+  line1      String
+  line2      String?
+  city       String
+  state      String?
+  postalCode String?
+  country    String   @default("NG")
+  lat        Float?
+  lng        Float?
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  areaId     String?
+  customArea String?
+  area       Area?    @relation(fields: [areaId], references: [id])
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders     Order[]
+
+  @@index([userId])
+}
+
+model Vendor {
+  id                 String                   @id @default(uuid())
+  ownerId            String?
+  name               String
+  slug               String                   @unique
+  description        String?
+  phone              String?
+  email              String?
+  address            String?
+  city               String?
+  country            String?
+  coverImage         String?
+  createdAt          DateTime                 @default(now())
+  lat                Float?
+  lng                Float?
+  reviewsAverage     Float                    @default(0)
+  reviewsCount       Int                      @default(0)
+  bankAccountNumber  String?
+  bankCode           String?
+  bankName           String?
+  payoutEnabled      Boolean                  @default(false)
+  paystackRecipient  String?
+  availabilityStatus VendorAvailabilityStatus @default(AUTO)
+  favoritedBy        FavoriteVendor[]
+  orders             Order[]
+  products           Product[]
+  productItems       ProductItem[]
+  reviews            Review[]
+  owner              User?                    @relation("VendorOwner", fields: [ownerId], references: [id])
+  vendorCategories   VendorCategory[]
+  openingHours       VendorOpeningHour[]
+  vendorPayouts      VendorPayout[]
+
+  @@index([name])
+  @@index([city])
+  @@index([name, description])
+  @@index([lat, lng])
+}
+
+model VendorOpeningHour {
+  id        String    @id @default(uuid())
+  vendorId  String
+  day       DayOfWeek
+  openTime  String?
+  closeTime String?
+  isClosed  Boolean   @default(false)
+  vendor    Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@unique([vendorId, day])
+  @@index([vendorId])
+}
+
+model FavoriteVendor {
+  id        String   @id @default(uuid())
+  userId    String
+  vendorId  String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendor    Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, vendorId])
+  @@index([userId])
+  @@index([vendorId])
+}
+
+model Product {
+  id          String        @id @default(uuid())
+  vendorId    String
+  name        String
+  description String?
+  createdAt   DateTime      @default(now())
+  inStock     Boolean       @default(true)
+  image       String?
+  vendor      Vendor        @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  items       ProductItem[]
+
+  @@index([vendorId])
+}
+
+model ProductItem {
+  id              String                @id @default(uuid())
+  vendorId        String
+  productId       String?
+  name            String
+  slug            String                @unique
+  description     String?
+  price           Float
+  currency        String                @default("NGN")
+  images          String[]              @default([])
+  isActive        Boolean               @default(true)
+  createdAt       DateTime              @default(now())
+  inStock         Boolean               @default(true)
+  orderItems      OrderItem[]
+  orderItemAddons OrderItemAddon[]
+  product         Product?              @relation(fields: [productId], references: [id], onDelete: Cascade)
+  vendor          Vendor                @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  categories      ProductItemCategory[]
+
+  @@index([vendorId])
+  @@index([price])
+  @@index([name, description])
+}
+
+model Category {
+  id        String                @id @default(uuid())
+  name      String                @unique
+  slug      String                @unique
+  createdAt DateTime              @default(now())
+  image     String?
+  items     ProductItemCategory[]
+  vendors   VendorCategory[]
+
+  @@index([name])
+}
+
+model ProductItemCategory {
+  id            String      @id @default(uuid())
+  productItemId String
+  categoryId    String
+  category      Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  productItem   ProductItem @relation(fields: [productItemId], references: [id], onDelete: Cascade)
+
+  @@unique([productItemId, categoryId])
+  @@index([categoryId])
+  @@index([productItemId])
+}
+
+model VendorCategory {
+  id         String   @id @default(uuid())
+  vendorId   String
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  vendor     Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@unique([vendorId, categoryId])
+  @@index([categoryId])
+  @@index([vendorId])
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  userId    String
+  vendorId  String
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendor    Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+  @@index([userId])
+}
+
+model Order {
+  id              String        @id @default(uuid())
+  userId          String
+  vendorId        String?
+  addressId       String
+  operatorId      String?
+  assignedRiderId String?
+  status          OrderStatus   @default(PENDING)
+  totalAmount     Float
+  currency        String        @default("NGN")
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deliveryFee     Float         @default(0)
+  serviceFee      Float         @default(0)
+  payoutStatus    PayoutStatus  @default(NOT_ELIGIBLE)
+  platformFee     Float         @default(0)
+  productAmount   Float         @default(0)
+  address         Address       @relation(fields: [addressId], references: [id])
+  assignedRider   Rider?        @relation(fields: [assignedRiderId], references: [id])
+  operator        Operator?     @relation(fields: [operatorId], references: [id])
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendor          Vendor?       @relation(fields: [vendorId], references: [id])
+  items           OrderItem[]
+  payment         Payment?
+  vendorPayout    VendorPayout?
+
+  @@index([userId])
+  @@index([vendorId])
+  @@index([operatorId])
+  @@index([status])
+}
+
+model OrderItem {
+  id            String           @id @default(uuid())
+  orderId       String
+  productItemId String
+  quantity      Int              @default(1)
+  unitPrice     Float
+  totalPrice    Float
+  groupKey      String?
+  order         Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productItem   ProductItem      @relation(fields: [productItemId], references: [id])
+  addons        OrderItemAddon[]
+
+  @@index([orderId])
+  @@index([productItemId])
+}
+
+model OrderItemAddon {
+  id                 String      @id @default(uuid())
+  orderItemId        String
+  addonProductItemId String
+  quantity           Int         @default(1)
+  unitPrice          Float
+  addonProductItem   ProductItem @relation(fields: [addonProductItemId], references: [id], onDelete: Cascade)
+  orderItem          OrderItem   @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+
+  @@index([orderItemId])
+  @@index([addonProductItemId])
+}
+
+model Payment {
+  id          String        @id @default(uuid())
+  orderId     String        @unique
+  userId      String
+  amount      Float
+  currency    String        @default("NGN")
+  provider    String        @default("paystack")
+  providerRef String
+  status      PaymentStatus @default(PENDING)
+  paidAt      DateTime?
+  createdAt   DateTime      @default(now())
+  metadata    Json?
+  order       Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([providerRef])
+}
+
+model VendorPayout {
+  id           String               @id @default(uuid())
+  vendorId     String
+  orderId      String               @unique
+  amount       Float
+  currency     String               @default("NGN")
+  transferRef  String?
+  transferCode String?
+  status       PayoutTransferStatus @default(PENDING)
+  initiatedAt  DateTime             @default(now())
+  completedAt  DateTime?
+  batchId      String?
+  batch        PayoutBatch?         @relation(fields: [batchId], references: [id])
+  order        Order                @relation(fields: [orderId], references: [id])
+  vendor       Vendor               @relation(fields: [vendorId], references: [id])
+
+  @@index([vendorId])
+  @@index([status])
+}
+
+model PayoutBatch {
+  id            String               @id @default(uuid())
+  reference     String               @unique
+  totalAmount   Float
+  currency      String               @default("NGN")
+  status        PayoutTransferStatus @default(PENDING)
+  initiatedById String
+  createdAt     DateTime             @default(now())
+  completedAt   DateTime?
+  initiatedBy   User                 @relation(fields: [initiatedById], references: [id])
+  payouts       VendorPayout[]
+}
+
+model PhoneVerification {
+  id        String   @id @default(uuid())
+  phone     String
+  otpHash   String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+  @@index([createdAt])
+}
+
+model PlatformSetting {
+  id    String @id @default(uuid())
+  key   String @unique
+  value Json
+}
+
+model playing_with_neon {
+  id    Int    @id @default(autoincrement())
+  name  String
+  value Float? @db.Real
+}
+
 enum Role {
   CUSTOMER
   VENDOR
@@ -26,7 +470,6 @@ enum Role {
   SUPER_ADMIN
 }
 
-// Global order/payment states (keeps room for future expansion)
 enum OrderStatus {
   PENDING
   PAID
@@ -34,6 +477,9 @@ enum OrderStatus {
   ASSIGNED
   DELIVERED
   CANCELLED
+  ACCEPTED
+  READY
+  OUT_FOR_DELIVERY
 }
 
 enum PaymentStatus {
@@ -44,8 +490,8 @@ enum PaymentStatus {
 }
 
 enum PayoutStatus {
-  NOT_ELIGIBLE // not delivered yet
-  PENDING // delivered, waiting payout
+  NOT_ELIGIBLE
+  PENDING
   PAID
   FAILED
 }
@@ -66,467 +512,8 @@ enum DayOfWeek {
   SATURDAY
 }
 
-// --- Core / Auth (existing `User` preserved by auth provider) ---
-model User {
-  id            String   @id @default(uuid())
-  name          String
-  firstName     String?
-  lastName      String?
-  email         String
-  phone         String?  @unique
-  phoneVerified Boolean  @default(false)
-  emailVerified Boolean  @default(false)
-  image         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  // relations
-  sessions        Session[]
-  accounts        Account[]
-  addresses       Address[]
-  vendors         Vendor[]         @relation("VendorOwner")
-  orders          Order[]
-  payments        Payment[]
-  operator        Operator? // if user is an operator, link record
-  roles           UserRole[]
-  reviews         Review[]
-  favoriteVendors FavoriteVendor[]
-
-  @@unique([email])
-  @@map("user")
-}
-
-model UserRole {
-  id         String   @id @default(uuid())
-  userId     String
-  role       Role
-  assignedAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, role])
-  @@index([userId, role])
-}
-
-model Session {
-  id        String   @id
-  expiresAt DateTime
-  token     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  ipAddress String?
-  userAgent String?
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([token])
-  @@index([userId])
-  @@map("session")
-}
-
-model Account {
-  id                    String    @id
-  accountId             String
-  providerId            String
-  userId                String
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accessToken           String?
-  refreshToken          String?
-  idToken               String?
-  accessTokenExpiresAt  DateTime?
-  refreshTokenExpiresAt DateTime?
-  scope                 String?
-  password              String?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-
-  @@index([userId])
-  @@map("account")
-}
-
-model Verification {
-  id         String   @id
-  identifier String
-  value      String
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  @@index([identifier])
-  @@map("verification")
-}
-
-// --- Geography / Areas ---
-model Area {
-  id           String            @id @default(uuid())
-  name         String // e.g., "Ikeja East"
-  state        String // e.g., "Lagos"
-  meta         Json? // optional geojson / metadata
-  operators    Operator[]
-  deliveryFees DeliveryFeeRule[]
-  createdAt    DateTime          @default(now())
-  addresses    Address[]
-
-  @@unique([name, state])
-  @@index([state])
-}
-
-model DeliveryFeeRule {
-  id     String @id @default(uuid())
-  areaId String
-  area   Area   @relation(fields: [areaId], references: [id], onDelete: Cascade)
-
-  startTime String // "08:00"
-  endTime   String // "18:00"
-  fee       Float
-
-  createdAt DateTime @default(now())
-
-  @@index([areaId])
-}
-
-// --- Operators & Riders (operators are users; riders are DB-only for now) ---
-model Operator {
-  id        String   @id @default(uuid())
-  userId    String   @unique
-  areaId    String? // operator works in an area
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-
-  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  area   Area?   @relation(fields: [areaId], references: [id])
-  riders Rider[]
-  orders Order[]
-
-  @@index([areaId])
-}
-
-model Rider {
-  id         String   @id @default(uuid())
-  operatorId String? // managed by operator
-  name       String
-  phone      String?
-  isActive   Boolean  @default(true)
-  notes      String?
-  createdAt  DateTime @default(now())
-
-  operator Operator? @relation(fields: [operatorId], references: [id], onDelete: SetNull)
-  orders   Order[]
-
-  @@index([operatorId])
-  @@index([isActive])
-}
-
-// --- Addresses ---
-model Address {
-  id         String   @id @default(uuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  areaId     String?
-  area       Area?    @relation(fields: [areaId], references: [id])
-  customArea String? // user-entered if areaId is null
-  label      String? // Home, Work
-  line1      String
-  line2      String?
-  city       String
-  state      String?
-  postalCode String?
-  country    String   @default("NG")
-  lat        Float?
-  lng        Float?
-  isDefault  Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  orders     Order[]
-
-  @@index([userId])
-}
-
-// --- Vendors / Products (kept generic for future non-food use) ---
-model Vendor {
-  id             String   @id @default(uuid())
-  ownerId        String? // user who manages this vendor (may be null for platform-created vendors)
-  name           String
-  slug           String   @unique
-  description    String?
-  phone          String?
-  email          String?
-  address        String?
-  city           String?
-  country        String?
-  coverImage     String? // external URL (Vercel blob etc.)
-  lat            Float?
-  lng            Float?
-  reviewsAverage Float    @default(0)
-  reviewsCount   Int      @default(0)
-  createdAt      DateTime @default(now())
-
-  // payout setup
-  payoutEnabled     Boolean @default(false)
-  bankName          String?
-  bankCode          String?
-  bankAccountNumber String?
-  paystackRecipient String? // RCP_xxx from Paystack
-
-  owner            User?               @relation("VendorOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-  products         Product[]
-  productItems     ProductItem[]
-  orders           Order[] // orders placed to this vendor
-  reviews          Review[]
-  vendorCategories VendorCategory[]
-  openingHours     VendorOpeningHour[]
-  vendorPayouts    VendorPayout[]
-  favoritedBy      FavoriteVendor[]
-
-  @@index([name])
-  @@index([city])
-  @@index([name, description])
-  @@index([lat, lng])
-}
-
-model VendorOpeningHour {
-  id        String    @id @default(uuid())
-  vendorId  String
-  day       DayOfWeek
-  openTime  String? // "09:00"
-  closeTime String? // "22:00"
-  isClosed  Boolean   @default(false)
-
-  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-
-  @@unique([vendorId, day])
-  @@index([vendorId])
-}
-
-model FavoriteVendor {
-  id        String   @id @default(uuid())
-  userId    String
-  vendorId  String
-  createdAt DateTime @default(now())
-
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, vendorId])
-  @@index([userId])
-  @@index([vendorId])
-}
-
-model Product {
-  id          String        @id @default(uuid())
-  vendorId    String
-  vendor      Vendor        @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  name        String
-  description String?
-  image       String?
-  inStock     Boolean       @default(true)
-  createdAt   DateTime      @default(now())
-  items       ProductItem[]
-
-  @@index([vendorId])
-}
-
-model ProductItem {
-  id              String                @id @default(uuid())
-  vendorId        String
-  vendor          Vendor                @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  productId       String?
-  product         Product?              @relation(fields: [productId], references: [id], onDelete: Cascade)
-  name            String
-  slug            String                @unique
-  description     String?
-  price           Float
-  inStock         Boolean               @default(true)
-  currency        String                @default("NGN")
-  images          String[]              @default([]) // store URLs only
-  isActive        Boolean               @default(true)
-  createdAt       DateTime              @default(now())
-  orderItems      OrderItem[]
-  categories      ProductItemCategory[]
-  orderItemAddons OrderItemAddon[]
-
-  @@index([vendorId])
-  @@index([price])
-  @@index([name, description])
-}
-
-// Categories and many-to-many relations with ProductItem and Vendor
-model Category {
-  id        String                @id @default(uuid())
-  name      String                @unique
-  slug      String                @unique
-  image     String?
-  createdAt DateTime              @default(now())
-  items     ProductItemCategory[]
-  vendors   VendorCategory[]
-
-  @@index([name])
-}
-
-model ProductItemCategory {
-  id            String      @id @default(uuid())
-  productItemId String
-  categoryId    String
-  productItem   ProductItem @relation(fields: [productItemId], references: [id], onDelete: Cascade)
-  category      Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-
-  @@unique([productItemId, categoryId])
-  @@index([categoryId])
-  @@index([productItemId])
-}
-
-model VendorCategory {
-  id         String   @id @default(uuid())
-  vendorId   String
-  categoryId String
-  vendor     Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-
-  @@unique([vendorId, categoryId])
-  @@index([categoryId])
-  @@index([vendorId])
-}
-
-// Reviews / Ratings for vendors
-model Review {
-  id        String   @id @default(uuid())
-  userId    String
-  vendorId  String
-  rating    Int // 1–5
-  comment   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-
-  @@index([vendorId])
-  @@index([userId])
-}
-
-// --- Orders, Items, Payments ---
-model Order {
-  id              String      @id @default(uuid())
-  userId          String
-  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  vendorId        String? // vendor fulfilling the order (nullable for general marketplace orders)
-  vendor          Vendor?     @relation(fields: [vendorId], references: [id])
-  addressId       String
-  address         Address     @relation(fields: [addressId], references: [id])
-  operatorId      String? // operator overseeing this order (if assigned)
-  operator        Operator?   @relation(fields: [operatorId], references: [id])
-  assignedRiderId String? // optional rider assignment
-  assignedRider   Rider?      @relation(fields: [assignedRiderId], references: [id])
-  status          OrderStatus @default(PENDING)
-
-  productAmount Float  @default(0) // vendor’s earning (sum of items)
-  deliveryFee   Float  @default(0)
-  serviceFee    Float  @default(0)
-  platformFee   Float  @default(0) // optional, future-proof
-  totalAmount   Float
-  currency      String @default("NGN")
-
-  payoutStatus PayoutStatus @default(NOT_ELIGIBLE)
-
-  notes        String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  items        OrderItem[]
-  payment      Payment?
-  vendorPayout VendorPayout?
-
-  @@index([userId])
-  @@index([vendorId])
-  @@index([operatorId])
-  @@index([status])
-}
-
-model OrderItem {
-  id            String           @id @default(uuid())
-  orderId       String
-  order         Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productItemId String
-  productItem   ProductItem      @relation(fields: [productItemId], references: [id])
-  quantity      Int              @default(1)
-  unitPrice     Float
-  totalPrice    Float
-  groupKey      String?
-  addons        OrderItemAddon[]
-
-  @@index([orderId])
-  @@index([productItemId])
-}
-
-model OrderItemAddon {
-  id                 String      @id @default(uuid())
-  orderItemId        String
-  orderItem          OrderItem   @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
-  addonProductItemId String
-  addonProductItem   ProductItem @relation(fields: [addonProductItemId], references: [id], onDelete: Cascade)
-  quantity           Int         @default(1)
-  unitPrice          Float
-
-  @@index([orderItemId])
-  @@index([addonProductItemId])
-}
-
-model Payment {
-  id          String        @id @default(uuid())
-  orderId     String        @unique
-  order       Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  userId      String
-  user        User          @relation(fields: [userId], references: [id])
-  amount      Float
-  currency    String        @default("NGN")
-  provider    String        @default("paystack")
-  providerRef String // payment reference from provider
-  status      PaymentStatus @default(PENDING)
-  paidAt      DateTime?
-  metadata    Json?
-  createdAt   DateTime      @default(now())
-
-  @@index([userId])
-  @@index([providerRef])
-}
-
-model VendorPayout {
-  id       String @id @default(uuid())
-  vendorId String
-  orderId  String
-  amount   Float
-  currency String @default("NGN")
-
-  // Paystack
-  transferRef  String?
-  transferCode String?
-  status       PayoutTransferStatus @default(PENDING)
-
-  initiatedAt DateTime  @default(now())
-  completedAt DateTime?
-
-  vendor Vendor @relation(fields: [vendorId], references: [id])
-  order  Order  @relation(fields: [orderId], references: [id])
-
-  @@unique([orderId]) // one payout per order
-  @@index([vendorId])
-  @@index([status])
-}
-
-// Phone verification records for OTP flows
-model PhoneVerification {
-  id        String   @id @default(uuid())
-  phone     String
-  otpHash   String
-  expiresAt DateTime
-  attempts  Int      @default(0)
-  verified  Boolean  @default(false)
-  createdAt DateTime @default(now())
-
-  @@index([phone])
-  @@index([createdAt])
-}
-
-model PlatformSetting {
-  id    String @id @default(uuid())
-  key   String @unique
-  value Json
+enum VendorAvailabilityStatus {
+  AUTO
+  OPEN
+  CLOSED
 }

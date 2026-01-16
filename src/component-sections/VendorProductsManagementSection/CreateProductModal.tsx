@@ -54,17 +54,16 @@ export default function CreateProductModal({
 		<Dialog open={open} onOpenChange={setOpen}>
 			<DialogTrigger asChild>
 				<Button variant='game' size='lg'>
-					<Plus size={16} className='mr-2' />
-					Create Product
-				</Button>
+					     <Plus size={16} className='mr-2' />
+					     Add Menu Item				</Button>
 			</DialogTrigger>
 			<DialogContent>
 				<DialogHeader>
-					<DialogTitle>Create New Product</DialogTitle>
+					<DialogTitle>Create New Menu Item</DialogTitle>
 				</DialogHeader>
 				<form onSubmit={handleSubmit} className='space-y-4'>
 					<div className='space-y-2'>
-						<Label htmlFor='product-name'>Product Name *</Label>
+						<Label htmlFor='product-name'>Menu Item Name *</Label>
 						<Input
 							id='product-name'
 							value={name}
@@ -90,7 +89,7 @@ export default function CreateProductModal({
 						disabled={createProductMutate.isPending}>
 						{createProductMutate.isPending
 							? 'Creating...'
-							: 'Create Product'}
+							: 'Create Menu Item'}
 					</Button>
 				</form>
 			</DialogContent>

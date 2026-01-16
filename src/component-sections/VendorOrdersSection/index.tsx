@@ -39,7 +39,7 @@ const VendorOrdersSection = () => {
 		isLoading,
 		refetch,
 	} = useGetMyOrders({
-		status: statusFilter === 'all' ? undefined : statusFilter,
+		status: statusFilter === 'all' ? undefined : [statusFilter],
 	});
 
 	const updateOrderStatusMutation = useMutation(
@@ -65,7 +65,7 @@ const VendorOrdersSection = () => {
 	};
 
 	const getStatusBadge = (status: OrderStatus) => {
-		const variants: Record<OrderStatus, any> = {
+		const variants: Record<string, any> = {
 			PENDING: { variant: 'secondary' as const, icon: Clock },
 			PAID: { variant: 'default' as const, icon: Package },
 			PREPARING: { variant: 'default' as const, icon: Package },

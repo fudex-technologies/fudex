@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import AuthPageWrapper from '@/components/wrapers/AuthPageWrapper';
 import { PAGES_DATA } from '@/data/pagesData';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { localStorageStrings } from '@/constants/localStorageStrings';
 import { validatepasswordRegex } from '@/lib/commonFunctions';
 import { useAuthActions } from '@/api-hooks/useAuthActions';
@@ -27,7 +26,6 @@ const initialFormData = {
 };
 
 export default function CreatePasswordPage() {
-	const router = useRouter();
 	const [form, setForm] = useState<IFormData>(initialFormData);
 
 	const [touched, setTouched] = useState<IFormTouchedData>({});
@@ -36,12 +34,14 @@ export default function CreatePasswordPage() {
 
 	const { setPasswordAndCompleteSignUp } = useAuthActions();
 	const { mutate, isPending } = setPasswordAndCompleteSignUp({
+		password: form.password,
+		token: token as string,
+		redirectTo: PAGES_DATA.onboarding_set_address_page,
 		onSuccess: () => {
 			localStorage.removeItem(localStorageStrings.onboardingSignupString);
 			localStorage.removeItem(
 				localStorageStrings.onboardingVerificationToken
 			);
-			router.push(PAGES_DATA.onboarding_set_address_page);
 		},
 	});
 
@@ -98,7 +98,7 @@ export default function CreatePasswordPage() {
 		};
 
 	return (
-		<AuthPageWrapper>
+		<AuthPageWrapper canSkip={false}>
 			<div className='flex flex-col gap-5 w-full max-w-md'>
 				<div className='w-full'>
 					<GoBackButton link={PAGES_DATA.onboarding_signup_page} />

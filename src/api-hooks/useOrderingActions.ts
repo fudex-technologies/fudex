@@ -56,7 +56,11 @@ export function useOrderingActions() {
         );
 
     const useGetNumberOfMyDeliveredOrders = () => {
-        const { data } = useQuery(trpc.orders.listMyOrders.queryOptions({ status: "DELIVERED" }))
+        const { data } = useQuery(trpc.orders.listMyOrders.queryOptions({ status: ["DELIVERED"] }))
+        return data?.length || 0
+    }
+    const useGetNumberOfMyOngoingOrders = () => {
+        const { data } = useQuery(trpc.orders.listMyOrders.queryOptions({ status: ["PREPARING", "PAID", "PENDING", "ASSIGNED", "ACCEPTED", "READY", "OUT_FOR_DELIVERY"] }))
         return data?.length || 0
     }
 
@@ -70,8 +74,16 @@ export function useOrderingActions() {
             useQuery(trpc.orders.getOrder.queryOptions({ ...input })),
         useGetOrderPacks: (input: { id: string }) =>
             useQuery(trpc.orders.getOrderPacks.queryOptions({ ...input })),
-        useListMyOrders: (input?: { take?: number; skip?: number, status?: OrderStatus }) =>
+        useListMyOrders: (input?: { take?: number; skip?: number, status?: OrderStatus[] }) =>
             useQuery(trpc.orders.listMyOrders.queryOptions(input ?? {})),
+        useListOngoingOrders: (input?: { take?: number; skip?: number, status?: OrderStatus }) =>
+            useQuery(trpc.orders.listMyOrders.queryOptions({
+                ...input, status: ["PREPARING", "PAID", "PENDING", "ASSIGNED", "ACCEPTED", "READY", "OUT_FOR_DELIVERY"]
+            })),
+        useListDeliveredOrders: (input?: { take?: number; skip?: number, status?: OrderStatus }) =>
+            useQuery(trpc.orders.listMyOrders.queryOptions({
+                ...input, status: ["DELIVERED"]
+            })),
         useInfiniteListMyOrders: (input?: { limit?: number; status?: OrderStatus }) =>
             useInfiniteQuery(
                 trpc.orders.listMyOrdersInfinite.infiniteQueryOptions(
@@ -87,7 +99,7 @@ export function useOrderingActions() {
             ),
         useGetPaymentStatus: (input: { orderId: string }) =>
             useQuery(trpc.payments.getPaymentStatus.queryOptions({ ...input })),
-
         useGetNumberOfMyDeliveredOrders,
+        useGetNumberOfMyOngoingOrders,
     };
 }

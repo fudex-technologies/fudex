@@ -1,7 +1,7 @@
 "use client";
 
 import { useTRPC } from "@/trpc/client";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { UseAPICallerOptions } from "./api-hook-types";
 import { OrderStatus } from "@prisma/client";
@@ -15,8 +15,19 @@ export function useOperatorActions() {
             useQuery(trpc.operators.checkOperatorRole.queryOptions(undefined)),
 
         // Orders
-        useListOrdersInArea: (input?: { take?: number; skip?: number }) =>
-            useQuery(trpc.operators.listOrdersInArea.queryOptions(input ?? {})),
+        useListOrders: (input: { limit?: number; cursor?: string; status?: OrderStatus; areaId?: string } = {}) =>
+            useQuery(trpc.operators.listOrders.queryOptions(input)),
+
+        useInfiniteListOrders: (input: { limit?: number; status?: OrderStatus; areaId?: string } = {}) =>
+            useInfiniteQuery(
+                trpc.operators.listOrders.infiniteQueryOptions(
+                    { ...input },
+                    {
+                        getNextPageParam: (lastPage: any) => lastPage.nextCursor,
+                    }
+                )
+            ),
+
         updateOrderStatus: (options?: UseAPICallerOptions) =>
             useMutation(
                 trpc.operators.updateOrderStatus.mutationOptions({
@@ -47,8 +58,19 @@ export function useOperatorActions() {
             ),
 
         // Riders
-        useListRiders: () =>
-            useQuery(trpc.operators.listRiders.queryOptions(undefined)),
+        useListRiders: (input: { limit?: number; cursor?: string; areaId?: string } = {}) =>
+            useQuery(trpc.operators.listRiders.queryOptions(input)),
+
+        useInfiniteListRiders: (input: { limit?: number; areaId?: string } = {}) =>
+            useInfiniteQuery(
+                trpc.operators.listRiders.infiniteQueryOptions(
+                    { ...input },
+                    {
+                        getNextPageParam: (lastPage: any) => lastPage.nextCursor,
+                    }
+                )
+            ),
+
         createRider: (options?: UseAPICallerOptions) =>
             useMutation(
                 trpc.operators.createRider.mutationOptions({
@@ -79,8 +101,19 @@ export function useOperatorActions() {
             ),
 
         // Categories
-        useListCategories: (input?: { take?: number; skip?: number }) =>
-            useQuery(trpc.operators.listCategories.queryOptions(input ?? {})),
+        useListCategories: (input: { limit?: number; cursor?: string } = {}) =>
+            useQuery(trpc.operators.listCategories.queryOptions(input)),
+
+        useInfiniteListCategories: (input: { limit?: number } = {}) =>
+            useInfiniteQuery(
+                trpc.operators.listCategories.infiniteQueryOptions(
+                    { ...input },
+                    {
+                        getNextPageParam: (lastPage: any) => lastPage.nextCursor,
+                    }
+                )
+            ),
+
         createCategory: (options?: UseAPICallerOptions) =>
             useMutation(
                 trpc.operators.createCategory.mutationOptions({
@@ -125,8 +158,19 @@ export function useOperatorActions() {
             ),
 
         // Vendors
-        useListVendors: (input?: { take?: number; skip?: number; q?: string }) =>
-            useQuery(trpc.operators.listVendors.queryOptions(input ?? {})),
+        useListVendors: (input: { limit?: number; cursor?: string; q?: string } = {}) =>
+            useQuery(trpc.operators.listVendors.queryOptions(input)),
+
+        useInfiniteListVendors: (input: { limit?: number; q?: string } = {}) =>
+            useInfiniteQuery(
+                trpc.operators.listVendors.infiniteQueryOptions(
+                    { ...input },
+                    {
+                        getNextPageParam: (lastPage: any) => lastPage.nextCursor,
+                    }
+                )
+            ),
+
         updateVendor: (options?: UseAPICallerOptions) =>
             useMutation(
                 trpc.operators.updateVendor.mutationOptions({

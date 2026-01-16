@@ -1,7 +1,7 @@
 "use client";
 
 import { useTRPC } from "@/trpc/client";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { UseAPICallerOptions } from "./api-hook-types";
 import { OrderStatus } from "@prisma/client";
@@ -134,6 +134,21 @@ export function useVendorDashboardActions() {
 
 
 
+    const updateOrderStatus = (options?: UseAPICallerOptions) =>
+        useMutation(
+            trpc.orders.updateMyOrderStatus.mutationOptions({
+                onSuccess: (data) => {
+                    if (!options?.silent) toast.success("Order status updated");
+                    options?.onSuccess?.(data);
+                },
+                onError: (err: unknown) => {
+                    if (!options?.silent) toast.error("Failed to update order status", { description: err instanceof Error ? err.message : String(err) });
+                    options?.onError?.(err);
+                },
+                retry: false,
+            })
+        );
+
     return {
         updateMyVendor,
         createProduct,
@@ -143,6 +158,7 @@ export function useVendorDashboardActions() {
         updateProduct,
         deleteProduct,
         deleteProductItem,
+        updateOrderStatus,
 
         // queries
         useGetMyVendor: () =>
@@ -151,8 +167,25 @@ export function useVendorDashboardActions() {
             useQuery(trpc.vendors.getMyProducts.queryOptions(input ?? {})),
         useGetMyProductItems: (input?: { take?: number; skip?: number; productId?: string }) =>
             useQuery(trpc.vendors.getMyProductItems.queryOptions(input ?? {})),
-        useGetMyOrders: (input?: { take?: number; skip?: number; status?: OrderStatus }) =>
+        useGetMyOrders: (input?: { take?: number; skip?: number; status?: OrderStatus[] }) =>
             useQuery(trpc.vendors.getMyOrders.queryOptions(input ?? {})),
+        useGetMyOrderCounts: () =>
+            useQuery(trpc.vendors.getMyOrderCounts.queryOptions()),
+        useGetSupportedBanks: () =>
+            useQuery(trpc.vendors.getSupportedBanks.queryOptions()),
+        useGetMyOrdersInfinite: (input?: { limit?: number; status?: OrderStatus[] }) =>
+            useInfiniteQuery(
+                trpc.vendors.getMyOrdersInfinite.infiniteQueryOptions(
+                    {
+                        limit: input?.limit ?? 20,
+                        status: input?.status,
+                    },
+                    {
+                        getNextPageParam: (lastPage) => lastPage.nextCursor,
+                        initialCursor: 0,
+                    }
+                )
+            ),
     };
 }
 

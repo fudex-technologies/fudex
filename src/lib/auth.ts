@@ -3,7 +3,10 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import prisma from "@/lib/prisma";
 import { nextCookies } from "better-auth/next-js";
 import { customSession } from "better-auth/plugins";
+import { emailOTP } from "better-auth/plugins";
+import { sendPasswordResetEmail, sendEmailVerification } from "@/lib/email";
 
+const FUDEX_ONBOARDING_EMAIL = process.env.FUDEX_ONBOARDING_EMAIL;
 export const auth = betterAuth({
     database: prismaAdapter(prisma, {
         provider: "postgresql",
@@ -42,6 +45,22 @@ export const auth = betterAuth({
                 session,
             };
         }),
+        emailOTP({
+            async sendVerificationOTP({ email, otp, type }) {
+                try {
+                    if (type === "email-verification") {
+                        await sendEmailVerification(email, otp, FUDEX_ONBOARDING_EMAIL as string);
+                    }
+                    if (type === "forget-password") {
+                        await sendPasswordResetEmail(email, otp, FUDEX_ONBOARDING_EMAIL as string);
+                    }
+                } catch (error) {
+                    console.error('Failed to send email OTP:', error);
+                    throw error;
+                }
+            },
+            sendVerificationOnSignUp: true,
+        })
     ],
 });
 

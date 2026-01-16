@@ -80,7 +80,7 @@ export default function VerifyPhonePage() {
 	};
 
 	return (
-		<AuthPageWrapper>
+		<AuthPageWrapper canSkip={false}>
 			<div className='flex flex-col gap-5 w-full max-w-md'>
 				<div className='w-full'>
 					<GoBackButton />

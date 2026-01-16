@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation';
 import PageWrapper from '@/components/wrapers/PageWrapper';
 import GoBackButton from '@/components/GoBackButton';
 import { PAGES_DATA } from '@/data/pagesData';
-import { MapPin, Settings } from 'lucide-react';
+import { MapPin, Settings, Landmark } from 'lucide-react';
 import TabComponent from '@/components/TabComponent';
 import { useState, useEffect } from 'react';
 import { useTRPC } from '@/trpc/client';
@@ -34,6 +34,8 @@ export default function AdminDashboardLayout({
 			const path = window.location.pathname;
 			if (path.includes('/settings')) {
 				setActiveTab('settings');
+			} else if (path.includes('/payouts')) {
+				setActiveTab('payouts');
 			} else {
 				setActiveTab('areas');
 			}
@@ -77,6 +79,11 @@ export default function AdminDashboardLayout({
 							icon: <MapPin size={18} />,
 						},
 						{
+							id: 'payouts',
+							label: 'Payouts',
+							icon: <Landmark size={18} />,
+						},
+						{
 							id: 'settings',
 							label: 'Settings',
 							icon: <Settings size={18} />,
@@ -85,7 +92,11 @@ export default function AdminDashboardLayout({
 					className={'border-b mb-0! p-0'}
 					onTabChange={(id) => {
 						if (id === 'settings') {
-							router.push(PAGES_DATA.admin_dashboard_settings_page);
+							router.push(
+								PAGES_DATA.admin_dashboard_settings_page
+							);
+						} else if (id === 'payouts') {
+							router.push('/profile/admin-dashboard/payouts');
 						} else {
 							router.push(PAGES_DATA.admin_dashboard_areas_page);
 						}
@@ -97,4 +108,3 @@ export default function AdminDashboardLayout({
 		</PageWrapper>
 	);
 }
-

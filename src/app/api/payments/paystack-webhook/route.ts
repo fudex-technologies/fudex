@@ -108,7 +108,7 @@ async function handleSuccessfulPayment(data: any) {
 		data: { status: "PAID" },
 	});
 
-	console.log(`Payment ${payment.id} marked as successful`);
+	// console.log(`Payment ${payment.id} marked as successful`);
 }
 
 /**
@@ -141,6 +141,6 @@ async function handleFailedPayment(data: {
 		},
 	});
 
-	console.log(`Payment ${payment.id} marked as failed`);
+	// console.log(`Payment ${payment.id} marked as failed`);
 }
 

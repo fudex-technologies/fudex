@@ -28,8 +28,6 @@ async function main() {
             const firstName = parts.shift() || null;
             const lastName = parts.length ? parts.join(' ') : null;
 
-            console.log(`${u.id} -> firstName="${firstName}", lastName="${lastName}" (name="${raw}")`);
-
             if (!dryRun) {
                 try {
                     await prisma.user.update({ where: { id: u.id }, data: { firstName, lastName } as any });

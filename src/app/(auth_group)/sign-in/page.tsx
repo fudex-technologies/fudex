@@ -1,5 +1,3 @@
-'use client';
-
 import AuthPageWrapper from '@/components/wrapers/AuthPageWrapper';
 import { PAGES_DATA } from '@/data/pagesData';
 import { cn } from '@/lib/utils';
@@ -13,7 +11,7 @@ import { buttonVariants } from '@/components/ui/button';
 
 export default function LoginPage() {
 	return (
-		<AuthPageWrapper>
+		<AuthPageWrapper canSkip={false}>
 			<div className='flex flex-col gap-5 w-full max-w-md'>
 				<div className='w-full space-y-2 text-center'>
 					<h1 className='font-bold text-xl'>Log in</h1>

@@ -1,14 +1,33 @@
 "use client";
 
 import { useTRPC } from "@/trpc/client";
-import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import { RatingFilterType } from "@/modules/vendors/schema";
+import { UseAPICallerOptions } from "./api-hook-types";
+import { toast } from "sonner";
 
 export function useVendorProductActions() {
     const trpc = useTRPC();
 
+
+    const addReview = (options?: UseAPICallerOptions) =>
+        useMutation(
+            trpc.vendors.createReview.mutationOptions({
+                onSuccess: (data) => {
+                    if (!options?.silent) toast.success("Review Added!!");
+                    options?.onSuccess?.(data);
+                },
+                onError: (err: unknown) => {
+                    if (!options?.silent) toast.error("Failed to add review", { description: err instanceof Error ? err.message : String(err) });
+                    options?.onError?.(err);
+                },
+                retry: false,
+            })
+        );
+
     return {
-        // read helpers
+        addReview,
+
         // products
         useListProductItems: (input: { vendorId: string; take?: number }) =>
             useQuery(trpc.vendors.listProductItems.queryOptions(input)),
@@ -61,5 +80,21 @@ export function useVendorProductActions() {
             ),
         usePopularVendors: (input?: { take?: number; skip?: number }) =>
             useQuery(trpc.vendors.getPopularVendors.queryOptions(input ?? {})),
+        useGetMyOpeningHours: () => useQuery(trpc.vendors.getMyOpeningHours.queryOptions()),
+        useSetMyOpeningHours: () => useMutation(trpc.vendors.setMyOpeningHours.mutationOptions({
+            onError: (err) => {
+                // handle error
+            }
+        })),
+        useVendorReviewsInfinite: (vendorId: string, limit = 10) =>
+            useInfiniteQuery(
+                trpc.vendors.listVendorReviewsInfinite.infiniteQueryOptions(
+                    { vendorId, limit },
+                    {
+                        getNextPageParam: (lastPage) => lastPage.nextCursor,
+                        initialCursor: 0,
+                    }
+                )
+            ),
     };
 }

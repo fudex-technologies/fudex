@@ -13,7 +13,7 @@ export default async function OrderSummaryPage({ params }: Props) {
 	return (
 		<PageWrapper>
 			<div className='flex items-center gap-10 px-5'>
-				<GoBackButton />
+				<GoBackButton link={PAGES_DATA.tray_page} />
 				<Link href={PAGES_DATA.tray_page}>
 					<p className='font-semibold text-xl'>Tray</p>
 				</Link>

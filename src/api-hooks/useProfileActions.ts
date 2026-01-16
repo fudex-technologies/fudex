@@ -103,9 +103,37 @@ export function useProfileActions() {
             })
         ),
         getAllAreasInEkiti: () => useQuery(
-            trpc.users.listAreas.queryOptions({state: "ekiti"}, {
+            trpc.users.listAreas.queryOptions({ state: "ekiti" }, {
                 enabled: !!session,
             })
-        )
+        ),
+
+        // Favorite vendors
+        toggleFavoriteVendor: (options?: UseAPICallerOptions) =>
+            useMutation(
+                trpc.users.toggleFavoriteVendor.mutationOptions({
+                    onSuccess: (data) => {
+                        if (!options?.silent) {
+                            toast.success(data.favorited ? "Added to favorites" : "Removed from favorites");
+                        }
+                        options?.onSuccess?.(data);
+                    },
+                    onError: (err: unknown) => {
+                        if (!options?.silent) toast.error("Failed to update favorites", { description: err instanceof Error ? err.message : String(err) });
+                        options?.onError?.(err);
+                    },
+                    retry: false,
+                })
+            ),
+        isVendorFavorited: (vendorId: string) => useQuery(
+            trpc.users.isVendorFavorited.queryOptions({ vendorId }, {
+                enabled: !!session && !!vendorId,
+            })
+        ),
+        getMyFavoriteVendors: (input?: { take?: number; skip?: number }) => useQuery(
+            trpc.users.getMyFavoriteVendors.queryOptions(input ?? {}, {
+                enabled: !!session,
+            })
+        ),
     }
 }

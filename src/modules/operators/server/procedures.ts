@@ -1,6 +1,7 @@
 import { createTRPCRouter, operatorProcedure, protectedProcedure } from "@/trpc/init";
 import { z } from "zod";
 import { OrderStatus } from "@prisma/client";
+import { normalizePhoneNumber } from "@/lib/commonFunctions";
 
 export const operatorRouter = createTRPCRouter({
     // Check if user is an operator
@@ -15,7 +16,107 @@ export const operatorRouter = createTRPCRouter({
         return !!operatorRole;
     }),
 
-    // List orders within the operator's area (operatorProcedure ensures role)
+    // List orders (infinite scroll support, area-aware but default to all)
+    listOrders: operatorProcedure
+        .input(z.object({
+            limit: z.number().min(1).max(100).nullish(),
+            cursor: z.string().nullish(), // orderId
+            status: z.nativeEnum(OrderStatus).nullish(),
+            areaId: z.string().optional(),
+        }))
+        .query(async ({ ctx, input }) => {
+            const limit = input.limit ?? 50;
+            const { cursor, status, areaId } = input;
+
+            const where: any = {};
+            if (status) where.status = status;
+
+            // Area-aware logic: if areaId is provided, filter by it. 
+            // If the user wants to enforce operator-area confinement later, 
+            // we can uncomment the logic to fetch operator's area here.
+            if (areaId) {
+                const area = await ctx.prisma.area.findUnique({ where: { id: areaId } });
+                if (area) {
+                    where.OR = [
+                        { vendor: { city: area.name } },
+                        { address: { city: area.name } }
+                    ];
+                }
+            }
+
+            const items = await ctx.prisma.order.findMany({
+                take: limit + 1,
+                where,
+                cursor: cursor ? { id: cursor } : undefined,
+                orderBy: { createdAt: "desc" },
+                include: {
+                    vendor: {
+                        select: {
+                            id: true,
+                            name: true,
+                            coverImage: true,
+                            city: true,
+                            address: true,
+                            phone: true,
+                        }
+                    },
+                    address: {
+                        select: {
+                            id: true,
+                            line1: true,
+                            line2: true,
+                            city: true,
+                            state: true,
+                        }
+                    },
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            phone: true,
+                        }
+                    },
+                    items: {
+                        include: {
+                            productItem: true,
+                            addons: {
+                                include: {
+                                    addonProductItem: true
+                                }
+                            }
+                        }
+                    },
+                    payment: {
+                        select: {
+                            id: true,
+                            amount: true,
+                            status: true,
+                            provider: true,
+                            providerRef: true,
+                        }
+                    },
+                    assignedRider: {
+                        select: {
+                            id: true,
+                            name: true,
+                            phone: true,
+                        }
+                    }
+                }
+            });
+
+            let nextCursor: typeof cursor | undefined = undefined;
+            if (items.length > limit) {
+                const nextItem = items.pop();
+                nextCursor = nextItem!.id;
+            }
+            return {
+                items,
+                nextCursor,
+            };
+        }),
+
+    // Legacy method for backward compatibility
     listOrdersInArea: operatorProcedure
         .input(z.object({
             take: z.number().optional().default(50),
@@ -24,20 +125,20 @@ export const operatorRouter = createTRPCRouter({
         .query(async ({ ctx, input }) => {
             // find operator record
             const operator = await ctx.prisma.operator.findUnique({ where: { userId: ctx.user!.id } });
-            if (!operator || !operator.areaId) return [];
 
-            // Find orders whose vendor.city matches area's state/name could be refined; here we filter by vendor.city === area.name for simplicity
-            const area = await ctx.prisma.area.findUnique({ where: { id: operator.areaId } });
-            if (!area) return [];
-
-            return ctx.prisma.order.findMany({
-                where: {
-                    // naive geo filter: vendor.city == area.name OR address.city == area.name
-                    OR: [
+            const where: any = {};
+            if (operator && operator.areaId) {
+                const area = await ctx.prisma.area.findUnique({ where: { id: operator.areaId } });
+                if (area) {
+                    where.OR = [
                         { vendor: { city: area.name } },
                         { address: { city: area.name } }
-                    ],
-                },
+                    ];
+                }
+            }
+
+            return ctx.prisma.order.findMany({
+                where,
                 take: input.take,
                 skip: input.skip,
                 orderBy: { createdAt: "desc" },
@@ -85,43 +186,81 @@ export const operatorRouter = createTRPCRouter({
     updateOrderStatus: operatorProcedure
         .input(z.object({
             orderId: z.string(),
-            status: z.enum(Object.values(OrderStatus))
+            status: z.nativeEnum(OrderStatus)
         }))
         .mutation(async ({ ctx, input }) => {
-            // ensure operator can access the order (simplified check: same area)
-            const operator = await ctx.prisma.operator.findUnique({ where: { userId: ctx.user!.id } });
-            if (!operator) throw new Error("Operator record not found");
-
-            const order = await ctx.prisma.order.findUnique({
-                where: { id: input.orderId }, include: { vendor: true, address: true }
-            });
-            if (!order) throw new Error("Order not found");
-
-            // permit if vendor.city or address.city matches operator area (simple)
-            const area = operator.areaId ? await ctx.prisma.area.findUnique({ where: { id: operator.areaId } }) : null;
-            if (area && !(order.vendor?.city === area.name || order.address?.city === area.name)) {
-                throw new Error("Forbidden: order outside operator area");
-            }
-
+            // Permission check can be added here if needed to restrict to certain orders
             return ctx.prisma.order.update({ where: { id: input.orderId }, data: { status: input.status } });
         }),
 
-    listRiders: operatorProcedure.query(async ({ ctx }) => {
-        const operator = await ctx.prisma.operator.findUnique({ where: { userId: ctx.user!.id } });
-        if (!operator) return [];
-        return ctx.prisma.rider.findMany({ where: { operatorId: operator.id } });
-    }),
+    listRiders: operatorProcedure
+        .input(z.object({
+            limit: z.number().min(1).max(100).nullish(),
+            cursor: z.string().nullish(), // riderId
+            areaId: z.string().optional(),
+        }))
+        .query(async ({ ctx, input }) => {
+            const limit = input.limit ?? 50;
+            const { cursor, areaId } = input;
+
+            const where: any = {};
+            // If areaId is provided, we could filter riders by their operator's area
+            // For now, return all riders as requested
+            if (areaId) {
+                where.operator = { areaId };
+            }
+
+            const items = await ctx.prisma.rider.findMany({
+                take: limit + 1,
+                where,
+                cursor: cursor ? { id: cursor } : undefined,
+                orderBy: { createdAt: "desc" },
+                include: {
+                    operator: {
+                        select: {
+                            id: true,
+                            area: true,
+                            user: {
+                                select: {
+                                    name: true
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            let nextCursor: typeof cursor | undefined = undefined;
+            if (items.length > limit) {
+                const nextItem = items.pop();
+                nextCursor = nextItem!.id;
+            }
+            return {
+                items,
+                nextCursor,
+            };
+        }),
 
     createRider: operatorProcedure
         .input(z.object({
             name: z.string(),
             phone: z.string().optional(),
-            notes: z.string().optional()
+            notes: z.string().optional(),
+            areaId: z.string().optional(),
         }))
         .mutation(async ({ ctx, input }) => {
             const operator = await ctx.prisma.operator.findUnique({ where: { userId: ctx.user!.id } });
             if (!operator) throw new Error("Operator record not found");
-            return ctx.prisma.rider.create({ data: { ...input, operatorId: operator.id } });
+            const phone = input.phone ? normalizePhoneNumber(input.phone) : undefined;
+            // Use the operator's ID as the manager by default
+            return ctx.prisma.rider.create({
+                data: {
+                    name: input.name,
+                    phone,
+                    notes: input.notes,
+                    operatorId: operator.id
+                }
+            });
         }),
 
     updateRider: operatorProcedure
@@ -135,13 +274,7 @@ export const operatorRouter = createTRPCRouter({
             })
         }))
         .mutation(async ({ ctx, input }) => {
-            const operator = await ctx.prisma.operator.findUnique({ where: { userId: ctx.user!.id } });
-            if (!operator) throw new Error("Operator record not found");
-
-            // ensure rider belongs to operator
-            const rider = await ctx.prisma.rider.findUnique({ where: { id: input.id } });
-            if (!rider || rider.operatorId !== operator.id) throw new Error("Forbidden");
-
+            // Operators can update any rider for now
             return ctx.prisma.rider.update({ where: { id: input.id }, data: input.data });
         }),
 
@@ -154,26 +287,26 @@ export const operatorRouter = createTRPCRouter({
             const operator = await ctx.prisma.operator.findUnique({ where: { userId: ctx.user!.id } });
             if (!operator) throw new Error("Operator record not found");
 
-            const rider = await ctx.prisma.rider.findUnique({ where: { id: input.riderId } });
-            if (!rider || rider.operatorId !== operator.id) throw new Error("Forbidden: rider not managed by operator");
-
-            // simple assign
+            // Simple assign - allow assigning ANY rider to ANY order
             return ctx.prisma.order.update({
                 where: { id: input.orderId },
-                data: { assignedRiderId: rider.id, status: "ASSIGNED", operatorId: operator.id }
+                data: { assignedRiderId: input.riderId, status: "ASSIGNED", operatorId: operator.id }
             });
         }),
 
     // List categories (operators can view all categories)
     listCategories: operatorProcedure
         .input(z.object({
-            take: z.number().optional().default(100),
-            skip: z.number().optional().default(0)
+            limit: z.number().min(1).max(100).nullish(),
+            cursor: z.string().nullish(), // categoryId
         }))
-        .query(({ ctx, input }) => {
-            return ctx.prisma.category.findMany({
-                take: input.take,
-                skip: input.skip,
+        .query(async ({ ctx, input }) => {
+            const limit = input.limit ?? 100;
+            const { cursor } = input;
+
+            const items = await ctx.prisma.category.findMany({
+                take: limit + 1,
+                cursor: cursor ? { id: cursor } : undefined,
                 orderBy: { name: "asc" },
                 include: {
                     _count: {
@@ -184,6 +317,16 @@ export const operatorRouter = createTRPCRouter({
                     }
                 }
             });
+
+            let nextCursor: typeof cursor | undefined = undefined;
+            if (items.length > limit) {
+                const nextItem = items.pop();
+                nextCursor = nextItem!.id;
+            }
+            return {
+                items,
+                nextCursor,
+            };
         }),
 
     // Create category
@@ -229,22 +372,26 @@ export const operatorRouter = createTRPCRouter({
     // List vendors (operators can view all vendors)
     listVendors: operatorProcedure
         .input(z.object({
-            take: z.number().optional().default(50),
-            skip: z.number().optional().default(0),
+            limit: z.number().min(1).max(100).nullish(),
+            cursor: z.string().nullish(), // vendorId
             q: z.string().optional()
         }))
-        .query(({ ctx, input }) => {
+        .query(async ({ ctx, input }) => {
+            const limit = input.limit ?? 50;
+            const { cursor, q } = input;
+
             const where: any = {};
-            if (input.q) {
+            if (q) {
                 where.OR = [
-                    { name: { contains: input.q, mode: "insensitive" } },
-                    { description: { contains: input.q, mode: "insensitive" } }
+                    { name: { contains: q, mode: "insensitive" } },
+                    { description: { contains: q, mode: "insensitive" } }
                 ];
             }
-            return ctx.prisma.vendor.findMany({
+
+            const items = await ctx.prisma.vendor.findMany({
                 where,
-                take: input.take,
-                skip: input.skip,
+                take: limit + 1,
+                cursor: cursor ? { id: cursor } : undefined,
                 orderBy: { createdAt: "desc" },
                 include: {
                     owner: {
@@ -262,6 +409,16 @@ export const operatorRouter = createTRPCRouter({
                     }
                 }
             });
+
+            let nextCursor: typeof cursor | undefined = undefined;
+            if (items.length > limit) {
+                const nextItem = items.pop();
+                nextCursor = nextItem!.id;
+            }
+            return {
+                items,
+                nextCursor,
+            };
         }),
 
     // Update vendor

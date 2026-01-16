@@ -9,6 +9,7 @@ import { validatePhoneNumberRegex } from '@/lib/commonFunctions';
 import InputField from '@/components/InputComponent';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
+import Link from 'next/link';
 import { PAGES_DATA } from '@/data/pagesData';
 
 interface IFormData {
@@ -30,13 +31,12 @@ const LoginForm = () => {
 	const searchParams = useSearchParams();
 	const redirectTo = searchParams.get('redirect');
 
-	const router = useRouter();
 	const { login } = useAuthActions();
 	const { mutate: loginMutate, isPending: loginLoading } = login({
+		password: form.password,
+		rememberMe,
+		redirect: redirectTo || undefined,
 		silent: false,
-		onSuccess: () => {
-			router.replace(redirectTo || PAGES_DATA.home_page);
-		},
 	});
 
 	const validate = () => {
@@ -62,8 +62,6 @@ const LoginForm = () => {
 
 		loginMutate({
 			phone: form.phone,
-			password: form.password,
-			rememberMe,
 		});
 	};
 
@@ -111,9 +109,12 @@ const LoginForm = () => {
 					/>
 					<Label htmlFor='rememberme'>Remember me</Label>
 				</div>
-				<Button type='button' variant={'link'}>
+				<Link
+					href={PAGES_DATA.onboarding_forgot_password_page}
+					type='button'
+					className={buttonVariants({ variant: 'link', size: 'sm' })}>
 					Forgot password?
-				</Button>
+				</Link>
 			</div>
 			<Button
 				type='submit'
