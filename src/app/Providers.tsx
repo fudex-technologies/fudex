@@ -5,6 +5,7 @@ import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import RequirePhoneModal from '@/components/RequirePhoneModal/RequirePhoneModal';
 import OnboardingRedirect from './OnboardingRedirect';
 import PwaInstallPrompt from '@/components/pwa/PwaInstallPrompt';
+import { Analytics } from '@vercel/analytics/next';
 
 export default function Providers({
 	children,
@@ -12,15 +13,18 @@ export default function Providers({
 	children: React.ReactNode;
 }>) {
 	return (
-		<TRPCReactProvider>
-			<NuqsAdapter>
-				{children}
-				<RequirePhoneModal />
-				<PwaInstallPrompt />
-				<PWAUpdateToast />
-				<OnboardingRedirect />
-				<Toaster position="top-center" />
-			</NuqsAdapter>
-		</TRPCReactProvider>
+		<>
+			<TRPCReactProvider>
+				<NuqsAdapter>
+					{children}
+					<RequirePhoneModal />
+					<PwaInstallPrompt />
+					<PWAUpdateToast />
+					<OnboardingRedirect />
+					<Toaster position='top-center' />
+				</NuqsAdapter>
+			</TRPCReactProvider>
+			<Analytics />
+		</>
 	);
 }
