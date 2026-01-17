@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation';
 import PageWrapper from '@/components/wrapers/PageWrapper';
 import GoBackButton from '@/components/GoBackButton';
 import { PAGES_DATA } from '@/data/pagesData';
-import { MapPin, Settings, Landmark } from 'lucide-react';
+import { MapPin, Settings, Landmark, FileCheck } from 'lucide-react';
 import TabComponent from '@/components/TabComponent';
 import { useState, useEffect } from 'react';
 import { useTRPC } from '@/trpc/client';
@@ -36,6 +36,8 @@ export default function AdminDashboardLayout({
 				setActiveTab('settings');
 			} else if (path.includes('/payouts')) {
 				setActiveTab('payouts');
+			} else if (path.includes('/vendor-requests')) {
+				setActiveTab('requests');
 			} else {
 				setActiveTab('areas');
 			}
@@ -74,6 +76,11 @@ export default function AdminDashboardLayout({
 					activeByPathname={true}
 					tabs={[
 						{
+							id: 'requests',
+							label: 'Requests',
+							icon: <FileCheck size={18} />,
+						},
+						{
 							id: 'areas',
 							label: 'Areas',
 							icon: <MapPin size={18} />,
@@ -97,6 +104,10 @@ export default function AdminDashboardLayout({
 							);
 						} else if (id === 'payouts') {
 							router.push('/profile/admin-dashboard/payouts');
+						} else if (id === 'requests') {
+							router.push(
+								PAGES_DATA.admin_dashboard_vendor_requests_page
+							);
 						} else {
 							router.push(PAGES_DATA.admin_dashboard_areas_page);
 						}

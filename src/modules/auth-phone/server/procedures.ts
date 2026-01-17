@@ -3,6 +3,7 @@ import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { normalizePhoneNumber, generateOTP, hashOTP, compareOTP } from '@/lib/commonFunctions';
 import { auth } from '@/lib/auth';
+import { sendEmailVerification } from '@/lib/email';
 import fetch from 'node-fetch';
 import crypto from 'crypto';
 import { completeRegistrationSchema } from '../schemas';
@@ -562,6 +563,178 @@ export const phoneAuthRouter = createTRPCRouter({
                 });
             }
         }),
+
+    // ========================================
+    // VENDOR ONBOARDING EMAIL VERIFICATION
+    // ========================================
+
+    // Request OTP for vendor onboarding email verification
+    requestEmailVerificationOtp: publicProcedure
+        .input(z.object({ email: z.string().email() }))
+        .mutation(async ({ ctx, input }) => {
+            const email = input.email.toLowerCase().trim();
+
+            // Check if there's a recent verification request (rate limiting)
+            const lastVerification = await ctx.prisma.verification.findFirst({
+                where: {
+                    identifier: email,
+                },
+                orderBy: { createdAt: 'desc' }
+            });
+
+            if (lastVerification) {
+                const secondsSince = (Date.now() - lastVerification.createdAt.getTime()) / 1000;
+                if (secondsSince < RESEND_COOLDOWN_SECONDS) {
+                    throw new TRPCError({
+                        code: 'TOO_MANY_REQUESTS',
+                        message: 'RESEND_COOLDOWN'
+                    });
+                }
+            }
+
+            // Generate OTP
+            const otp = generateOTP();
+            const otpHash = await hashOTP(otp);
+            const expiresAt = new Date(Date.now() + VERIFICATION_EXP_MINUTES * 60 * 1000);
+
+            // Create verification record
+            const verificationId = crypto.randomUUID();
+            await ctx.prisma.verification.create({
+                data: {
+                    id: verificationId,
+                    identifier: email,
+                    value: otpHash,
+                    expiresAt,
+                }
+            });
+
+            // Send email with OTP
+            try {
+                await sendEmailVerification(
+                    email,
+                    otp,
+                    process.env.FUDEX_ONBOARDING_EMAIL as string
+                );
+
+                return { success: true };
+            } catch (e: any) {
+                throw new TRPCError({
+                    code: 'INTERNAL_SERVER_ERROR',
+                    message: 'EMAIL_SEND_FAILED'
+                });
+            }
+        }),
+
+    // Verify email OTP for vendor onboarding
+    verifyEmailOtp: publicProcedure
+        .input(z.object({ email: z.string().email(), otp: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+            const email = input.email.toLowerCase().trim();
+
+            // Find most recent verification
+            const verification = await ctx.prisma.verification.findFirst({
+                where: { identifier: email },
+                orderBy: { createdAt: 'desc' }
+            });
+
+            if (!verification) {
+                throw new TRPCError({
+                    code: 'UNAUTHORIZED',
+                    message: 'OTP_INVALID'
+                });
+            }
+
+            // Check expiration
+            if (verification.expiresAt.getTime() < Date.now()) {
+                throw new TRPCError({
+                    code: 'BAD_REQUEST',
+                    message: 'OTP_EXPIRED'
+                });
+            }
+
+            // Verify OTP
+            const ok = await compareOTP(input.otp, verification.value);
+            if (!ok) {
+                throw new TRPCError({
+                    code: 'UNAUTHORIZED',
+                    message: 'OTP_INVALID'
+                });
+            }
+
+            // Create verification token (valid for 15 minutes)
+            const token = signVerificationToken({
+                phone: email, // reusing phone field for email
+                pvId: verification.id,
+                exp: Date.now() + 15 * 60 * 1000
+            });
+
+            // Update user's emailVerified if exists
+            const existingUser = await ctx.prisma.user.findUnique({ where: { email } });
+            if (existingUser) {
+                await ctx.prisma.user.update({
+                    where: { id: existingUser.id },
+                    data: { emailVerified: true }
+                });
+            }
+
+            return { token, isExistingUser: !!existingUser };
+        }),
+
+    // Check if user exists by email or phone with detailed info
+    checkUserByEmailOrPhone: publicProcedure
+        .input(z.object({
+            email: z.string().email().optional(),
+            phone: z.string().optional(),
+        }))
+        .query(async ({ ctx, input }) => {
+            if (!input.email && !input.phone) {
+                throw new TRPCError({
+                    code: 'BAD_REQUEST',
+                    message: 'EMAIL_OR_PHONE_REQUIRED'
+                });
+            }
+
+            const email = input.email?.toLowerCase().trim();
+            const phone = input.phone ? normalizePhoneNumber(input.phone) : undefined;
+
+            // Check by email or phone
+            const user = await ctx.prisma.user.findFirst({
+                where: {
+                    OR: [
+                        ...(email ? [{ email }] : []),
+                        ...(phone ? [{ phone }] : []),
+                    ]
+                },
+                select: {
+                    id: true,
+                    email: true,
+                    phone: true,
+                    firstName: true,
+                    lastName: true,
+                    name: true,
+                    emailVerified: true,
+                    phoneVerified: true,
+                }
+            });
+
+            if (!user) {
+                return { exists: false, user: null };
+            }
+
+            return {
+                exists: true,
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    phone: user.phone,
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                    name: user.name,
+                    emailVerified: user.emailVerified,
+                    phoneVerified: user.phoneVerified,
+                }
+            };
+        })
 });
 
 export default phoneAuthRouter;
