@@ -210,7 +210,8 @@ model Vendor {
   approvedById          String?
   approvedBy            User?                @relation("VendorApprovedBy", fields: [approvedById], references: [id])
   declineReason         String?
-  verificationDocuments String[]             @default([])
+  verificationDocuments String[]             @default([]) // Deprecated in favor of documents relation
+  documents             VendorVerificationDocument[]
   submittedForApproval  Boolean              @default(false)
   submittedAt           DateTime?
 
@@ -219,6 +220,17 @@ model Vendor {
   @@index([name, description])
   @@index([lat, lng])
   @@index([approvalStatus])
+}
+
+model VendorVerificationDocument {
+  id        String   @id @default(uuid())
+  vendorId  String
+  type      String
+  url       String
+  createdAt DateTime @default(now())
+  vendor    Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
 }
 
 model VendorOpeningHour {

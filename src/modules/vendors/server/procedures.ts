@@ -1566,6 +1566,7 @@ export const vendorRouter = createTRPCRouter({
     uploadVerificationDocument: vendorProcedure
         .input(z.object({
             documentUrl: z.string().url(),
+            documentType: z.string().min(1, 'Document type is required'),
         }))
         .mutation(async ({ ctx, input }) => {
             const userId = ctx.user!.id;
@@ -1581,17 +1582,21 @@ export const vendorRouter = createTRPCRouter({
                 });
             }
 
-            // Add document URL to array
-            const updated = await ctx.prisma.vendor.update({
-                where: { id: vendor.id },
+            // Create new verification document record
+            const newDoc = await ctx.prisma.vendorVerificationDocument.create({
                 data: {
-                    verificationDocuments: {
-                        push: input.documentUrl
-                    }
+                    vendorId: vendor.id,
+                    type: input.documentType,
+                    url: input.documentUrl
                 }
             });
 
-            return { success: true, documentCount: updated.verificationDocuments.length };
+            // Count documents
+            const count = await ctx.prisma.vendorVerificationDocument.count({
+                where: { vendorId: vendor.id }
+            });
+
+            return { success: true, documentCount: count, document: newDoc };
         }),
 
     // Get pending vendors (admin only)
@@ -1623,7 +1628,8 @@ export const vendorRouter = createTRPCRouter({
                             firstName: true,
                             lastName: true,
                         }
-                    }
+                    },
+                    documents: true // Include documents for count
                 }
             });
 
@@ -1659,6 +1665,7 @@ export const vendorRouter = createTRPCRouter({
                         }
                     },
                     openingHours: true,
+                    documents: true, // Include the new documents relation
                     _count: {
                         select: {
                             productItems: true,

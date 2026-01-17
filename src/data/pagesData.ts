@@ -70,7 +70,7 @@ export const PAGES_DATA = {
     vendor_onboarding_progress_page: `/vendor-onboarding/progress`,
     vendor_onboarding_complete_profile_phone: `/vendor-onboarding/profile/verify-phone`,
     vendor_onboarding_complete_profile_image: `/vendor-onboarding/profile/upload-image`,
-    vendor_onboarding_complete_profile_identity: `/vendor-onboarding/verify-identity`,
+    vendor_onboarding_complete_profile_identity: `/vendor-onboarding/profile/verify-identity`,
     vendor_onboarding_complete_profile_payment_info: `/vendor-onboarding/payment-info`,
 
     // vendor dashboard pages

@@ -224,40 +224,90 @@ export default function VendorRequestDetailsPage({
 						<h3 className='font-semibold mb-4 border-b pb-2'>
 							Verification Documents
 						</h3>
-						{vendor.verificationDocuments &&
-						vendor.verificationDocuments.length > 0 ? (
+						{(vendor.documents && vendor.documents.length > 0) ||
+						(vendor.verificationDocuments &&
+							vendor.verificationDocuments.length > 0) ? (
 							<div className='space-y-3'>
-								{vendor.verificationDocuments.map(
-									(doc: string, index: number) => (
-										<div
-											key={index}
-											className='flex items-center justify-between p-3 border rounded bg-secondary/20'>
-											<div className='flex items-center gap-3'>
-												<FileText className='h-8 w-8 text-primary' />
-												<div>
-													<p className='font-medium text-sm'>
-														Document {index + 1}
-													</p>
-													<p className='text-xs text-muted-foreground'>
-														Verification File
-													</p>
+								{
+									/ * Prefer new documents relation, fallback to old string array * /
+								}
+								{vendor.documents && vendor.documents.length > 0
+									? vendor.documents.map(
+											(doc: any, index: number) => (
+												<div
+													key={doc.id || index}
+													className='flex items-center justify-between p-3 border rounded bg-secondary/20'>
+													<div className='flex items-center gap-3'>
+														<FileText className='h-8 w-8 text-primary' />
+														<div>
+															<p className='font-medium text-sm capitalize'>
+																{doc.type
+																	? doc.type.replace(
+																			/_/g,
+																			' '
+																	  )
+																	: `Document ${
+																			index +
+																			1
+																	  }`}
+															</p>
+															<p className='text-xs text-muted-foreground'>
+																{format(
+																	new Date(
+																		doc.createdAt
+																	),
+																	'PP p'
+																)}
+															</p>
+														</div>
+													</div>
+													<Button
+														size='sm'
+														variant='outline'
+														asChild>
+														<Link
+															href={doc.url}
+															target='_blank'
+															rel='noopener noreferrer'>
+															View{' '}
+															<ExternalLink className='ml-2 h-3 w-3' />
+														</Link>
+													</Button>
 												</div>
-											</div>
-											<Button
-												size='sm'
-												variant='outline'
-												asChild>
-												<Link
-													href={doc}
-													target='_blank'
-													rel='noopener noreferrer'>
-													View{' '}
-													<ExternalLink className='ml-2 h-3 w-3' />
-												</Link>
-											</Button>
-										</div>
-									)
-								)}
+											)
+									  )
+									: vendor.verificationDocuments?.map(
+											(doc: string, index: number) => (
+												<div
+													key={index}
+													className='flex items-center justify-between p-3 border rounded bg-secondary/20'>
+													<div className='flex items-center gap-3'>
+														<FileText className='h-8 w-8 text-primary' />
+														<div>
+															<p className='font-medium text-sm'>
+																Document{' '}
+																{index + 1}
+															</p>
+															<p className='text-xs text-muted-foreground'>
+																Legacy Upload
+															</p>
+														</div>
+													</div>
+													<Button
+														size='sm'
+														variant='outline'
+														asChild>
+														<Link
+															href={doc}
+															target='_blank'
+															rel='noopener noreferrer'>
+															View{' '}
+															<ExternalLink className='ml-2 h-3 w-3' />
+														</Link>
+													</Button>
+												</div>
+											)
+									  )}
 							</div>
 						) : (
 							<div className='text-center py-8 text-muted-foreground bg-secondary/10 rounded-lg'>

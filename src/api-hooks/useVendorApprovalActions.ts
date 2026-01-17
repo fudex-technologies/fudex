@@ -40,7 +40,7 @@ export const useVendorApprovalActions = () => {
     );
 
     return {
-        uploadDocument: (url: string) => uploadDocumentMutation.mutateAsync({ documentUrl: url }),
+        uploadDocument: (url: string, type: string) => uploadDocumentMutation.mutateAsync({ documentUrl: url, documentType: type }),
         isUploading: uploadDocumentMutation.isPending,
 
         submitForApproval: () => submitForApprovalMutation.mutateAsync(),
