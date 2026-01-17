@@ -35,6 +35,8 @@ export const PAGES_DATA = {
     // admin dashboard pages
     admin_dashboard_page: `/profile/admin-dashboard`,
     admin_dashboard_areas_page: `/profile/admin-dashboard/areas`,
+    admin_dashboard_vendor_requests_page: `/profile/admin-dashboard/vendor-requests`,
+    admin_dashboard_vendor_request_details_page: (id: string) => `/profile/admin-dashboard/vendor-requests/${id}`,
     admin_dashboard_settings_page: `/profile/admin-dashboard/settings`,
 
     // operator dashboard pages
@@ -59,6 +61,17 @@ export const PAGES_DATA = {
     onboarding_signup_page: `/onboarding`,
     login_page: `/sign-in`,
     auth_status_page: `/auth-status`,
+
+    // vendor onboarding pages
+    vendor_onboarding_step_one_page: `/vendor-onboarding/step-1`,
+    vendor_onboarding_step_two_page: `/vendor-onboarding/step-2`,
+    vendor_onboarding_step_three_page: `/vendor-onboarding/step-3`,
+    vendor_onboarding_personal_details_page: `/vendor-onboarding/personal-details`,
+    vendor_onboarding_progress_page: `/vendor-onboarding/progress`,
+    vendor_onboarding_complete_profile_phone: `/vendor-onboarding/profile/verify-phone`,
+    vendor_onboarding_complete_profile_image: `/vendor-onboarding/profile/upload-image`,
+    vendor_onboarding_complete_profile_identity: `/vendor-onboarding/verify-identity`,
+    vendor_onboarding_complete_profile_payment_info: `/vendor-onboarding/payment-info`,
 
     // vendor dashboard pages
     vendor_dashboard_page: `/profile/vendor-dashboard`,

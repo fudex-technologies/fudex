@@ -1,6 +1,22 @@
-import { createTRPCRouter, publicProcedure, adminProcedure, vendorProcedure, protectedProcedure, operatorProcedure, vendorAndOperatorProcedure } from "@/trpc/init";
-import { DayOfWeek, OrderStatus, VendorAvailabilityStatus } from "@prisma/client";
-import { z } from "zod";
+import {
+    createTRPCRouter,
+    publicProcedure,
+    protectedProcedure,
+    vendorProcedure,
+    operatorProcedure,
+    adminProcedure,
+    vendorAndOperatorProcedure
+} from '@/trpc/init';
+import { TRPCError } from '@trpc/server';
+import { z } from 'zod';
+import { DayOfWeek, OrderStatus, Prisma, VendorAvailabilityStatus } from '@prisma/client';
+import { auth } from '@/lib/auth';
+import {
+    sendVendorApprovalEmail,
+    sendVendorDeclineEmail,
+    sendVendorSubmissionConfirmation,
+    sendAdminNewVendorNotification
+} from '@/lib/email';
 import { createPaystackRecipient, getPaystackBanks } from "@/lib/paystack";
 
 const generateUniqueSlug = async (prisma: any, name: string, vendorId: string): Promise<string> => {
@@ -43,8 +59,13 @@ export const vendorRouter = createTRPCRouter({
                         name: { contains: input.q, mode: "insensitive" }
                     },
                     { description: { contains: input.q, mode: "insensitive" } }
-                ]
-            } : {};
+                ],
+                AND: {
+                    approvalStatus: 'APPROVED' // Only show approved vendors
+                }
+            } : {
+                approvalStatus: 'APPROVED' // Only show approved vendors
+            };
 
             if (input?.ratingFilter) {
                 where.reviewsAverage = {
@@ -1271,5 +1292,486 @@ export const vendorRouter = createTRPCRouter({
                     where: { id: input.id },
                 });
             });
+        }),
+
+    // ========================================
+    // VENDOR ONBOARDING PROCEDURES
+    // ========================================
+
+    // Create vendor account with user linking (atomic transaction)
+    createVendorAccount: publicProcedure
+        .input(z.object({
+            userId: z.string().optional(), // If user already exists
+            email: z.string().email(),
+            phone: z.string(),
+            firstName: z.string(),
+            lastName: z.string(),
+            businessName: z.string(),
+            businessType: z.string(),
+            verificationToken: z.string(), // Email verification token
+        }))
+        .mutation(async ({ ctx, input }) => {
+            const { userId, email, phone, firstName, lastName, businessName, businessType } = input;
+
+            // Use transaction to ensure atomicity
+            const result = await ctx.prisma.$transaction(async (tx) => {
+                let user;
+
+                if (userId) {
+                    // User already exists, fetch it
+                    user = await tx.user.findUnique({
+                        where: { id: userId },
+                        include: {
+                            vendors: true,
+                            roles: true,
+                        }
+                    });
+
+                    if (!user) {
+                        throw new TRPCError({
+                            code: 'NOT_FOUND',
+                            message: 'USER_NOT_FOUND'
+                        });
+                    }
+
+                    // Check if user already has a vendor account
+                    if (user.vendors && user.vendors.length > 0) {
+                        throw new TRPCError({
+                            code: 'BAD_REQUEST',
+                            message: 'VENDOR_ACCOUNT_ALREADY_EXISTS'
+                        });
+                    }
+
+                    // Check if user has VENDOR role - if yes, auto-link
+                    const hasVendorRole = user.roles.some(role => role.role === 'VENDOR');
+
+                    // Update user details if needed
+                    await tx.user.update({
+                        where: { id: userId },
+                        data: {
+                            firstName: firstName || user.firstName,
+                            lastName: lastName || user.lastName,
+                            emailVerified: true, // Mark as verified
+                        }
+                    });
+                } else {
+                    // Create new user (without password - will be set later)
+                    user = await tx.user.create({
+                        data: {
+                            email: email.toLowerCase().trim(),
+                            phone,
+                            firstName,
+                            lastName,
+                            name: `${firstName} ${lastName}`,
+                            emailVerified: true,
+                        }
+                    });
+                }
+
+                // Check if vendor already exists for this user
+                const existingVendor = await tx.vendor.findFirst({
+                    where: { ownerId: user.id }
+                });
+
+                if (existingVendor) {
+                    throw new Error("VENDOR_ALREADY_EXISTS");
+                }
+
+                // Generate unique slug for vendor
+                const baseSlug = businessName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                let slug = baseSlug;
+                let counter = 1;
+
+                // Ensure slug is unique
+                while (true) {
+                    const existing = await tx.vendor.findUnique({ where: { slug } });
+                    if (!existing) break;
+                    slug = `${baseSlug}-${counter}`;
+                    counter++;
+                }
+
+                // Create vendor account
+                const vendor = await tx.vendor.create({
+                    data: {
+                        ownerId: user.id,
+                        name: businessName,
+                        slug,
+                        description: `${businessType} vendor`,
+                        email: email.toLowerCase().trim(),
+                        phone,
+                    }
+                });
+
+                // Assign VENDOR role to user
+                await tx.userRole.upsert({
+                    where: {
+                        userId_role: {
+                            userId: user.id,
+                            role: "VENDOR"
+                        }
+                    },
+                    create: {
+                        userId: user.id,
+                        role: "VENDOR"
+                    },
+                    update: {}
+                });
+
+                return {
+                    user,
+                    vendor,
+                };
+            });
+
+            return {
+                userId: result.user.id,
+                vendorId: result.vendor.id,
+                email: result.user.email,
+            };
+        }),
+
+    // Get vendor onboarding progress
+    getVendorOnboardingProgress: protectedProcedure.query(async ({ ctx }) => {
+        const userId = ctx.user.id;
+
+        // Check if user has vendor
+        const vendor = await ctx.prisma.vendor.findFirst({
+            where: { ownerId: userId },
+            include: {
+                openingHours: true,
+                _count: {
+                    select: {
+                        productItems: true,
+                    }
+                }
+            }
+        });
+
+        if (!vendor) {
+            return {
+                hasVendor: false,
+                steps: {
+                    accountCreated: false,
+                    profileCompleted: false,
+                    paymentInfoAdded: false,
+                    operationsSetup: false,
+                    menuItemsAdded: false,
+                },
+                percentage: 0,
+                isComplete: false,
+                completedCount: 0,
+                totalSteps: 5,
+                vendorId: null,
+                slug: null,
+                approvalStatus: null,
+                declineReason: null,
+                submittedForApproval: false,
+            };
+        }
+
+        // Calculate progress
+        const steps = {
+            accountCreated: true, // Account is created if vendor exists
+            profileCompleted: !!(vendor.address && vendor.city && vendor.coverImage),
+            paymentInfoAdded: !!(vendor.bankAccountNumber),
+            operationsSetup: (vendor.openingHours?.length || 0) > 0,
+            menuItemsAdded: (vendor._count?.productItems || 0) > 0,
+        };
+
+        const completedCount = Object.values(steps).filter(Boolean).length;
+        const totalSteps = Object.keys(steps).length;
+        const percentage = Math.round((completedCount / totalSteps) * 100);
+
+        return {
+            hasVendor: true,
+            steps,
+            percentage,
+            isComplete: percentage === 100,
+            completedCount,
+            totalSteps,
+            vendorId: vendor.id,
+            slug: vendor.slug,
+            approvalStatus: vendor.approvalStatus || 'PENDING',
+            declineReason: vendor.declineReason,
+            submittedForApproval: vendor.submittedForApproval || false,
+        };
+    }),
+
+    // ========================================
+    // VENDOR APPROVAL PROCEDURES
+    // ========================================
+
+    // Submit vendor for approval (vendor completes onboarding)
+    submitForApproval: vendorProcedure
+        .mutation(async ({ ctx }) => {
+            const userId = ctx.user!.id;
+
+            const vendor = await ctx.prisma.vendor.findFirst({
+                where: { ownerId: userId }
+            });
+
+            if (!vendor) {
+                throw new TRPCError({
+                    code: 'NOT_FOUND',
+                    message: 'VENDOR_NOT_FOUND'
+                });
+            }
+
+            if (vendor.submittedForApproval) {
+                throw new TRPCError({
+                    code: 'BAD_REQUEST',
+                    message: 'ALREADY_SUBMITTED'
+                });
+            }
+
+            // Update vendor as submitted
+            const updated = await ctx.prisma.vendor.update({
+                where: { id: vendor.id },
+                data: {
+                    submittedForApproval: true,
+                    submittedAt: new Date(),
+                }
+            });
+
+            // Send confirmation email to vendor
+            try {
+                await sendVendorSubmissionConfirmation(
+                    vendor.email || ctx.user!.email,
+                    vendor.name,
+                    process.env.FUDEX_ONBOARDING_EMAIL as string
+                );
+            } catch (e) {
+                console.error('Failed to send submission confirmation email:', e);
+            }
+
+            // Notify admin
+            try {
+                const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL;
+                if (adminEmail) {
+                    await sendAdminNewVendorNotification(
+                        adminEmail,
+                        vendor.name,
+                        vendor.email || ctx.user!.email,
+                        process.env.FUDEX_ONBOARDING_EMAIL as string
+                    );
+                }
+            } catch (e) {
+                console.error('Failed to send admin notification email:', e);
+            }
+
+            return { success: true, message: 'Submitted for approval' };
+        }),
+
+    // Upload verification document
+    uploadVerificationDocument: vendorProcedure
+        .input(z.object({
+            documentUrl: z.string().url(),
+        }))
+        .mutation(async ({ ctx, input }) => {
+            const userId = ctx.user!.id;
+
+            const vendor = await ctx.prisma.vendor.findFirst({
+                where: { ownerId: userId }
+            });
+
+            if (!vendor) {
+                throw new TRPCError({
+                    code: 'NOT_FOUND',
+                    message: 'VENDOR_NOT_FOUND'
+                });
+            }
+
+            // Add document URL to array
+            const updated = await ctx.prisma.vendor.update({
+                where: { id: vendor.id },
+                data: {
+                    verificationDocuments: {
+                        push: input.documentUrl
+                    }
+                }
+            });
+
+            return { success: true, documentCount: updated.verificationDocuments.length };
+        }),
+
+    // Get pending vendors (admin only)
+    getPendingVendors: adminProcedure
+        .input(z.object({
+            limit: z.number().min(1).max(50).default(20),
+            cursor: z.number().default(0),
+        }))
+        .query(async ({ ctx, input }) => {
+            const skip = input.cursor;
+            const limit = input.limit;
+
+            const vendors = await ctx.prisma.vendor.findMany({
+                where: {
+                    approvalStatus: 'PENDING',
+                    submittedForApproval: true,
+                },
+                take: limit + 1,
+                skip,
+                orderBy: {
+                    submittedAt: 'desc'
+                },
+                include: {
+                    owner: {
+                        select: {
+                            id: true,
+                            email: true,
+                            name: true,
+                            firstName: true,
+                            lastName: true,
+                        }
+                    }
+                }
+            });
+
+            let nextCursor: number | undefined = undefined;
+            if (vendors.length > limit) {
+                vendors.pop();
+                nextCursor = skip + limit;
+            }
+
+            return {
+                vendors,
+                nextCursor,
+            };
+        }),
+
+    // Get vendor details for approval review (admin only)
+    getVendorApprovalDetails: adminProcedure
+        .input(z.object({ vendorId: z.string() }))
+        .query(async ({ ctx, input }) => {
+            const vendor = await ctx.prisma.vendor.findUnique({
+                where: { id: input.vendorId },
+                include: {
+                    owner: {
+                        select: {
+                            id: true,
+                            email: true,
+                            name: true,
+                            firstName: true,
+                            lastName: true,
+                            phone: true,
+                            emailVerified: true,
+                            phoneVerified: true,
+                        }
+                    },
+                    openingHours: true,
+                    _count: {
+                        select: {
+                            productItems: true,
+                        }
+                    }
+                }
+            });
+
+            if (!vendor) {
+                throw new TRPCError({
+                    code: 'NOT_FOUND',
+                    message: 'VENDOR_NOT_FOUND'
+                });
+            }
+
+            return vendor;
+        }),
+
+    // Approve vendor (admin only)
+    approveVendor: adminProcedure
+        .input(z.object({ vendorId: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+            const adminId = ctx.user!.id;
+
+            const vendor = await ctx.prisma.vendor.findUnique({
+                where: { id: input.vendorId },
+                include: {
+                    owner: true
+                }
+            });
+
+            if (!vendor) {
+                throw new TRPCError({
+                    code: 'NOT_FOUND',
+                    message: 'VENDOR_NOT_FOUND'
+                });
+            }
+
+            if (vendor.approvalStatus === 'APPROVED') {
+                throw new TRPCError({
+                    code: 'BAD_REQUEST',
+                    message: 'ALREADY_APPROVED'
+                });
+            }
+
+            // Update vendor status to approved
+            const updated = await ctx.prisma.vendor.update({
+                where: { id: input.vendorId },
+                data: {
+                    approvalStatus: 'APPROVED',
+                    approvalDate: new Date(),
+                    approvedById: adminId,
+                    declineReason: null, // Clear any previous decline reason
+                }
+            });
+
+            // Send approval email
+            try {
+                await sendVendorApprovalEmail(
+                    vendor.email || vendor.owner?.email || '',
+                    vendor.name,
+                    process.env.FUDEX_ONBOARDING_EMAIL as string
+                );
+            } catch (e) {
+                console.error('Failed to send approval email:', e);
+            }
+
+            return { success: true, message: 'Vendor approved' };
+        }),
+
+    // Decline vendor (admin only) - reason is required
+    declineVendor: adminProcedure
+        .input(z.object({
+            vendorId: z.string(),
+            reason: z.string().min(10, 'Decline reason must be at least 10 characters'),
+        }))
+        .mutation(async ({ ctx, input }) => {
+            const vendor = await ctx.prisma.vendor.findUnique({
+                where: { id: input.vendorId },
+                include: {
+                    owner: true
+                }
+            });
+
+            if (!vendor) {
+                throw new TRPCError({
+                    code: 'NOT_FOUND',
+                    message: 'VENDOR_NOT_FOUND'
+                });
+            }
+
+            // Update vendor status to declined
+            const updated = await ctx.prisma.vendor.update({
+                where: { id: input.vendorId },
+                data: {
+                    approvalStatus: 'DECLINED',
+                    declineReason: input.reason,
+                    submittedForApproval: false, // Allow resubmission
+                }
+            });
+
+            // Send decline email with reason
+            try {
+                await sendVendorDeclineEmail(
+                    vendor.email || vendor.owner?.email || '',
+                    vendor.name,
+                    input.reason,
+                    process.env.FUDEX_ONBOARDING_EMAIL as string
+                );
+            } catch (e) {
+                console.error('Failed to send decline email:', e);
+            }
+
+            return { success: true, message: 'Vendor declined' };
         }),
 });

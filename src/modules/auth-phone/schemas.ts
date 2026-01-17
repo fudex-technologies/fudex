@@ -14,3 +14,28 @@ export const completeRegistrationSchema = z.object({
     firstName: z.string().optional(),
     lastName: z.string().optional()
 })
+
+// Vendor Onboarding Schemas
+export const vendorOnboardingPersonalDetailsSchema = z.object({
+    phone: z.string().min(10, "Phone number is required"),
+    email: z.string().email("Invalid email address"),
+    firstName: z.string().min(1, "First name is required"),
+    lastName: z.string().min(1, "Last name is required"),
+    businessName: z.string().min(1, "Business name is required"),
+    businessType: z.string().min(1, "Business type is required"),
+    isRegistered: z.enum(["yes", "no"]).optional(),
+});
+
+export const emailVerificationSchema = z.object({
+    email: z.string().email(),
+    otp: z.string().length(6, "OTP must be 6 digits"),
+});
+
+export const vendorDetailsSchema = z.object({
+    businessName: z.string().min(1, "Business name is required"),
+    businessType: z.string().min(1, "Business type is required"),
+    email: z.string().email(),
+    phone: z.string().min(10),
+    firstName: z.string().min(1),
+    lastName: z.string().min(1),
+});

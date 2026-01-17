@@ -75,7 +75,7 @@ const VendorDashboardOrderCardItem = ({
 	}, [order.items]);
 
 	return (
-		<div className='relative min-w-xs w-full max-w-md rounded-lg  bg-muted text-muted-foreground z-10 overflow-hidden shadow-sm'>
+		<div className='relative min-w-xs w-full h-fit max-w-md rounded-lg  bg-muted text-muted-foreground z-10 overflow-hidden shadow-sm'>
 			{status === 'PAID' && (
 				<div className='w-full px-5 py-2 bg-[#24AA9A] text-white'>
 					<p>New Order</p>

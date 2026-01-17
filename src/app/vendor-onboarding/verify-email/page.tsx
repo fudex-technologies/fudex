@@ -1,59 +1,77 @@
 'use client';
 
-import GoBackButton from '@/components/GoBackButton';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import {
 	InputOTP,
 	InputOTPGroup,
 	InputOTPSeparator,
 	InputOTPSlot,
 } from '@/components/ui/input-otp';
-import AuthPageWrapper from '@/components/wrapers/AuthPageWrapper';
-import { PAGES_DATA } from '@/data/pagesData';
-import { cn } from '@/lib/utils';
-import Link from 'next/link';
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import VendorOnboardingFormsWrapper from '@/components/wrapers/VendorOnboardingFormsWrapper';
 import { localStorageStrings } from '@/constants/localStorageStrings';
-import { useAuthActions } from '@/api-hooks/useAuthActions';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useVendorOnboardingActions } from '@/api-hooks/useVendorOnboardingActions';
+import { PAGES_DATA } from '@/data/pagesData';
 
-export default function VerifyPhonePage() {
+export default function VendorOnboardingVerifyEmail() {
 	const router = useRouter();
 	const [otp, setOtp] = useState('');
-	const [phone, setPhone] = useState('');
+	const [email, setEmail] = useState('');
 	const [countdown, setCountdown] = useState(60);
 	const [isCounting, setIsCounting] = useState(true);
 
-	const { verifyPhoneOtp, requestPhoneOtp } = useAuthActions();
+	const { requestEmailVerification, verifyEmailOtp } =
+		useVendorOnboardingActions();
 
-	const { mutate: verifyOtpMutate, isPending: verifyOtpLoading } =
-		verifyPhoneOtp({
-			silent: false,
-			onSuccess: () => {
-				router.push(PAGES_DATA.onboarding_create_password_page);
-			},
-		});
 	const { mutate: requestOtpMutate, isPending: requestOtpLoading } =
-		requestPhoneOtp({
-			silent: false,
+		requestEmailVerification({
 			onSuccess: () => {
 				setCountdown(60);
 				setIsCounting(true);
 			},
 		});
 
+	const { mutate: verifyOtpMutate, isPending: verifyOtpLoading } =
+		verifyEmailOtp({
+			onSuccess: (data) => {
+				// Check if user already exists
+				if (data.isExistingUser) {
+					// Existing user - skip password creation, go to terms
+					router.push('/vendor-onboarding/vendor-terms');
+				} else {
+					// New user - needs to create password
+					router.push('/vendor-onboarding/create-password');
+				}
+			},
+		});
+
+	// Load email from localStorage
 	useEffect(() => {
 		const raw = localStorage.getItem(
-			localStorageStrings.onboardingSignupString
+			localStorageStrings.vendorOnboardinPersonalDetailsstring
 		);
 		if (raw) {
 			try {
 				const obj = JSON.parse(raw);
-				setPhone(obj.phone || '');
-			} catch (e) {}
+				setEmail(obj.email || '');
+
+				// Automatically request OTP when component mounts
+				if (obj.email) {
+					requestOtpMutate({ email: obj.email });
+				}
+			} catch (e) {
+				console.error('Failed to load email:', e);
+				// Redirect back if no data
+				router.push('/vendor-onboarding/personal-details');
+			}
+		} else {
+			// Redirect back if no data
+			router.push('/vendor-onboarding/personal-details');
 		}
 	}, []);
 
+	// Countdown timer
 	useEffect(() => {
 		if (!isCounting) return;
 
@@ -72,25 +90,23 @@ export default function VerifyPhonePage() {
 	}, [isCounting]);
 
 	const handleResendCode = () => {
-		requestOtpMutate({ phone });
+		if (!email || isCounting || requestOtpLoading) return;
+		requestOtpMutate({ email });
 	};
 
 	const handleVerify = () => {
-		verifyOtpMutate({ otp, phone });
+		if (!email || !otp || otp.length !== 6) return;
+		verifyOtpMutate({ email, otp });
 	};
 
 	return (
-		<AuthPageWrapper canSkip={false}>
+		<VendorOnboardingFormsWrapper>
 			<div className='flex flex-col gap-5 w-full max-w-md'>
-				<div className='w-full'>
-					<GoBackButton />
-				</div>
-
 				<div className='w-full space-y-2 text-center'>
-					<h1 className='font-bold text-xl'>Verify phone number</h1>
+					<h1 className='font-bold text-xl'>Verify your email</h1>
 					<p className='font-light text-foreground/50'>
-						We have sent a 6-digit code to {phone} via{' '}
-						<span className='text-primary'>SMS</span>
+						Enter the OTP sent to your email{' '}
+						<span className='text-primary'>{email}</span>
 					</p>
 				</div>
 
@@ -130,7 +146,7 @@ export default function VerifyPhonePage() {
 						</p>
 						<div className='w-full text-center flex gap-2 items-center justify-center'>
 							<p className='text-sm text-foreground/50'>
-								Didn’t get code?
+								Didn't get code?
 							</p>
 							<Button
 								variant='link'
@@ -149,30 +165,11 @@ export default function VerifyPhonePage() {
 						variant={'game'}
 						onClick={handleVerify}
 						className='w-full py-5'
-						disabled={verifyOtpLoading}>
-						{verifyOtpLoading
-							? 'Verifying...'
-							: 'Verify phone number'}
+						disabled={verifyOtpLoading || otp.length !== 6}>
+						{verifyOtpLoading ? 'Verifying...' : 'Verify Email'}
 					</Button>
 				</div>
-				<div className='w-full space-y-2'>
-					<div className='w-full text-center flex gap-2 items-center justify-center'>
-						<p className='text-sm text-foreground/50'>
-							Already have an account?
-						</p>
-						<Link
-							href={PAGES_DATA.login_page}
-							className={cn(
-								buttonVariants({
-									variant: 'link',
-									size: 'sm',
-								})
-							)}>
-							Log in
-						</Link>
-					</div>
-				</div>
 			</div>
-		</AuthPageWrapper>
+		</VendorOnboardingFormsWrapper>
 	);
 }
