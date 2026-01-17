@@ -1,3 +1,5 @@
+"use client"
+
 import { useProfileActions } from '@/api-hooks/useProfileActions';
 import InputField, { SelectField } from '@/components/InputComponent';
 import { Button } from '@/components/ui/button';

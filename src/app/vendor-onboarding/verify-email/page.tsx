@@ -34,9 +34,9 @@ export default function VendorOnboardingVerifyEmail() {
 
 	const { mutate: verifyOtpMutate, isPending: verifyOtpLoading } =
 		verifyEmailOtp({
-			onSuccess: (data) => {
+			onSuccess: (data: any) => {
 				// Check if user already exists
-				if (data.isExistingUser) {
+				if ((data as any)?.isExistingUser) {
 					// Existing user - skip password creation, go to terms
 					router.push('/vendor-onboarding/vendor-terms');
 				} else {
