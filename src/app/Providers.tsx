@@ -7,6 +7,7 @@ import OnboardingRedirect from './OnboardingRedirect';
 import PwaInstallPrompt from '@/components/pwa/PwaInstallPrompt';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import GoogleAnalytics from '@/components/GoogleAnalytics';
 
 export default function Providers({
 	children,
@@ -15,6 +16,7 @@ export default function Providers({
 }>) {
 	return (
 		<>
+		<GoogleAnalytics />
 			<TRPCReactProvider>
 				<NuqsAdapter>
 					{children}
