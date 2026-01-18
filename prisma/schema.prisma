@@ -18,6 +18,7 @@ model User {
   lastName        String?
   phone           String?          @unique
   phoneVerified   Boolean          @default(false)
+  referralCode    String?          @unique // Unique code for sharing
   addresses       Address[]
   favoriteVendors FavoriteVendor[]
   operator        Operator?
@@ -31,6 +32,8 @@ model User {
   accounts        Account[]
   sessions        Session[]
   vendorPayouts   VendorPayout[]
+  referrals       Referral[]       @relation("ReferrerReferrals") // People I referred
+  referredBy      Referral?        @relation("ReferredByReferrals") // Who referred me
 
   @@map("user")
 }
@@ -551,4 +554,27 @@ enum VendorAvailabilityStatus {
   AUTO
   OPEN
   CLOSED
+}
+
+enum ReferralStatus {
+  PENDING
+  CONFIRMED
+}
+
+model Referral {
+  id              String   @id @default(uuid())
+  referrerUserId  String   // User who has the referral code
+  referredUserId  String   // User who signed up with code
+  referralCode    String   // The code used
+  status          ReferralStatus @default(PENDING) // PENDING, CONFIRMED
+  confirmedAt     DateTime? // When referred user completed signup
+  createdAt       DateTime @default(now())
+  
+  referrer        User     @relation("ReferrerReferrals", fields: [referrerUserId], references: [id], onDelete: Cascade)
+  referred        User     @relation("ReferredByReferrals", fields: [referredUserId], references: [id], onDelete: Cascade)
+  
+  @@unique([referredUserId]) // One user can only be referred by one person
+  @@index([referralCode])
+  @@index([referrerUserId])
+  @@index([status])
 }

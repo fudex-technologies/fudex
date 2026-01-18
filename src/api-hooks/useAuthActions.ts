@@ -110,7 +110,7 @@ export function useAuthActions() {
     }
 
 
-    const setPasswordAndCompleteSignUp = (options?: UseAPICallerOptions & { password: string, redirectTo: string, token: string }) => {
+    const setPasswordAndCompleteSignUp = (options?: UseAPICallerOptions & { password: string, redirectTo: string, token: string, referralCode?: string }) => {
         return useMutation(
             trpc.phoneAuth.completeSignupPrepare.mutationOptions({
                 onSuccess: async (data) => {
@@ -118,11 +118,14 @@ export function useAuthActions() {
                         toast.error("Please provide your password!")
                         return;
                     }
-                    await signUp.email({
+                    const signUpResult = await signUp.email({
                         email: data.email,
                         name: data.name,
                         password: options.password,
                     });
+
+                    // Get the new user ID
+                    const newUserId = signUpResult?.data?.user?.id;
 
                     // 2️⃣ Attach verified phone (now authenticated)
                     await attachPhoneMut.mutateAsync({ token: options.token });

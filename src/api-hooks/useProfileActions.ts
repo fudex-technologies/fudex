@@ -133,5 +133,30 @@ export function useProfileActions() {
                 enabled: !!session,
             })
         ),
+        getReferralStats: () => useQuery(
+            trpc.users.getReferralStats.queryOptions(undefined, {
+                enabled: !!session,
+            })
+        ),
+        generateReferralCode: (options?: UseAPICallerOptions) =>
+            useMutation(
+                trpc.users.generateReferralCode.mutationOptions({
+                    onSuccess: (data) => {
+                        if (!options?.silent) {
+                            if (data.isNewCode) {
+                                toast.success("Referral code generated successfully!");
+                            } else {
+                                toast.info("You already have a referral code");
+                            }
+                        }
+                        options?.onSuccess?.(data);
+                    },
+                    onError: (err: unknown) => {
+                        if (!options?.silent) toast.error("Failed to generate code", { description: err instanceof Error ? err.message : String(err) });
+                        options?.onError?.(err);
+                    },
+                    retry: false,
+                })
+            ),
     }
 }
