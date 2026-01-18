@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useProfileActions } from '@/api-hooks/useProfileActions';
 import { localStorageStrings } from '@/constants/localStorageStrings';
 import { PAGES_DATA } from '@/data/pagesData';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
 	Dialog,
 	DialogContent,
@@ -37,9 +37,15 @@ export default function RequirePhoneModal() {
 	const [open, setOpen] = useState(false);
 	const [form, setForm] = useState<IFormData>(initialFormData);
 	const [touched, setTouched] = useState<IFormTouchedData>({});
+	const pathname = usePathname()
 
 	useEffect(() => {
-		if (session && session.user && !(session.user as ExtendedUser)?.phone) {
+		if (
+			pathname === '/' &&
+			session &&
+			session.user &&
+			!(session.user as ExtendedUser)?.phone
+		) {
 			const lastShownString = localStorage.getItem(
 				localStorageStrings.requirePhoneModalLastShown
 			);
@@ -56,7 +62,7 @@ export default function RequirePhoneModal() {
 		} else {
 			setOpen(false);
 		}
-	}, [session]);
+	}, [session, pathname]);
 
 	useEffect(() => {
 		if (open) {
