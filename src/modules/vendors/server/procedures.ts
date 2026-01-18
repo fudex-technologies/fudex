@@ -512,7 +512,7 @@ export const vendorRouter = createTRPCRouter({
                 take: input.take,
                 skip: input.skip,
                 orderBy: { createdAt: "desc" },
-                include: { 
+                include: {
                     openingHours: true,
                     addresses: true,
                 }
@@ -673,6 +673,7 @@ export const vendorRouter = createTRPCRouter({
             include: {
                 openingHours: true,
                 addresses: true,
+                documents: true,
                 products: {
                     include: {
                         items: {
@@ -711,8 +712,10 @@ export const vendorRouter = createTRPCRouter({
                 bankName: z.string().optional(),
                 bankCode: z.string().optional(),
                 bankAccountNumber: z.string().optional(),
+                bankAccountName: z.string().optional(),
                 accountName: z.string().optional(),
                 availabilityStatus: z.nativeEnum(VendorAvailabilityStatus).optional(),
+                areaId: z.string().optional(),
             })
         )
         .mutation(async ({ ctx, input }) => {
@@ -722,15 +725,16 @@ export const vendorRouter = createTRPCRouter({
             });
             if (!vendor) throw new Error("Vendor not found or you don't own a vendor");
 
-            const { bankName, bankCode, bankAccountNumber, accountName, availabilityStatus, address, city, country, postalCode, lat, lng, ...rest } = input;
+            const { bankName, bankCode, bankAccountNumber, bankAccountName, accountName, availabilityStatus, address, city, country, postalCode, lat, lng, areaId, ...rest } = input;
 
             let paystackRecipient = vendor.paystackRecipient;
+            const accountNameToUse = bankAccountName || accountName;
 
             // If bank details changed, create/update paystack recipient
-            if (bankCode && bankAccountNumber && accountName) {
+            if (bankCode && bankAccountNumber && accountNameToUse) {
                 try {
                     const recipientRes = await createPaystackRecipient({
-                        name: accountName,
+                        name: accountNameToUse,
                         account_number: bankAccountNumber,
                         bank_code: bankCode,
                     });
@@ -793,8 +797,10 @@ export const vendorRouter = createTRPCRouter({
                     bankName: bankName || undefined,
                     bankCode: bankCode || undefined,
                     bankAccountNumber: bankAccountNumber || undefined,
+                    bankAccountName: bankAccountName || undefined,
                     paystackRecipient: paystackRecipient || undefined,
                     availabilityStatus: availabilityStatus || undefined,
+                    areaId: areaId || undefined,
                 }
             });
         }),
@@ -1422,16 +1428,25 @@ export const vendorRouter = createTRPCRouter({
                     });
                 } else {
                     // Create new user (without password - will be set later)
-                    user = await tx.user.create({
-                        data: {
-                            email: email.toLowerCase().trim(),
-                            phone,
-                            firstName,
-                            lastName,
-                            name: `${firstName} ${lastName}`,
-                            emailVerified: true,
-                        }
+                    // First check if user with this email already exists
+                    const existingUser = await tx.user.findUnique({
+                        where: { email: email.toLowerCase().trim() }
                     });
+
+                    if (existingUser) {
+                        user = existingUser;
+                    } else {
+                        user = await tx.user.create({
+                            data: {
+                                email: email.toLowerCase().trim(),
+                                phone,
+                                firstName,
+                                lastName,
+                                name: `${firstName} ${lastName}`,
+                                emailVerified: true,
+                            }
+                        });
+                    }
                 }
 
                 // Check if vendor already exists for this user
@@ -1523,6 +1538,7 @@ export const vendorRouter = createTRPCRouter({
             include: {
                 openingHours: true,
                 addresses: true,
+                documents: true,
                 _count: {
                     select: {
                         productItems: true,
@@ -1540,6 +1556,7 @@ export const vendorRouter = createTRPCRouter({
                     paymentInfoAdded: false,
                     operationsSetup: false,
                     menuItemsAdded: false,
+                    identityVerified: false,
                 },
                 percentage: 0,
                 isComplete: false,
@@ -1565,6 +1582,7 @@ export const vendorRouter = createTRPCRouter({
             paymentInfoAdded: !!(vendor.bankAccountNumber),
             operationsSetup: (vendor.openingHours?.length || 0) > 0,
             menuItemsAdded: (vendor._count?.productItems || 0) > 0,
+            identityVerified: (vendor.documents?.length || 0) > 0,
         };
 
         const completedCount = Object.values(steps).filter(Boolean).length;

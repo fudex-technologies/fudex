@@ -190,6 +190,7 @@ model Vendor {
   bankAccountNumber  String?
   bankCode           String?
   bankName           String?
+  bankAccountName    String?
   payoutEnabled      Boolean                  @default(false)
   paystackRecipient  String?
   availabilityStatus VendorAvailabilityStatus @default(AUTO)

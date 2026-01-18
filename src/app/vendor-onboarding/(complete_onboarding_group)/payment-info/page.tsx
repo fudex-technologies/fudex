@@ -1,128 +1,182 @@
 'use client';
 
 import GoBackButton from '@/components/GoBackButton';
-import InputField, { SelectField } from '@/components/InputComponent';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import PageWrapper from '@/components/wrapers/PageWrapper';
 import { PAGES_DATA } from '@/data/pagesData';
-import { useTRPC } from '@/trpc/client';
-import { useMutation } from '@tanstack/react-query';
+import { useVendorDashboardActions } from '@/api-hooks/useVendorDashboardActions';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import { Loader2, Landmark } from 'lucide-react';
 
 export default function VendorOnboardingPaymentInfoPage() {
 	const router = useRouter();
-	const trpc = useTRPC();
-	const [isLoading, setIsLoading] = useState(false);
+	const { useGetSupportedBanks, useGetMyVendor } =
+		useVendorDashboardActions();
+	const { data: banks = [], isLoading: isBanksLoading } =
+		useGetSupportedBanks();
+	const { data: vendor, isLoading: isVendorLoading } = useGetMyVendor();
+	const { updateMyVendor } = useVendorDashboardActions();
+	const updateVendorMutation = updateMyVendor();
 
-	const [form, setForm] = useState({
+	const [formData, setFormData] = useState({
+		bankCode: '',
 		bankName: '',
-		accountNumber: '',
-		accountName: '',
+		bankAccountNumber: '',
+		bankAccountName: '',
 	});
 
-	const updateVendor = useMutation(
-		trpc.vendors.updateMyVendor.mutationOptions({
-			onSuccess: () => {
-				toast.success('Payment information saved');
-				router.push('/vendor-onboarding/progress');
-			},
-			onError: (error) => {
-				toast.error(error.message || 'Failed to save payment info');
-				setIsLoading(false);
-			},
-		})
-	);
+	useEffect(() => {
+		if (vendor) {
+			setFormData({
+				bankCode: vendor.bankCode || '',
+				bankName: vendor.bankName || '',
+				bankAccountNumber: vendor.bankAccountNumber || '',
+				bankAccountName: vendor.bankAccountName || '',
+			});
+		}
+	}, [vendor]);
 
-	const handleSubmit = async (e: React.FormEvent) => {
+	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
-		setIsLoading(true);
 
-		// Simple validation
-		if (form.accountNumber.length < 10) {
-			toast.error('Account number must be at least 10 digits');
-			setIsLoading(false);
+		if (
+			!formData.bankCode ||
+			!formData.bankAccountNumber ||
+			!formData.bankAccountName
+		) {
+			toast.error('Please fill in all bank details');
 			return;
 		}
 
-		updateVendor.mutate({
-			bankName: form.bankName,
-			bankAccountNumber: form.accountNumber,
-			accountName: form.accountName,
+		if (formData.bankAccountNumber.length < 10) {
+			toast.error('Account number must be at least 10 digits');
+			return;
+		}
+
+		const selectedBank = banks.find((b) => b.code === formData.bankCode);
+
+		updateVendorMutation.mutate({
+			bankName: selectedBank?.name || formData.bankName,
+			bankCode: formData.bankCode,
+			bankAccountNumber: formData.bankAccountNumber,
+			bankAccountName: formData.bankAccountName,
+		},
+		{
+			onSuccess: () => {
+				toast.success('Payment information saved');
+				router.push(PAGES_DATA.vendor_onboarding_progress_page);
+			},
+			onError: (error) => {
+				toast.error(error.message || 'Failed to save payment info');
+			},
 		});
-	};
+	}
+
+	if (isBanksLoading || isVendorLoading) {
+		return (
+			<PageWrapper className='p-5 flex justify-center items-center'>
+				<Loader2 className='animate-spin' />
+			</PageWrapper>
+		);
+	}
 
 	return (
 		<PageWrapper>
-			<div className='flex items-center gap-10 w-full'>
+			<div className='flex items-center gap-5 w-full mb-8'>
 				<GoBackButton
 					link={PAGES_DATA.vendor_onboarding_progress_page}
 				/>
-				<p className='font-semibold text-xl'>
+				<h1 className='font-semibold text-xl'>
 					Set up your payment info
+				</h1>
+			</div>
+
+			<div className='bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6 flex gap-3 max-w-lg mx-auto'>
+				<Landmark className='text-blue-500 shrink-0' size={20} />
+				<p className='text-sm text-blue-700'>
+					This account will be used for your weekly payouts. Please
+					ensure the account name matches the one on record with your
+					bank.
 				</p>
 			</div>
-			<div className='py-10 space-y-5 max-w-lg w-full mx-auto'>
-				<div className='space-y-3 w-full'>
-					<p className='w-full font-semibold pb-5 border-b'>
-						Add your bank details
-					</p>
-					<p className='text-sm text-muted-foreground'>
-						This account will be used for your payouts.
-					</p>
+
+			<form
+				onSubmit={handleSubmit}
+				className='space-y-6 max-w-lg mx-auto'>
+				<div className='space-y-2'>
+					<Label htmlFor='bank'>Select Bank *</Label>
+					<select
+						id='bank'
+						value={formData.bankCode}
+						onChange={(e) =>
+							setFormData((prev) => ({
+								...prev,
+								bankCode: e.target.value,
+							}))
+						}
+						className='w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring'
+						required>
+						<option value=''>Choose your bank...</option>
+						{banks.map((bank) => (
+							<option key={bank.code} value={bank.code}>
+								{bank.name}
+							</option>
+						))}
+					</select>
 				</div>
-				<form onSubmit={handleSubmit} className='space-y-4'>
-					<SelectField
-						label='Bank Name'
-						value={form.bankName}
-						onChange={(val) => setForm({ ...form, bankName: val })}
-						data={[
-							{ label: 'Access Bank', value: 'Access Bank' },
-							{ label: 'GTBank', value: 'GTBank' },
-							{ label: 'Zenith Bank', value: 'Zenith Bank' },
-							{ label: 'UBA', value: 'UBA' },
-							{ label: 'First Bank', value: 'First Bank' },
-							{ label: 'Kuda', value: 'Kuda' },
-							{ label: 'Opay', value: 'Opay' },
-							{ label: 'PalmPay', value: 'PalmPay' },
-						]} // In a real app, fetch from an API
-						required
-					/>
 
-					<InputField
-						label='Account Number'
-						value={form.accountNumber}
+				<div className='space-y-2'>
+					<Label htmlFor='accountNumber'>Account Number *</Label>
+					<Input
+						id='accountNumber'
+						value={formData.bankAccountNumber}
 						onChange={(e) =>
-							setForm({ ...form, accountNumber: e.target.value })
+							setFormData((prev) => ({
+								...prev,
+								bankAccountNumber: e.target.value,
+							}))
 						}
-						placeholder='0123456789'
-						type='tel'
-						// maxLength={10}
+						placeholder='1234567890'
+						maxLength={10}
 						required
 					/>
+				</div>
 
-					<InputField
-						label='Account Name'
-						value={form.accountName}
+				<div className='space-y-2'>
+					<Label htmlFor='accountName'>Account Holder Name *</Label>
+					<Input
+						id='accountName'
+						value={formData.bankAccountName}
 						onChange={(e) =>
-							setForm({ ...form, accountName: e.target.value })
+							setFormData((prev) => ({
+								...prev,
+								bankAccountName: e.target.value,
+							}))
 						}
-						placeholder='e.g. Fudex Foods Ltd'
+						placeholder='Enter the account holder name'
 						required
 					/>
+				</div>
 
-					<Button
-						type='submit'
-						variant={'game'}
-						className='w-full py-5 mt-10'
-						disabled={isLoading || updateVendor.isPending}>
-						{isLoading || updateVendor.isPending
-							? 'Saving...'
-							: 'Save & Continue'}
-					</Button>
-				</form>
-			</div>
+				<Button
+					type='submit'
+					variant='game'
+					className='w-full py-5'
+					disabled={updateVendorMutation.isPending}>
+					{updateVendorMutation.isPending ? (
+						<>
+							<Loader2 className='mr-2 h-4 w-4 animate-spin' />
+							Saving...
+						</>
+					) : (
+						'Save & Continue'
+					)}
+				</Button>
+			</form>
 		</PageWrapper>
 	);
 }

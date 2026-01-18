@@ -11,14 +11,25 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import OnboardingProgressIndicator from '@/components/OnboardingProgressIndicator';
+import { useTRPC } from '@/trpc/client';
+import { useQuery } from '@tanstack/react-query';
 
 export default function VendorOnboardingUploadImage() {
 	const router = useRouter();
 	const [coverImage, setCoverImage] = useState<string | undefined>(undefined);
 	const { useGetMyVendor, updateMyVendor } = useVendorDashboardActions(); // ADD THIS LINE
+	const trpc = useTRPC();
 
 	// Fetch existing vendor data to pre-fill
 	const { data: vendor, isLoading } = useGetMyVendor(); // CHANGE THIS
+
+	// Fetch progress to show completion status
+	const { data: progress } = useQuery(
+		trpc.vendors.getVendorOnboardingProgress.queryOptions(undefined, {
+			retry: false,
+		}),
+	);
 
 	useEffect(() => {
 		if (vendor?.coverImage) {
@@ -59,6 +70,10 @@ export default function VendorOnboardingUploadImage() {
 					link={PAGES_DATA.vendor_onboarding_progress_page}
 				/>
 				<p className='font-semibold text-xl'>Complete your Profile</p>
+				<OnboardingProgressIndicator
+					completedSteps={progress?.completedCount}
+					totalSteps={progress?.totalSteps}
+				/>
 			</div>
 			<div className='py-10 space-y-5 max-w-lg w-full mx-auto'>
 				<div className='space-y-3 w-full'>

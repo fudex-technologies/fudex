@@ -19,11 +19,15 @@ import { useSession } from '@/lib/auth-client';
 import { Button } from '@/components/ui/button';
 import { useVendorApprovalActions } from '@/api-hooks/useVendorApprovalActions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useEffect } from 'react';
 
 export default function VendorOnboardingProgressPage() {
 	const trpc = useTRPC();
 	const { data: session, isPending: isSessionLoading } = useSession();
-	const { submitForApproval, isSubmitting } = useVendorApprovalActions();
+	const { submitForApproval: submitAction, isSubmitting: isSubmittingState } =
+		useVendorApprovalActions();
+	const submitForApproval = submitAction;
+	const isSubmitting = isSubmittingState;
 
 	// Fetch onboarding progress
 	const {
@@ -34,9 +38,30 @@ export default function VendorOnboardingProgressPage() {
 		trpc.vendors.getVendorOnboardingProgress.queryOptions(undefined, {
 			enabled: !!session?.user,
 			retry: false,
-		})
+			// Mark data as stale immediately so it refetches on mount
+			staleTime: 0,
+			// Refetch when component mounts or window regains focus
+			refetchOnMount: 'always',
+			refetchOnWindowFocus: true,
+		}),
 	);
 
+	// Refetch data when page becomes visible (user comes back to tab)
+	useEffect(() => {
+		const handleVisibilityChange = () => {
+			if (document.visibilityState === 'visible') {
+				refetch();
+			}
+		};
+
+		document.addEventListener('visibilitychange', handleVisibilityChange);
+		return () => {
+			document.removeEventListener(
+				'visibilitychange',
+				handleVisibilityChange,
+			);
+		};
+	}, [refetch]);
 
 	const handleSubmitForApproval = async () => {
 		try {
@@ -75,14 +100,24 @@ export default function VendorOnboardingProgressPage() {
 	return (
 		<VendorOnboardingFormsWrapper>
 			<div className='flex flex-col gap-5 w-full max-w-md'>
-				<div className='w-full space-y-2 text-center'>
+				<div className='w-full space-y-3 text-center'>
 					<h1 className='font-bold text-xl'>
 						Complete Your Onboarding
 					</h1>
-					<p className='font-light text-foreground/50'>
-						Add your restaurant details, menu, and payment info so
-						customers can find you and place orders.
+					<p className='font-light text-foreground/50 text-sm'>
+						Complete all the steps below to get your restaurant live
+						on our platform. Once finished, submit your application
+						for admin review.
 					</p>
+					<div className='text-xs text-foreground/40 space-y-1'>
+						<p>
+							<strong className='text-foreground/60'>
+								Progress:
+							</strong>{' '}
+							{progress?.completedCount || 0} of{' '}
+							{progress?.totalSteps || 5} steps
+						</p>
+					</div>
 				</div>
 
 				{/* Status Badges */}
@@ -140,7 +175,9 @@ export default function VendorOnboardingProgressPage() {
 					/>
 					<OnboardingItem
 						icon={<FileCheck />}
-						completed={false} // We don't track this yet in backend steps, will always be open to update
+						completed={
+							(progress?.steps as any)?.identityVerified || false
+						}
 						loading={isLoading}
 						title='Verify your identity'
 						link={
@@ -165,34 +202,85 @@ export default function VendorOnboardingProgressPage() {
 					/>
 				</div>
 
-				{/* Submit Logic */}
-				{progress?.isComplete && !isSubmitted && !isApproved && (
-					<Button
-						onClick={handleSubmitForApproval}
-						disabled={isSubmitting}
-						className='w-full mt-4'
-						size='lg'>
-						{isSubmitting ? 'Submitting...' : 'Submit for Approval'}
-					</Button>
-				)}
+				{/* Submit Section */}
+				<div className='w-full space-y-3 mt-6 pt-6 border-t border-foreground/10'>
+					{!isApproved && !isSubmitted && !isDeclined && (
+						<>
+							<div className='text-sm space-y-2'>
+								<p className='font-medium'>Ready to Submit?</p>
+								<p className='text-foreground/60'>
+									{progress?.isComplete
+										? 'All required steps are complete. Click below to submit your application for admin review.'
+										: `Complete all ${progress?.totalSteps || 5} steps to unlock the submit button.`}
+								</p>
+							</div>
+							<Button
+								onClick={handleSubmitForApproval}
+								disabled={!progress?.isComplete || isSubmitting}
+								className='w-full'
+								size='lg'>
+								{isSubmitting
+									? 'Submitting...'
+									: 'Submit for Approval'}
+							</Button>
+						</>
+					)}
 
-				{isDeclined && (
-					<Button
-						onClick={handleSubmitForApproval}
-						disabled={isSubmitting}
-						className='w-full mt-4'
-						size='lg'>
-						{isSubmitting
-							? 'Resubmitting...'
-							: 'Resubmit Application'}
-					</Button>
-				)}
+					{isDeclined && (
+						<>
+							<div className='text-sm space-y-2'>
+								<p className='font-medium'>
+									Application Declined
+								</p>
+								<p className='text-foreground/60'>
+									Please review the feedback below and make
+									the necessary changes before resubmitting.
+								</p>
+							</div>
+							<Button
+								onClick={handleSubmitForApproval}
+								disabled={isSubmitting}
+								className='w-full'
+								size='lg'>
+								{isSubmitting
+									? 'Resubmitting...'
+									: 'Resubmit Application'}
+							</Button>
+						</>
+					)}
 
-				{isApproved && (
-					<Button asChild className='w-full mt-4' size='lg'>
-						<Link href='/vendor/dashboard'>Go to Dashboard</Link>
-					</Button>
-				)}
+					{isSubmitted && !isApproved && !isDeclined && (
+						<div className='text-sm space-y-2 text-center'>
+							<p className='font-medium text-blue-600'>
+								Application Submitted
+							</p>
+							<p className='text-foreground/60'>
+								Your application has been submitted and is
+								awaiting admin review. We'll notify you of the
+								outcome shortly.
+							</p>
+						</div>
+					)}
+
+					{isApproved && (
+						<>
+							<div className='text-sm space-y-2 text-center'>
+								<p className='font-medium text-green-600'>
+									Account Approved!
+								</p>
+								<p className='text-foreground/60'>
+									Your restaurant is now live and visible to
+									customers.
+								</p>
+							</div>
+							<Button asChild className='w-full' size='lg'>
+								<Link href='/vendor/dashboard'>
+									Go to Dashboard
+								</Link>
+							</Button>
+						</>
+					)}
+				</div>
 			</div>
 		</VendorOnboardingFormsWrapper>
 	);

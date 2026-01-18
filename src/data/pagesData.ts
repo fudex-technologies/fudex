@@ -68,6 +68,7 @@ export const PAGES_DATA = {
     vendor_onboarding_step_two_page: `/vendor-onboarding/step-2`,
     vendor_onboarding_step_three_page: `/vendor-onboarding/step-3`,
     vendor_onboarding_personal_details_page: `/vendor-onboarding/personal-details`,
+    vendor_onboarding_terms_page: `/vendor-onboarding/vendor-terms`,
     vendor_onboarding_progress_page: `/vendor-onboarding/progress`,
     vendor_onboarding_complete_profile_phone: `/vendor-onboarding/profile/verify-phone`,
     vendor_onboarding_complete_profile_image: `/vendor-onboarding/profile/upload-image`,

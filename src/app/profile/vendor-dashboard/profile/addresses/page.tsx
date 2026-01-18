@@ -7,18 +7,27 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import PageWrapper from '@/components/wrapers/PageWrapper';
 import { useState, useEffect } from 'react';
-import { Loader2, MapPin, Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { Loader2, MapPin } from 'lucide-react';
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from '@/components/ui/select';
+import { useProfileActions } from '@/api-hooks/useProfileActions';
 
 export default function VendorAddressesPage() {
 	const { useGetMyVendor, updateMyVendor } = useVendorDashboardActions();
 	const { data: vendor, isLoading, refetch } = useGetMyVendor();
 	const updateVendorMutation = updateMyVendor({
 		onSuccess: () => {
-			toast.success('Address updated successfully');
 			refetch();
 		},
 	});
+	const { getAllAreasInEkiti } = useProfileActions();
+	const { data: listOfAreasInEkiti, isLoading: loadingAreas } =
+		getAllAreasInEkiti();
 
 	const [formData, setFormData] = useState({
 		address: '',
@@ -27,6 +36,7 @@ export default function VendorAddressesPage() {
 		postalCode: '',
 		lat: '',
 		lng: '',
+		areaId: '',
 	});
 
 	useEffect(() => {
@@ -43,6 +53,7 @@ export default function VendorAddressesPage() {
 				postalCode: defaultAddress.postalCode || '',
 				lat: defaultAddress.lat ? String(defaultAddress.lat) : '',
 				lng: defaultAddress.lng ? String(defaultAddress.lng) : '',
+				areaId: vendor.areaId || '',
 			});
 		}
 	}, [vendor]);
@@ -56,6 +67,7 @@ export default function VendorAddressesPage() {
 			postalCode: formData.postalCode || undefined,
 			lat: formData.lat ? parseFloat(formData.lat) : undefined,
 			lng: formData.lng ? parseFloat(formData.lng) : undefined,
+			areaId: formData.areaId || undefined,
 		});
 	};
 
@@ -77,7 +89,7 @@ export default function VendorAddressesPage() {
 			{vendor?.addresses && vendor.addresses.length > 0 && (
 				<div className='mb-8'>
 					<h2 className='font-semibold text-base mb-4'>
-						Your Addresses
+						Your Address
 					</h2>
 					<div className='space-y-3'>
 						{vendor.addresses.map((address) => (
@@ -120,26 +132,62 @@ export default function VendorAddressesPage() {
 				</h2>
 
 				<form onSubmit={handleSubmit} className='space-y-6'>
-					<div className='space-y-2'>
-						<Label htmlFor='address'>Street Address *</Label>
-						<div className='relative'>
-							<Input
-								id='address'
-								value={formData.address}
-								onChange={(e) =>
+					<div className='w-full flex gap-5'>
+						<div className='space-y-2 flex-1'>
+							<Label htmlFor='address'>Street Address *</Label>
+							<div className='relative'>
+								<Input
+									id='address'
+									value={formData.address}
+									onChange={(e) =>
+										setFormData((prev) => ({
+											...prev,
+											address: e.target.value,
+										}))
+									}
+									placeholder='123 Business St'
+									className='pl-10'
+									required
+								/>
+								<MapPin
+									className='absolute left-3 top-2.5 text-muted-foreground'
+									size={18}
+								/>
+							</div>
+						</div>
+						<div className='space-y-2 flex-1'>
+							<Label htmlFor='area'>Area</Label>
+							<Select
+								value={formData.areaId}
+								onValueChange={(value) =>
 									setFormData((prev) => ({
 										...prev,
-										address: e.target.value,
+										areaId: value,
 									}))
 								}
-								placeholder='123 Business St'
-								className='pl-10'
-								required
-							/>
-							<MapPin
-								className='absolute left-3 top-2.5 text-muted-foreground'
-								size={18}
-							/>
+								disabled={loadingAreas}>
+								<SelectTrigger id='area' className='w-full'>
+									<SelectValue placeholder='Select a delivery area' />
+								</SelectTrigger>
+								<SelectContent>
+									{listOfAreasInEkiti &&
+									listOfAreasInEkiti.length > 0 ? (
+										listOfAreasInEkiti.map((area) => (
+											<SelectItem
+												key={area.id}
+												value={area.id}>
+												{area.name}
+												{area.state &&
+													` - ${area.state}`}
+											</SelectItem>
+										))
+									) : (
+										<SelectItem value=''>
+											No areas available
+										</SelectItem>
+									)}
+								</SelectContent>
+							</Select>
 						</div>
 					</div>
 

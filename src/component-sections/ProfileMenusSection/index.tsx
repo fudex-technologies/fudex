@@ -22,12 +22,16 @@ import {
 	Settings,
 	Headset,
 	Wallet,
+	Clock,
 } from 'lucide-react';
 import { useState } from 'react';
+import { useTRPC } from '@/trpc/client';
+import { useQuery } from '@tanstack/react-query';
 
 const ProfileMenusSection = () => {
 	const [confirmLogout, setConfirmLogout] = useState(false);
 	const { data: session, isPending } = useSession();
+	const trpc = useTRPC();
 
 	// Check if user is a vendor
 	const { data: isVendor } = useProfileActions().isUserAVendor();
@@ -35,6 +39,14 @@ const ProfileMenusSection = () => {
 	const { data: isAdmin } = useProfileActions().isUserAnAdmin();
 	// Check if user is an operator
 	const { data: isOperator } = useProfileActions().isUserAnOperator();
+
+	// Fetch onboarding progress for vendors
+	const { data: progress } = useQuery(
+		trpc.vendors.getVendorOnboardingProgress.queryOptions(undefined, {
+			enabled: !!isVendor,
+			retry: false,
+		}),
+	);
 
 	if (isPending && !session) {
 		return <ProfileMenusSectionSkeleton />;
@@ -72,6 +84,18 @@ const ProfileMenusSection = () => {
 					<MenuListComponent
 						menuTitle='Vendor'
 						menuItems={[
+							...(progress &&
+							progress.approvalStatus !== 'APPROVED'
+								? [
+										{
+											icon: <Clock />,
+											title: `Complete Onboarding (${progress.completedCount}/${progress.totalSteps})`,
+											link: PAGES_DATA.vendor_onboarding_progress_page,
+											protected: true,
+											show: true,
+										},
+									]
+								: []),
 							{
 								icon: <Store />,
 								title: 'Vendor Dashboard',

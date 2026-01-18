@@ -54,7 +54,7 @@ const VendorDashboardPayoutDetails = () => {
 								{vendor?.bankName || 'Unknown Bank'}
 							</p>
 							<p className='text-xs font-medium opacity-70 uppercase'>
-								{vendor?.name || 'Vendor Name'}
+								{vendor?.bankAccountName || 'Vendor Name'}
 							</p>
 						</div>
 					</div>

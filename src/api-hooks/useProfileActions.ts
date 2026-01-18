@@ -103,9 +103,7 @@ export function useProfileActions() {
             })
         ),
         getAllAreasInEkiti: () => useQuery(
-            trpc.users.listAreas.queryOptions({ state: "ekiti" }, {
-                enabled: !!session,
-            })
+            trpc.users.listAreas.queryOptions({ state: "ekiti" })
         ),
 
         // Favorite vendors

@@ -12,13 +12,24 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import OnboardingProgressIndicator from '@/components/OnboardingProgressIndicator';
+import { useTRPC } from '@/trpc/client';
+import { useQuery } from '@tanstack/react-query';
 
 export default function VendorOnboardingPhoneVerificationPage() {
 	const router = useRouter();
 	const [phone, setPhone] = useState('');
 	const { useGetMyVendor, updateMyVendor } = useVendorDashboardActions();
+	const trpc = useTRPC();
 
 	const { data: vendor, isLoading } = useGetMyVendor();
+
+	// Fetch progress to show completion status
+	const { data: progress } = useQuery(
+		trpc.vendors.getVendorOnboardingProgress.queryOptions(undefined, {
+			retry: false,
+		}),
+	);
 
 	useEffect(() => {
 		if (vendor?.phone) {
@@ -56,6 +67,10 @@ export default function VendorOnboardingPhoneVerificationPage() {
 					link={PAGES_DATA.vendor_onboarding_progress_page}
 				/>
 				<p className='font-semibold text-xl'>Complete your Profile</p>
+				<OnboardingProgressIndicator
+					completedSteps={progress?.completedCount}
+					totalSteps={progress?.totalSteps}
+				/>
 			</div>
 			<div className='py-10 space-y-5 max-w-lg w-full mx-auto'>
 				<div className='space-y-3 w-full'>

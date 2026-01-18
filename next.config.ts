@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
       "6mq1ghe0xghnbs82.public.blob.vercel-storage.com",
 
       // for fudex
-      "37Xm7AEUIt1qp3lM.public.blob.vercel-storage.com",
+      "37xm7aeuit1qp3lm.public.blob.vercel-storage.com",
     ],
   },
 };

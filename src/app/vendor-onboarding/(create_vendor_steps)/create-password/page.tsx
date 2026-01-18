@@ -8,6 +8,7 @@ import { validatepasswordRegex } from '@/lib/commonFunctions';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useVendorOnboardingActions } from '@/api-hooks/useVendorOnboardingActions';
+import { PAGES_DATA } from '@/data/pagesData';
 
 interface IFormData {
 	password: string;
@@ -39,7 +40,7 @@ export default function VendorOnboardingCreatePasswordPage() {
 		setPasswordAndCompleteVendorSignup({
 			onSuccess: () => {
 				// Navigate to vendor terms
-				router.push('/vendor-onboarding/vendor-terms');
+				router.push(PAGES_DATA.vendor_onboarding_terms_page);
 			},
 			silent: false,
 			password: form.password,
@@ -107,7 +108,6 @@ export default function VendorOnboardingCreatePasswordPage() {
 		e.preventDefault();
 
 		if (!isFormValid || !personalDetails || !verificationToken) return;
-
 		createAccountMutate();
 	};
 
