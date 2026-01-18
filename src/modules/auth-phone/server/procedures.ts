@@ -19,6 +19,16 @@ const HMAC_SECRET = process.env.BETTER_AUTH_SECRET ?? 'secret';
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 
+// Generate unique 6-8 character alphanumeric referral code
+function generateReferralCode(): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 7; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+}
+
 function signVerificationToken(payload: { phone: string; pvId: string; exp: number }) {
     const json = JSON.stringify(payload);
     const b64 = Buffer.from(json).toString('base64url');
@@ -204,10 +214,26 @@ export const phoneAuthRouter = createTRPCRouter({
                 throw new TRPCError({ code: "CONFLICT", message: "PHONE_ALREADY_IN_USE" });
             }
 
+            // Validate referral code if provided
+            let referralData = null;
+            if (input.referralCode && input.referralCode.trim()) {
+                const referrer = await ctx.prisma.user.findFirst({
+                    where: { referralCode: input.referralCode.toUpperCase().trim() }
+                });
+
+                if (referrer) {
+                    // Referrer found - we'll create referral record after user is created
+                    referralData = { referrerId: referrer.id };
+                }
+                // If referrer not found, silently ignore (don't break signup)
+            }
+
             return {
                 phone,
                 email: input.email,
                 name: `${input.firstName} ${input.lastName}`,
+                referralCode: input.referralCode ? input.referralCode.toUpperCase().trim() : null,
+                referralData, // For next step
             };
         }),
 
@@ -734,6 +760,62 @@ export const phoneAuthRouter = createTRPCRouter({
                     phoneVerified: user.phoneVerified,
                 }
             };
+        }),
+
+    // Confirm referral after signup is complete and user is created
+    confirmReferral: publicProcedure
+        .input(z.object({
+            referralCode: z.string(),
+            newUserId: z.string(),
+        }))
+        .mutation(async ({ ctx, input }) => {
+            // Find referrer by code
+            const referrer = await ctx.prisma.user.findFirst({
+                where: { referralCode: input.referralCode.toUpperCase().trim() }
+            });
+
+            if (!referrer) {
+                // Silently return - code doesn't exist
+                return { success: true };
+            }
+
+            // Check if this user already has a referrer
+            const existingReferral = await ctx.prisma.referral.findUnique({
+                where: { referredUserId: input.newUserId }
+            });
+
+            if (existingReferral) {
+                // User already has a referral record
+                return { success: true };
+            }
+
+            // Create referral record
+            await ctx.prisma.referral.create({
+                data: {
+                    referrerUserId: referrer.id,
+                    referredUserId: input.newUserId,
+                    referralCode: input.referralCode.toUpperCase().trim(),
+                    status: 'CONFIRMED',
+                    confirmedAt: new Date(),
+                }
+            });
+
+            return { success: true };
+        }),
+
+    validateReferralCode: publicProcedure
+        .input(z.object({ referralCode: z.string() }))
+        .query(async ({ ctx, input }) => {
+            if (!input.referralCode || !input.referralCode.trim()) {
+                return { valid: true }; // Empty code is valid (optional)
+            }
+
+            const code = input.referralCode.toUpperCase().trim();
+            const referrer = await ctx.prisma.user.findFirst({
+                where: { referralCode: code }
+            });
+
+            return { valid: !!referrer };
         })
 });
 

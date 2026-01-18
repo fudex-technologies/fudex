@@ -251,8 +251,8 @@ export default function VendorOnboardingPersonalDetailsPage() {
 			JSON.stringify(form)
 		);
 
-		// Navigate to email verification page
-		router.push('/vendor-onboarding/verify-email');
+		// Navigate to location page
+		router.push('/vendor-onboarding/location');
 	};
 
 	return (

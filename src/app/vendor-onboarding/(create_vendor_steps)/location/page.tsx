@@ -4,7 +4,10 @@ import { useProfileActions } from '@/api-hooks/useProfileActions';
 import InputField, { SelectField } from '@/components/InputComponent';
 import { Button } from '@/components/ui/button';
 import VendorOnboardingFormsWrapper from '@/components/wrapers/VendorOnboardingFormsWrapper';
+import { localStorageStrings } from '@/constants/localStorageStrings';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 interface IFormData {
 	country: string;
@@ -29,9 +32,9 @@ const initialFormData = {
 };
 
 export default function VendorOnboardingLocation() {
+	const router = useRouter();
 	const [form, setForm] = useState<IFormData>(initialFormData);
 	const [selectedAreaId, setSelectedAreaId] = useState<string | undefined>();
-
 	const [touched, setTouched] = useState<IFormTouchedData>({});
 
 	const { getAllAreasInEkiti } = useProfileActions();
@@ -47,6 +50,7 @@ export default function VendorOnboardingLocation() {
 
 		return newErrors;
 	};
+
 	const errorsNow = validate();
 	const isFormValid = Object.keys(errorsNow).length === 0;
 
@@ -60,15 +64,53 @@ export default function VendorOnboardingLocation() {
 			setTouched({ ...touched, [field]: true });
 		};
 
+	const handleSubmit = async (e: React.FormEvent) => {
+		e.preventDefault();
+
+		if (!isFormValid) {
+			toast.error('Please fill in all required fields');
+			return;
+		}
+
+		if (!selectedAreaId) {
+			toast.error('Please select an area');
+			return;
+		}
+
+		try {
+			// Store location data in localStorage with areaId
+			const locationData = {
+				country: form.country,
+				state: form.state,
+				businessAddress: form.businessAddress,
+				areaId: selectedAreaId,
+			};
+
+			localStorage.setItem(
+				localStorageStrings.vendorOnboardingLocationData,
+				JSON.stringify(locationData)
+			);
+
+			toast.success('Location saved');
+
+			// Navigate to email verification
+			router.push('/vendor-onboarding/verify-email');
+		} catch (error) {
+			toast.error('Failed to save location');
+			console.error('Location save error:', error);
+		}
+	};
+
 	return (
 		<VendorOnboardingFormsWrapper>
 			<div className='w-full'>
 				<div className='w-full my-3 space-y-2'>
+					<p className='font-semibold text-xl'>Confirm your location</p>
 					<p className='font-light text-foreground/50 leading-[100%]'>
-						Let’s confirm your location
+						This helps us determine delivery areas and fees
 					</p>
 				</div>
-				<form className='w-full'>
+				<form className='w-full space-y-4' onSubmit={handleSubmit}>
 					<SelectField
 						disabled
 						data={[
@@ -135,11 +177,7 @@ export default function VendorOnboardingLocation() {
 						type='submit'
 						variant={'game'}
 						className='w-full py-5'
-						disabled={
-							!isFormValid
-							// || isPending
-						}>
-						{/* {isPending ? 'Sending...' : 'Continue'} */}
+						disabled={!isFormValid || loadingAreas}>
 						Continue
 					</Button>
 				</form>

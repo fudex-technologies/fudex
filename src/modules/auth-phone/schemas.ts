@@ -12,7 +12,8 @@ export const completeRegistrationSchema = z.object({
         ),
     email: z.string().email(),
     firstName: z.string().optional(),
-    lastName: z.string().optional()
+    lastName: z.string().optional(),
+    referralCode: z.string().optional() // Optional referral code during signup
 })
 
 // Vendor Onboarding Schemas

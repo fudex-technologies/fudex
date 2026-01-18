@@ -118,9 +118,9 @@ export default function OperatorVendorsPage() {
 										{vendor.description}
 									</p>
 								)}
-								{vendor.city && (
+								{vendor.addresses && vendor.addresses.length > 0 && (
 									<p className='text-sm text-foreground/50'>
-										City: {vendor.city}
+										City: {vendor.addresses[0].city}
 									</p>
 								)}
 								{vendor.owner && (

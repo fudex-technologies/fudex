@@ -18,6 +18,7 @@ model User {
   lastName        String?
   phone           String?          @unique
   phoneVerified   Boolean          @default(false)
+  referralCode    String?          @unique // Unique code for sharing
   addresses       Address[]
   favoriteVendors FavoriteVendor[]
   operator        Operator?
@@ -31,6 +32,8 @@ model User {
   accounts        Account[]
   sessions        Session[]
   vendorPayouts   VendorPayout[]
+  referrals       Referral[]       @relation("ReferrerReferrals") // People I referred
+  referredBy      Referral?        @relation("ReferredByReferrals") // Who referred me
 
   @@map("user")
 }
@@ -100,6 +103,7 @@ model Area {
   meta         Json?
   createdAt    DateTime          @default(now())
   addresses    Address[]
+  vendors      Vendor[]          @relation("AreaVendors") // Add relation name
   deliveryFees DeliveryFeeRule[]
   operators    Operator[]
 
@@ -151,6 +155,7 @@ model Rider {
 model Address {
   id         String   @id @default(uuid())
   userId     String
+  vendorId   String? // New field to link Address to Vendor
   label      String?
   line1      String
   line2      String?
@@ -166,9 +171,11 @@ model Address {
   customArea String?
   area       Area?    @relation(fields: [areaId], references: [id])
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendor     Vendor?  @relation(fields: [vendorId], references: [id]) // New relation to Vendor
   orders     Order[]
 
   @@index([userId])
+  @@index([vendorId]) // Index for vendorId
 }
 
 model Vendor {
@@ -179,18 +186,14 @@ model Vendor {
   description        String?
   phone              String?
   email              String?
-  address            String?
-  city               String?
-  country            String?
   coverImage         String?
   createdAt          DateTime                 @default(now())
-  lat                Float?
-  lng                Float?
   reviewsAverage     Float                    @default(0)
   reviewsCount       Int                      @default(0)
   bankAccountNumber  String?
   bankCode           String?
   bankName           String?
+  bankAccountName    String?
   payoutEnabled      Boolean                  @default(false)
   paystackRecipient  String?
   availabilityStatus VendorAvailabilityStatus @default(AUTO)
@@ -203,6 +206,8 @@ model Vendor {
   vendorCategories   VendorCategory[]
   openingHours       VendorOpeningHour[]
   vendorPayouts      VendorPayout[]
+  areaId             String?                 // Add missing areaId field
+  area               Area?                    @relation("AreaVendors", fields: [areaId], references: [id]) // Add relation name
 
   // Approval workflow fields
   approvalStatus        VendorApprovalStatus @default(PENDING)
@@ -210,15 +215,27 @@ model Vendor {
   approvedById          String?
   approvedBy            User?                @relation("VendorApprovedBy", fields: [approvedById], references: [id])
   declineReason         String?
-  verificationDocuments String[]             @default([])
+  verificationDocuments String[]             @default([]) // Deprecated in favor of documents relation
+  documents             VendorVerificationDocument[]
   submittedForApproval  Boolean              @default(false)
   submittedAt           DateTime?
+  addresses             Address[] // New relation to Address
 
   @@index([name])
-  @@index([city])
+  @@index([areaId])
   @@index([name, description])
-  @@index([lat, lng])
   @@index([approvalStatus])
+}
+
+model VendorVerificationDocument {
+  id        String   @id @default(uuid())
+  vendorId  String
+  type      String
+  url       String
+  createdAt DateTime @default(now())
+  vendor    Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
 }
 
 model VendorOpeningHour {
@@ -537,4 +554,27 @@ enum VendorAvailabilityStatus {
   AUTO
   OPEN
   CLOSED
+}
+
+enum ReferralStatus {
+  PENDING
+  CONFIRMED
+}
+
+model Referral {
+  id              String   @id @default(uuid())
+  referrerUserId  String   // User who has the referral code
+  referredUserId  String   // User who signed up with code
+  referralCode    String   // The code used
+  status          ReferralStatus @default(PENDING) // PENDING, CONFIRMED
+  confirmedAt     DateTime? // When referred user completed signup
+  createdAt       DateTime @default(now())
+  
+  referrer        User     @relation("ReferrerReferrals", fields: [referrerUserId], references: [id], onDelete: Cascade)
+  referred        User     @relation("ReferredByReferrals", fields: [referredUserId], references: [id], onDelete: Cascade)
+  
+  @@unique([referredUserId]) // One user can only be referred by one person
+  @@index([referralCode])
+  @@index([referrerUserId])
+  @@index([status])
 }

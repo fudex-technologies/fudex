@@ -135,6 +135,7 @@ export const vendorRouter = createTRPCRouter({
                 where: { id: input.id },
                 include: {
                     openingHours: true,
+                    addresses: true,
                     products: true,
                     vendorCategories: {
                         include: {
@@ -477,23 +478,44 @@ export const vendorRouter = createTRPCRouter({
             take: z.number().optional().default(50),
             skip: z.number().optional().default(0),
         }))
-        .query(({ ctx, input }) => {
+        .query(async ({ ctx, input }) => {
             const delta = input.radiusKm / 111; // ~degrees per km
             const latMin = input.lat - delta;
             const latMax = input.lat + delta;
             const lngMin = input.lng - delta;
             const lngMax = input.lng + delta;
 
-            return ctx.prisma.vendor.findMany({
+            // Find addresses within the bounding box
+            const addressesInArea = await ctx.prisma.address.findMany({
                 where: {
                     lat: { gte: latMin, lte: latMax },
                     lng: { gte: lngMin, lte: lngMax },
-                    // only active vendors assumed
+                    vendorId: { not: null },
+                },
+                select: { vendorId: true },
+                distinct: ['vendorId'],
+            });
+
+            const vendorIds = addressesInArea
+                .map(addr => addr.vendorId)
+                .filter((id): id is string => id !== null);
+
+            if (vendorIds.length === 0) {
+                return [];
+            }
+
+            return ctx.prisma.vendor.findMany({
+                where: {
+                    id: { in: vendorIds },
+                    approvalStatus: 'APPROVED',
                 },
                 take: input.take,
                 skip: input.skip,
                 orderBy: { createdAt: "desc" },
-                include: { openingHours: true }
+                include: {
+                    openingHours: true,
+                    addresses: true,
+                }
             });
         }),
 
@@ -650,6 +672,8 @@ export const vendorRouter = createTRPCRouter({
             where: { ownerId: userId },
             include: {
                 openingHours: true,
+                addresses: true,
+                documents: true,
                 products: {
                     include: {
                         items: {
@@ -681,14 +705,17 @@ export const vendorRouter = createTRPCRouter({
                 address: z.string().optional(),
                 city: z.string().optional(),
                 country: z.string().optional(),
+                postalCode: z.string().optional(),
                 coverImage: z.string().url().optional(),
                 lat: z.number().optional(),
                 lng: z.number().optional(),
                 bankName: z.string().optional(),
                 bankCode: z.string().optional(),
                 bankAccountNumber: z.string().optional(),
+                bankAccountName: z.string().optional(),
                 accountName: z.string().optional(),
                 availabilityStatus: z.nativeEnum(VendorAvailabilityStatus).optional(),
+                areaId: z.string().optional(),
             })
         )
         .mutation(async ({ ctx, input }) => {
@@ -698,15 +725,16 @@ export const vendorRouter = createTRPCRouter({
             });
             if (!vendor) throw new Error("Vendor not found or you don't own a vendor");
 
-            const { bankName, bankCode, bankAccountNumber, accountName, availabilityStatus, ...rest } = input;
+            const { bankName, bankCode, bankAccountNumber, bankAccountName, accountName, availabilityStatus, address, city, country, postalCode, lat, lng, areaId, ...rest } = input;
 
             let paystackRecipient = vendor.paystackRecipient;
+            const accountNameToUse = bankAccountName || accountName;
 
             // If bank details changed, create/update paystack recipient
-            if (bankCode && bankAccountNumber && accountName) {
+            if (bankCode && bankAccountNumber && accountNameToUse) {
                 try {
                     const recipientRes = await createPaystackRecipient({
-                        name: accountName,
+                        name: accountNameToUse,
                         account_number: bankAccountNumber,
                         bank_code: bankCode,
                     });
@@ -722,6 +750,46 @@ export const vendorRouter = createTRPCRouter({
                 }
             }
 
+            // Handle address updates - find or create the default address for the vendor
+            if (address || city || country || lat || lng || postalCode) {
+                const existingAddress = await ctx.prisma.address.findFirst({
+                    where: {
+                        vendorId: vendor.id,
+                        isDefault: true,
+                    }
+                });
+
+                if (existingAddress) {
+                    // Update existing address
+                    await ctx.prisma.address.update({
+                        where: { id: existingAddress.id },
+                        data: {
+                            line1: address || existingAddress.line1,
+                            city: city || existingAddress.city,
+                            country: country || existingAddress.country,
+                            postalCode: postalCode || existingAddress.postalCode,
+                            lat: lat ?? existingAddress.lat,
+                            lng: lng ?? existingAddress.lng,
+                        }
+                    });
+                } else if (address || city || country) {
+                    // Create new address if it doesn't exist and we have enough data
+                    await ctx.prisma.address.create({
+                        data: {
+                            userId: userId,
+                            vendorId: vendor.id,
+                            line1: address || '',
+                            city: city || '',
+                            country: country || 'NG',
+                            postalCode: postalCode,
+                            lat: lat,
+                            lng: lng,
+                            isDefault: true,
+                        }
+                    });
+                }
+            }
+
             return ctx.prisma.vendor.update({
                 where: { id: vendor.id },
                 data: {
@@ -729,8 +797,10 @@ export const vendorRouter = createTRPCRouter({
                     bankName: bankName || undefined,
                     bankCode: bankCode || undefined,
                     bankAccountNumber: bankAccountNumber || undefined,
+                    bankAccountName: bankAccountName || undefined,
                     paystackRecipient: paystackRecipient || undefined,
                     availabilityStatus: availabilityStatus || undefined,
+                    areaId: areaId || undefined,
                 }
             });
         }),
@@ -1309,9 +1379,11 @@ export const vendorRouter = createTRPCRouter({
             businessName: z.string(),
             businessType: z.string(),
             verificationToken: z.string(), // Email verification token
+            address: z.string().optional(), // Business address
+            areaId: z.string().optional(), // Area ID for delivery zone
         }))
         .mutation(async ({ ctx, input }) => {
-            const { userId, email, phone, firstName, lastName, businessName, businessType } = input;
+            const { userId, email, phone, firstName, lastName, businessName, businessType, address, areaId } = input;
 
             // Use transaction to ensure atomicity
             const result = await ctx.prisma.$transaction(async (tx) => {
@@ -1356,16 +1428,25 @@ export const vendorRouter = createTRPCRouter({
                     });
                 } else {
                     // Create new user (without password - will be set later)
-                    user = await tx.user.create({
-                        data: {
-                            email: email.toLowerCase().trim(),
-                            phone,
-                            firstName,
-                            lastName,
-                            name: `${firstName} ${lastName}`,
-                            emailVerified: true,
-                        }
+                    // First check if user with this email already exists
+                    const existingUser = await tx.user.findUnique({
+                        where: { email: email.toLowerCase().trim() }
                     });
+
+                    if (existingUser) {
+                        user = existingUser;
+                    } else {
+                        user = await tx.user.create({
+                            data: {
+                                email: email.toLowerCase().trim(),
+                                phone,
+                                firstName,
+                                lastName,
+                                name: `${firstName} ${lastName}`,
+                                emailVerified: true,
+                            }
+                        });
+                    }
                 }
 
                 // Check if vendor already exists for this user
@@ -1399,8 +1480,25 @@ export const vendorRouter = createTRPCRouter({
                         description: `${businessType} vendor`,
                         email: email.toLowerCase().trim(),
                         phone,
+                        areaId: areaId || undefined,
                     }
                 });
+
+                // Create an Address record for the vendor if address is provided
+                if (address && areaId) {
+                    await tx.address.create({
+                        data: {
+                            userId: user.id,
+                            vendorId: vendor.id,
+                            line1: address,
+                            city: 'Ado-Ekiti', // Default for now, can be updated later
+                            state: 'Ekiti',
+                            country: 'NG',
+                            areaId: areaId,
+                            isDefault: true,
+                        }
+                    });
+                }
 
                 // Assign VENDOR role to user
                 await tx.userRole.upsert({
@@ -1439,6 +1537,8 @@ export const vendorRouter = createTRPCRouter({
             where: { ownerId: userId },
             include: {
                 openingHours: true,
+                addresses: true,
+                documents: true,
                 _count: {
                     select: {
                         productItems: true,
@@ -1456,6 +1556,7 @@ export const vendorRouter = createTRPCRouter({
                     paymentInfoAdded: false,
                     operationsSetup: false,
                     menuItemsAdded: false,
+                    identityVerified: false,
                 },
                 percentage: 0,
                 isComplete: false,
@@ -1469,13 +1570,19 @@ export const vendorRouter = createTRPCRouter({
             };
         }
 
+        // Check if vendor has addresses
+        const hasAddresses = await ctx.prisma.address.findFirst({
+            where: { vendorId: vendor.id }
+        });
+
         // Calculate progress
         const steps = {
             accountCreated: true, // Account is created if vendor exists
-            profileCompleted: !!(vendor.address && vendor.city && vendor.coverImage),
+            profileCompleted: !!(hasAddresses && vendor.coverImage),
             paymentInfoAdded: !!(vendor.bankAccountNumber),
             operationsSetup: (vendor.openingHours?.length || 0) > 0,
             menuItemsAdded: (vendor._count?.productItems || 0) > 0,
+            identityVerified: (vendor.documents?.length || 0) > 0,
         };
 
         const completedCount = Object.values(steps).filter(Boolean).length;
@@ -1566,6 +1673,7 @@ export const vendorRouter = createTRPCRouter({
     uploadVerificationDocument: vendorProcedure
         .input(z.object({
             documentUrl: z.string().url(),
+            documentType: z.string().min(1, 'Document type is required'),
         }))
         .mutation(async ({ ctx, input }) => {
             const userId = ctx.user!.id;
@@ -1581,17 +1689,21 @@ export const vendorRouter = createTRPCRouter({
                 });
             }
 
-            // Add document URL to array
-            const updated = await ctx.prisma.vendor.update({
-                where: { id: vendor.id },
+            // Create new verification document record
+            const newDoc = await ctx.prisma.vendorVerificationDocument.create({
                 data: {
-                    verificationDocuments: {
-                        push: input.documentUrl
-                    }
+                    vendorId: vendor.id,
+                    type: input.documentType,
+                    url: input.documentUrl
                 }
             });
 
-            return { success: true, documentCount: updated.verificationDocuments.length };
+            // Count documents
+            const count = await ctx.prisma.vendorVerificationDocument.count({
+                where: { vendorId: vendor.id }
+            });
+
+            return { success: true, documentCount: count, document: newDoc };
         }),
 
     // Get pending vendors (admin only)
@@ -1623,7 +1735,8 @@ export const vendorRouter = createTRPCRouter({
                             firstName: true,
                             lastName: true,
                         }
-                    }
+                    },
+                    documents: true // Include documents for count
                 }
             });
 
@@ -1659,6 +1772,8 @@ export const vendorRouter = createTRPCRouter({
                         }
                     },
                     openingHours: true,
+                    addresses: true,
+                    documents: true, // Include the new documents relation
                     _count: {
                         select: {
                             productItems: true,

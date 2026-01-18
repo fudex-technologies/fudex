@@ -67,14 +67,17 @@ const VendorProfileSection = () => {
 	// Populate form when vendor data loads
 	useEffect(() => {
 		if (vendor) {
+			// Get the first default address if it exists
+			const defaultAddress = vendor.addresses?.find(addr => addr.isDefault) || vendor.addresses?.[0];
+			
 			setFormData({
 				name: vendor.name || '',
 				description: vendor.description || '',
 				phone: vendor.phone || '',
 				email: vendor.email || '',
-				address: vendor.address || '',
-				city: vendor.city || '',
-				country: vendor.country || 'NG',
+				address: defaultAddress?.line1 || '',
+				city: defaultAddress?.city || '',
+				country: defaultAddress?.country || 'NG',
 				coverImage: vendor.coverImage || '',
 			});
 			setTouched({

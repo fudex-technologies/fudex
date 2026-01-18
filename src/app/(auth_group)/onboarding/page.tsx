@@ -19,7 +19,8 @@ import { useTRPC } from '@/trpc/client';
 import ContinueWithGoogleButton, {
 	ContinueWithGoogleButtonSkeleton,
 } from './ContinueWithGoogleButton';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+
 
 interface IFormData {
 	phone: string;
@@ -57,10 +58,32 @@ export default function OnboardingSignUpPage() {
 		useState<IAvailabilityErrors>({});
 	const [debouncedPhone, setDebouncedPhone] = useState('');
 	const [debouncedEmail, setDebouncedEmail] = useState('');
+	const [referralCodeError, setReferralCodeError] = useState<string | undefined>();
 	const router = useRouter();
+	const searchParams = useSearchParams();
 
 	const { requestPhoneOtp } = useAuthActions();
 	const trpc = useTRPC();
+
+	// Check referral code validity
+	const refParam = searchParams?.get('ref');
+	const { data: referralCodeData, isLoading: isValidatingReferralCode } = useQuery(
+		trpc.phoneAuth.validateReferralCode.queryOptions(
+			{ referralCode: form.referralCode },
+			{
+				enabled: !!form.referralCode && form.referralCode.length > 0,
+				retry: false,
+			}
+		)
+	);
+
+	// Auto-fill referral code from query param on mount
+	useEffect(() => {
+		if (refParam) {
+			setForm((prev) => ({ ...prev, referralCode: refParam }));
+			setTouched((prev) => ({ ...prev, referralCode: true }));
+		}
+	}, [refParam]);
 
 	// Check phone availability
 	const { data: phoneCheckData, isLoading: isCheckingPhone } = useQuery(
@@ -138,6 +161,15 @@ export default function OnboardingSignUpPage() {
 		}
 	}, [emailCheckData]);
 
+	// Update referral code error based on validation
+	useEffect(() => {
+		if (form.referralCode && !referralCodeData?.valid) {
+			setReferralCodeError('Invalid referral code');
+		} else {
+			setReferralCodeError(undefined);
+		}
+	}, [referralCodeData, form.referralCode]);
+
 	const validate = () => {
 		const newErrors: any = {};
 		if (!form.firstName) newErrors.firstName = 'First name is required';
@@ -148,6 +180,8 @@ export default function OnboardingSignUpPage() {
 		if (!form.phone) newErrors.phone = 'Phone number is required';
 		else if (!validatePhoneNumberRegex(form.phone))
 			newErrors.phone = 'Invalid phone number format';
+		if (form.referralCode && referralCodeError)
+			newErrors.referralCode = referralCodeError;
 
 		return newErrors;
 	};
@@ -156,7 +190,7 @@ export default function OnboardingSignUpPage() {
 		availabilityErrors.phone || availabilityErrors.email
 	);
 	const isFormValid =
-		Object.keys(errorsNow).length === 0 && !hasAvailabilityErrors;
+		Object.keys(errorsNow).length === 0 && !hasAvailabilityErrors && !isValidatingReferralCode;
 
 	function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -260,20 +294,26 @@ export default function OnboardingSignUpPage() {
 						value={form.referralCode}
 						onChange={handleChange('referralCode')}
 						placeholder='Enter a referral code'
-						error={touched.referralCode && errorsNow.referralCode}
-					/>
-					<Button
-						type='submit'
-						variant={'game'}
-						className='w-full py-5'
-						disabled={
-							!isFormValid ||
-							isPending ||
-							isCheckingPhone ||
-							isCheckingEmail
-						}>
-						{isPending ? 'Sending...' : 'Continue'}
-					</Button>
+					error={touched.referralCode && errorsNow.referralCode}
+					hint={
+						isValidatingReferralCode
+							? 'Validating code...'
+							: undefined
+					}
+				/>
+				<Button
+					type='submit'
+					variant={'game'}
+					className='w-full py-5'
+					disabled={
+						!isFormValid ||
+						isPending ||
+						isCheckingPhone ||
+						isCheckingEmail ||
+						isValidatingReferralCode
+					}>
+					{isPending ? 'Sending...' : 'Continue'}
+				</Button>
 				</form>
 				<div className='w-full space-y-2'>
 					<div className='w-full flex items-center gap-5 text-center text-foreground/50'>

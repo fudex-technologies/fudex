@@ -55,8 +55,7 @@ export const operatorRouter = createTRPCRouter({
                             id: true,
                             name: true,
                             coverImage: true,
-                            city: true,
-                            address: true,
+                            addresses: true,
                             phone: true,
                         }
                     },
@@ -401,6 +400,7 @@ export const operatorRouter = createTRPCRouter({
                             email: true,
                         }
                     },
+                    addresses: true,
                     _count: {
                         select: {
                             products: true,
@@ -431,11 +431,48 @@ export const operatorRouter = createTRPCRouter({
             coverImage: z.string().optional(),
             isActive: z.boolean().optional(),
         }))
-        .mutation(({ ctx, input }) => {
-            const { id, ...data } = input;
+        .mutation(async ({ ctx, input }) => {
+            const { id, city, ...rest } = input;
+            
+            // Handle city field - update or create address
+            if (city) {
+                const existingAddress = await ctx.prisma.address.findFirst({
+                    where: {
+                        vendorId: id,
+                        isDefault: true,
+                    }
+                });
+
+                if (existingAddress) {
+                    await ctx.prisma.address.update({
+                        where: { id: existingAddress.id },
+                        data: { city }
+                    });
+                } else {
+                    // Create a new address with basic info
+                    const vendor = await ctx.prisma.vendor.findUnique({
+                        where: { id },
+                        select: { ownerId: true }
+                    });
+                    
+                    if (vendor?.ownerId) {
+                        await ctx.prisma.address.create({
+                            data: {
+                                userId: vendor.ownerId,
+                                vendorId: id,
+                                line1: '',
+                                city: city,
+                                country: 'NG',
+                                isDefault: true,
+                            }
+                        });
+                    }
+                }
+            }
+
             return ctx.prisma.vendor.update({
                 where: { id },
-                data
+                data: rest
             });
         }),
 });

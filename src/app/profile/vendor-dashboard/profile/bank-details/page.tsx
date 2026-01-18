@@ -22,7 +22,7 @@ export default function VendorBankDetailsPage() {
 		bankName: '',
 		bankCode: '',
 		bankAccountNumber: '',
-		accountName: '',
+		bankAccountName: '',
 	});
 
 	useEffect(() => {
@@ -31,7 +31,7 @@ export default function VendorBankDetailsPage() {
 				bankName: vendor.bankName || '',
 				bankCode: vendor.bankCode || '',
 				bankAccountNumber: vendor.bankAccountNumber || '',
-				accountName: vendor.name || '', // Default to vendor name for account name
+				bankAccountName: vendor.bankAccountName || '',
 			});
 		}
 	}, [vendor]);
@@ -41,7 +41,7 @@ export default function VendorBankDetailsPage() {
 		if (
 			!formData.bankCode ||
 			!formData.bankAccountNumber ||
-			!formData.accountName
+			!formData.bankAccountName
 		) {
 			toast.error('Please fill in all bank details');
 			return;
@@ -53,7 +53,7 @@ export default function VendorBankDetailsPage() {
 			bankName: selectedBank?.name || formData.bankName,
 			bankCode: formData.bankCode,
 			bankAccountNumber: formData.bankAccountNumber,
-			accountName: formData.accountName,
+			bankAccountName: formData.bankAccountName,
 		});
 	};
 
@@ -75,8 +75,8 @@ export default function VendorBankDetailsPage() {
 			</div>
 
 			<div className='bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6 flex gap-3'>
-				<Landmark className='text-blue-500 shrink-0' size={20} />
-				<p className='text-sm text-blue-700'>
+				<Landmark className='shrink-0' size={20} />
+				<p className='text-sm '>
 					These details will be used for your weekly payouts. Please
 					ensure the account name matches the one on record with your
 					bank.
@@ -127,14 +127,14 @@ export default function VendorBankDetailsPage() {
 					<Label htmlFor='accountName'>Account Holder Name *</Label>
 					<Input
 						id='accountName'
-						value={formData.accountName}
+						value={formData.bankAccountName}
 						onChange={(e) =>
 							setFormData((prev) => ({
 								...prev,
-								accountName: e.target.value,
+								bankAccountName: e.target.value,
 							}))
 						}
-						placeholder='Enter the name account'
+						placeholder='Enter the account holder name'
 						required
 					/>
 				</div>

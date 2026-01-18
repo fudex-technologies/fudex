@@ -7,6 +7,7 @@ export const localStorageStrings = {
     passwordResetToken: 'passwordReset:token',
 
     vendorOnboardinPersonalDetailsstring: "vendorOnboarding:personal-details",
+    vendorOnboardingLocationData: "vendorOnboarding:location-details",
     vendorOnboardingEmailVerificationToken: "vendorOnboarding:emailVerificationToken",
     vendorOnboardingIsExistingUser: "vendorOnboarding:isExistingUser",
     vendorOnboardingUserLinked: "vendorOnboarding:userLinked",

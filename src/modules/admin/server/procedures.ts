@@ -45,7 +45,7 @@ export const adminRouter = createTRPCRouter({
                     slug: input.slug,
                     description: input.description,
                     ownerId: input.ownerId,
-                    city: input.city,
+                    // city: input.city,
                     coverImage: input.coverImage
                 }
             });
@@ -109,7 +109,7 @@ export const adminRouter = createTRPCRouter({
                         slug: input.slug,
                         description: input.description,
                         ownerId: user.id,
-                        city: input.city,
+                        // city: input.city,
                         coverImage: input.coverImage
                     }
                 });

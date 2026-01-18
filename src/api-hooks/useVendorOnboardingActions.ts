@@ -120,6 +120,10 @@ export function useVendorOnboardingActions() {
                     throw new Error("Missing required fields");
                 }
 
+                // Get location data from localStorage
+                const locationDataStr = localStorage.getItem(localStorageStrings.vendorOnboardingLocationData);
+                const locationData = locationDataStr ? JSON.parse(locationDataStr) : {};
+
                 // 1. Create user account via signUp
                 const name = `${options.firstName} ${options.lastName}`;
                 await signUp.email({
@@ -140,6 +144,8 @@ export function useVendorOnboardingActions() {
                     businessName: options.businessName,
                     businessType: options.businessType,
                     verificationToken: options.verificationToken,
+                    address: locationData.businessAddress,
+                    areaId: locationData.areaId,
                 });
 
                 return vendorResult;
@@ -150,6 +156,7 @@ export function useVendorOnboardingActions() {
                 // Clear onboarding data
                 localStorage.removeItem(localStorageStrings.vendorOnboardinPersonalDetailsstring);
                 localStorage.removeItem(localStorageStrings.vendorOnboardingEmailVerificationToken);
+                localStorage.removeItem(localStorageStrings.vendorOnboardingLocationData);
 
                 options?.onSuccess?.(data);
             },
@@ -182,10 +189,14 @@ export function useVendorOnboardingActions() {
                 onSuccess: async (data) => {
                     if (!options?.silent) toast.success("Vendor account linked successfully");
 
+                    // Get location data from localStorage
+                    const locationDataStr = localStorage.getItem(localStorageStrings.vendorOnboardingLocationData);
+                    
                     // Clear onboarding data
                     localStorage.removeItem(localStorageStrings.vendorOnboardinPersonalDetailsstring);
                     localStorage.removeItem(localStorageStrings.vendorOnboardingEmailVerificationToken);
                     localStorage.removeItem(localStorageStrings.vendorOnboardingIsExistingUser);
+                    localStorage.removeItem(localStorageStrings.vendorOnboardingLocationData);
 
                     options?.onSuccess?.(data);
                 },
