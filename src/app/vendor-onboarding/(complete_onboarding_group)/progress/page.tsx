@@ -15,15 +15,12 @@ import { BsBank, BsSuitcase } from 'react-icons/bs';
 import { FaBurger } from 'react-icons/fa6';
 import { useTRPC } from '@/trpc/client';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { useSession } from '@/lib/auth-client';
 import { Button } from '@/components/ui/button';
 import { useVendorApprovalActions } from '@/api-hooks/useVendorApprovalActions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function VendorOnboardingProgressPage() {
-	const router = useRouter();
 	const trpc = useTRPC();
 	const { data: session, isPending: isSessionLoading } = useSession();
 	const { submitForApproval, isSubmitting } = useVendorApprovalActions();
@@ -40,19 +37,6 @@ export default function VendorOnboardingProgressPage() {
 		})
 	);
 
-	// Redirect if user is not logged in
-	useEffect(() => {
-		if (!isSessionLoading && !session?.user) {
-			router.push('/vendor-onboarding/personal-details');
-		}
-	}, [session, isSessionLoading, router]);
-
-	// Redirect if no vendor account exists
-	useEffect(() => {
-		if (progress && !progress.hasVendor) {
-			router.push('/vendor-onboarding/personal-details');
-		}
-	}, [progress, router]);
 
 	const handleSubmitForApproval = async () => {
 		try {

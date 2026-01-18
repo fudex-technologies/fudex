@@ -78,9 +78,14 @@ const SingleVendorInfoSection = ({ vendorId }: { vendorId: string }) => {
 
 	const rating = vendor.reviewsAverage || 0;
 	const reviewCount = vendor.reviewsCount || 0;
-	const address = [vendor.address, vendor.city, vendor.country]
-		.filter(Boolean)
-		.join(', ');
+	
+	// Get address from the first address record
+	const defaultAddress = vendor.addresses?.[0];
+	const address = defaultAddress
+		? [defaultAddress.line1, defaultAddress.city, defaultAddress.country]
+				.filter(Boolean)
+				.join(', ')
+		: null;
 
 	return (
 		<SectionWrapper className='w-full max-w-lg mx-auto p-0!'>

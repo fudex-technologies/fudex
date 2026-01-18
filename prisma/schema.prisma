@@ -100,6 +100,7 @@ model Area {
   meta         Json?
   createdAt    DateTime          @default(now())
   addresses    Address[]
+  vendors      Vendor[]          @relation("AreaVendors") // Add relation name
   deliveryFees DeliveryFeeRule[]
   operators    Operator[]
 
@@ -151,6 +152,7 @@ model Rider {
 model Address {
   id         String   @id @default(uuid())
   userId     String
+  vendorId   String? // New field to link Address to Vendor
   label      String?
   line1      String
   line2      String?
@@ -166,9 +168,11 @@ model Address {
   customArea String?
   area       Area?    @relation(fields: [areaId], references: [id])
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendor     Vendor?  @relation(fields: [vendorId], references: [id]) // New relation to Vendor
   orders     Order[]
 
   @@index([userId])
+  @@index([vendorId]) // Index for vendorId
 }
 
 model Vendor {
@@ -179,13 +183,8 @@ model Vendor {
   description        String?
   phone              String?
   email              String?
-  address            String?
-  city               String?
-  country            String?
   coverImage         String?
   createdAt          DateTime                 @default(now())
-  lat                Float?
-  lng                Float?
   reviewsAverage     Float                    @default(0)
   reviewsCount       Int                      @default(0)
   bankAccountNumber  String?
@@ -203,6 +202,8 @@ model Vendor {
   vendorCategories   VendorCategory[]
   openingHours       VendorOpeningHour[]
   vendorPayouts      VendorPayout[]
+  areaId             String?                 // Add missing areaId field
+  area               Area?                    @relation("AreaVendors", fields: [areaId], references: [id]) // Add relation name
 
   // Approval workflow fields
   approvalStatus        VendorApprovalStatus @default(PENDING)
@@ -214,11 +215,11 @@ model Vendor {
   documents             VendorVerificationDocument[]
   submittedForApproval  Boolean              @default(false)
   submittedAt           DateTime?
+  addresses             Address[] // New relation to Address
 
   @@index([name])
-  @@index([city])
+  @@index([areaId])
   @@index([name, description])
-  @@index([lat, lng])
   @@index([approvalStatus])
 }
 

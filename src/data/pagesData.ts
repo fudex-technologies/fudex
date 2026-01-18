@@ -1,5 +1,6 @@
 export const PAGES_DATA = {
     home_page: `/`,
+    qr_code_redirect_page: `/q`,
     search_page: `/search`,
     orders_page: `/orders`,
     profile_page: `/profile`,

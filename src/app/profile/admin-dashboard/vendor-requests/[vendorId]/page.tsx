@@ -166,7 +166,9 @@ export default function VendorRequestDetailsPage({
 											Address
 										</span>
 										<p className='font-medium'>
-											{vendor.address}, {vendor.city}
+											{vendor.addresses && vendor.addresses.length > 0
+												? `${vendor.addresses[0].line1}, ${vendor.addresses[0].city}`
+												: 'Not provided'}
 										</p>
 									</div>
 								</div>
@@ -228,9 +230,6 @@ export default function VendorRequestDetailsPage({
 						(vendor.verificationDocuments &&
 							vendor.verificationDocuments.length > 0) ? (
 							<div className='space-y-3'>
-								{
-									/ * Prefer new documents relation, fallback to old string array * /
-								}
 								{vendor.documents && vendor.documents.length > 0
 									? vendor.documents.map(
 											(doc: any, index: number) => (
