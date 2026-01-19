@@ -8,6 +8,7 @@ import VendorDashboardTopSellingItems from '@/component-sections/vendor-dashboar
 import VendorDashboardAvailableItems from '@/component-sections/vendor-dashboard-section-componnts/Vendor-dashboard-product-list-sections/VendorDashboardAvailableItems';
 import VendorDashboardMobileBottomNav from '@/components/navigation-components/VendorDashboardMobileBottomNav';
 import VendorDashboardRecentOrderCardsSection from '@/component-sections/vendor-dashboard-section-componnts/VendorDashboardOrderListSections/VendorDashboardRecentOrderCardsSection';
+import { Suspense } from 'react';
 
 export default function VendorDashboardPage() {
 	return (
@@ -21,7 +22,9 @@ export default function VendorDashboardPage() {
 			<VendorDashboardQuickActionsSection />
 			<VendorDashboardTopSellingItems />
 			<VendorDashboardAvailableItems />
-			<VendorDashboardMobileBottomNav />
+			<Suspense>
+				<VendorDashboardMobileBottomNav />
+			</Suspense>
 		</PageWrapper>
 	);
 }

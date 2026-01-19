@@ -55,7 +55,7 @@ const VendorListSection = ({ title }: { title?: string }) => {
 			{title && <h2 className='text-lg font-semibold '>{title}</h2>}
 			{vendors.length > 0 ? (
 				<>
-					<div className='w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5'>
+					<div id={"vendors"} className='w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5'>
 						{vendors.map((vendor) => (
 							<VendorCard vendor={vendor} key={vendor.id} />
 						))}

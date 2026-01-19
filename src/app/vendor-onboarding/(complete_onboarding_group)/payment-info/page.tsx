@@ -85,7 +85,7 @@ export default function VendorOnboardingPaymentInfoPage() {
 	}
 
 	return (
-		<PageWrapper>
+		<PageWrapper className='px-5'>
 			<div className='flex items-center gap-5 w-full mb-8'>
 				<GoBackButton
 					link={PAGES_DATA.vendor_onboarding_progress_page}

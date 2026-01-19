@@ -5,10 +5,12 @@ import { useMutation, useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { UseAPICallerOptions } from "./api-hook-types";
 import { OrderStatus } from "@prisma/client";
+import { useSession } from "@/lib/auth-client";
 
 
 export function useOrderingActions() {
     const trpc = useTRPC();
+    const { data: session } = useSession()
 
     const createOrder = (options?: UseAPICallerOptions) =>
         useMutation(
@@ -72,18 +74,26 @@ export function useOrderingActions() {
         // queries
         useGetOrder: (input: { id: string }) =>
             useQuery(trpc.orders.getOrder.queryOptions({ ...input })),
+
         useGetOrderPacks: (input: { id: string }) =>
             useQuery(trpc.orders.getOrderPacks.queryOptions({ ...input })),
+
         useListMyOrders: (input?: { take?: number; skip?: number, status?: OrderStatus[] }) =>
-            useQuery(trpc.orders.listMyOrders.queryOptions(input ?? {})),
+            useQuery(trpc.orders.listMyOrders.queryOptions(
+                input ?? {},
+                { enabled: !!session }
+            )),
+
         useListOngoingOrders: (input?: { take?: number; skip?: number, status?: OrderStatus }) =>
             useQuery(trpc.orders.listMyOrders.queryOptions({
                 ...input, status: ["PREPARING", "PAID", "PENDING", "ASSIGNED", "ACCEPTED", "READY", "OUT_FOR_DELIVERY"]
             })),
+
         useListDeliveredOrders: (input?: { take?: number; skip?: number, status?: OrderStatus }) =>
             useQuery(trpc.orders.listMyOrders.queryOptions({
                 ...input, status: ["DELIVERED"]
             })),
+
         useInfiniteListMyOrders: (input?: { limit?: number; status?: OrderStatus }) =>
             useInfiniteQuery(
                 trpc.orders.listMyOrdersInfinite.infiniteQueryOptions(

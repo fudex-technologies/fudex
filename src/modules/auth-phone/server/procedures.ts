@@ -29,7 +29,8 @@ function generateReferralCode(): string {
     return code;
 }
 
-function signVerificationToken(payload: { phone: string; pvId: string; exp: number }) {
+// Update payload type definition to include optional type and email
+function signVerificationToken(payload: { phone: string; pvId: string; exp: number; type?: 'phone' | 'email'; email?: string }) {
     const json = JSON.stringify(payload);
     const b64 = Buffer.from(json).toString('base64url');
     const sig = crypto.createHmac('sha256', HMAC_SECRET).update(b64).digest('base64url');
@@ -42,7 +43,7 @@ function verifyVerificationToken(token: string) {
         const expected = crypto.createHmac('sha256', HMAC_SECRET).update(b64).digest('base64url');
         if (!sig || expected !== sig) return null;
         const json = Buffer.from(b64, 'base64url').toString('utf8');
-        const payload = JSON.parse(json) as { phone: string; pvId: string; exp: number };
+        const payload = JSON.parse(json) as { phone: string; pvId: string; exp: number; type?: 'phone' | 'email'; email?: string };
         if (Date.now() > payload.exp) return null;
         return payload;
     } catch (e) {
@@ -191,6 +192,100 @@ export const phoneAuthRouter = createTRPCRouter({
             return { token };
         }),
 
+    requestEmailFallbackOtp: publicProcedure
+        .input(z.object({ email: z.string().email(), phone: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+            const email = input.email.toLowerCase().trim();
+            const phone = normalizePhoneNumber(input.phone);
+
+            // Ensure unique phone (still check phone uniqueness even if using email fallback)
+            const existingPhone = await ctx.prisma.user.findFirst({ where: { phone } });
+            if (existingPhone) throw new TRPCError({ code: 'CONFLICT', message: 'PHONE_ALREADY_IN_USE' });
+
+            // Ensure unique email
+            const existingEmail = await ctx.prisma.user.findFirst({ where: { email } });
+            if (existingEmail) throw new TRPCError({ code: 'CONFLICT', message: 'EMAIL_ALREADY_IN_USE' });
+
+            // Rate limit using Verification table
+            const last = await ctx.prisma.verification.findFirst({
+                where: { identifier: email },
+                orderBy: { createdAt: 'desc' }
+            });
+
+            if (last) {
+                const secondsSince = (Date.now() - last.createdAt.getTime()) / 1000;
+                if (secondsSince < RESEND_COOLDOWN_SECONDS) {
+                    throw new TRPCError({
+                        code: 'TOO_MANY_REQUESTS', message: 'RESEND_COOLDOWN'
+                    });
+                }
+            }
+
+            // Generate OTP
+            const otp = generateOTP();
+            const otpHash = await hashOTP(otp);
+            const expiresAt = new Date(Date.now() + VERIFICATION_EXP_MINUTES * 60 * 1000);
+
+            // Create verification record
+            const verificationId = crypto.randomUUID();
+            await ctx.prisma.verification.create({
+                data: {
+                    id: verificationId,
+                    identifier: email,
+                    value: otpHash,
+                    expiresAt,
+                }
+            });
+
+            try {
+                await sendEmailVerification(
+                    email,
+                    otp,
+                    process.env.FUDEX_ONBOARDING_EMAIL as string
+                );
+            } catch (e: any) {
+                throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'EMAIL_SEND_FAILED' });
+            }
+
+            return { success: true, id: verificationId };
+        }),
+
+    verifyEmailFallbackOtp: publicProcedure
+        .input(z.object({ email: z.string().email(), otp: z.string(), phone: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+            const email = input.email.toLowerCase().trim();
+            const phone = normalizePhoneNumber(input.phone);
+
+            const verification = await ctx.prisma.verification.findFirst({
+                where: { identifier: email },
+                orderBy: { createdAt: 'desc' }
+            });
+
+            if (!verification) {
+                throw new TRPCError({ code: 'UNAUTHORIZED', message: 'OTP_INVALID' });
+            }
+
+            if (verification.expiresAt.getTime() < Date.now()) {
+                throw new TRPCError({ code: 'BAD_REQUEST', message: 'OTP_EXPIRED' });
+            }
+
+            const ok = await compareOTP(input.otp, verification.value);
+            if (!ok) {
+                throw new TRPCError({ code: 'UNAUTHORIZED', message: 'OTP_INVALID' });
+            }
+
+            // Issue token with type='email'
+            // We include the phone number so completeSignupPrepare can use it
+            const token = signVerificationToken({
+                phone,
+                email,
+                pvId: verification.id,
+                exp: Date.now() + 15 * 60 * 1000,
+                type: 'email'
+            });
+            return { token };
+        }),
+
     completeSignupPrepare: publicProcedure
         .input(completeRegistrationSchema)
         .mutation(async ({ ctx, input }) => {
@@ -199,11 +294,26 @@ export const phoneAuthRouter = createTRPCRouter({
                 throw new TRPCError({ code: "BAD_REQUEST", message: "INVALID_VERIFICATION_TOKEN" });
             }
             const phone = payload.phone;
-            const pv = await ctx.prisma.phoneVerification.findUnique({
-                where: { id: payload.pvId },
-            });
-            if (!pv || !pv.verified) {
-                throw new TRPCError({ code: "BAD_REQUEST", message: "INVALID_VERIFICATION_TOKEN" });
+
+            // Handle Email Verification Fallback
+            if (payload.type === 'email') {
+                const verification = await ctx.prisma.verification.findUnique({
+                    where: { id: payload.pvId }
+                });
+                if (!verification) {
+                    throw new TRPCError({ code: "BAD_REQUEST", message: "INVALID_VERIFICATION_TOKEN" });
+                }
+                // We don't check .verified boolean for Verification table as it might not exist or be set differently.
+                // The existence of a signed token proves it was verified at time of signing.
+                // But we should check if we want to enforce expiry again? The token itself has expiry.
+            } else {
+                // Standard Phone Verification
+                const pv = await ctx.prisma.phoneVerification.findUnique({
+                    where: { id: payload.pvId },
+                });
+                if (!pv || !pv.verified) {
+                    throw new TRPCError({ code: "BAD_REQUEST", message: "INVALID_VERIFICATION_TOKEN" });
+                }
             }
 
             const existing = await ctx.prisma.user.findFirst({
@@ -266,16 +376,37 @@ export const phoneAuthRouter = createTRPCRouter({
             const payload = verifyVerificationToken(input.token);
             if (!payload) throw new TRPCError({ code: 'BAD_REQUEST', message: 'INVALID_VERIFICATION_TOKEN' });
             const phone = payload.phone;
-            const pv = await ctx.prisma.phoneVerification.findUnique({ where: { id: payload.pvId } });
-            if (!pv || !pv.verified) throw new TRPCError({ code: 'BAD_REQUEST', message: 'INVALID_VERIFICATION_TOKEN' });
+
+            let phoneVerified = false;
+
+            if (payload.type === 'email') {
+                // Verify existence of verification record
+                const verification = await ctx.prisma.verification.findUnique({ where: { id: payload.pvId } });
+                if (!verification) throw new TRPCError({ code: 'BAD_REQUEST', message: 'INVALID_VERIFICATION_TOKEN' });
+                // We trust the token signature.
+                // Phone is NOT verified.
+                phoneVerified = false;
+            } else {
+                const pv = await ctx.prisma.phoneVerification.findUnique({ where: { id: payload.pvId } });
+                if (!pv || !pv.verified) throw new TRPCError({ code: 'BAD_REQUEST', message: 'INVALID_VERIFICATION_TOKEN' });
+                phoneVerified = true;
+            }
 
             // ensure phone not used by another account
             const other = await ctx.prisma.user.findFirst({ where: { phone, id: { not: ctx.user!.id } } });
             if (other) throw new TRPCError({ code: 'CONFLICT', message: 'PHONE_ALREADY_IN_USE' });
 
+            const dataToUpdate: any = { phone, phoneVerified };
+            if (payload.type === 'email' && payload.email) {
+                // Optimistically verify email if it matches account email?
+                // Usually account email is already verified by signup flow if enabled, but here we just used it for fallback.
+                // We can mark emailVerified: true
+                dataToUpdate.emailVerified = true;
+            }
+
             const updated = await ctx.prisma.user.update({
                 where: { id: ctx.user!.id },
-                data: { phone, phoneVerified: true }
+                data: dataToUpdate
             });
             return { success: true, user: updated };
         }),
@@ -352,21 +483,25 @@ export const phoneAuthRouter = createTRPCRouter({
         }),
 
     checkPhoneInUse: publicProcedure
-        .input(z.object({ phone: z.string() }))
+        .input(z.object({ phone: z.string(), email: z.string().optional() }))
         .query(async ({ ctx, input }) => {
+            const email = (input?.email || "").toLowerCase().trim();
             const phone = normalizePhoneNumber(input.phone)
             const other = await ctx.prisma.user.findFirst({ where: { phone } });
-            return { inUse: !!other };
+            const emailNotConnected = (email && other?.email) && (other?.email !== email);
+            return { inUse: !!other, emailNotConnected };
         }),
 
 
 
     checkEmailInUse: publicProcedure
-        .input(z.object({ email: z.string() }))
+        .input(z.object({ email: z.string(), phone: z.string().optional() }))
         .query(async ({ ctx, input }) => {
             const email = input.email.toLowerCase().trim();
+            const phone = input?.phone ? normalizePhoneNumber(input.phone) : ""
             const other = await ctx.prisma.user.findFirst({ where: { email } });
-            return { inUse: !!other };
+            const phoneNotConnected = (phone && other?.phone) && (other?.phone !== phone);
+            return { inUse: !!other, phoneNotConnected };
         }),
 
     // ========================================

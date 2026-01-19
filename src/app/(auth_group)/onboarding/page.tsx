@@ -21,7 +21,6 @@ import ContinueWithGoogleButton, {
 } from './ContinueWithGoogleButton';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-
 interface IFormData {
 	phone: string;
 	email: string;
@@ -58,7 +57,9 @@ export default function OnboardingSignUpPage() {
 		useState<IAvailabilityErrors>({});
 	const [debouncedPhone, setDebouncedPhone] = useState('');
 	const [debouncedEmail, setDebouncedEmail] = useState('');
-	const [referralCodeError, setReferralCodeError] = useState<string | undefined>();
+	const [referralCodeError, setReferralCodeError] = useState<
+		string | undefined
+	>();
 	const router = useRouter();
 	const searchParams = useSearchParams();
 
@@ -67,15 +68,17 @@ export default function OnboardingSignUpPage() {
 
 	// Check referral code validity
 	const refParam = searchParams?.get('ref');
-	const { data: referralCodeData, isLoading: isValidatingReferralCode } = useQuery(
-		trpc.phoneAuth.validateReferralCode.queryOptions(
-			{ referralCode: form.referralCode },
-			{
-				enabled: !!form.referralCode && form.referralCode.length > 0,
-				retry: false,
-			}
-		)
-	);
+	const { data: referralCodeData, isLoading: isValidatingReferralCode } =
+		useQuery(
+			trpc.phoneAuth.validateReferralCode.queryOptions(
+				{ referralCode: form.referralCode },
+				{
+					enabled:
+						!!form.referralCode && form.referralCode.length > 0,
+					retry: false,
+				},
+			),
+		);
 
 	// Auto-fill referral code from query param on mount
 	useEffect(() => {
@@ -94,8 +97,8 @@ export default function OnboardingSignUpPage() {
 					!!debouncedPhone &&
 					validatePhoneNumberRegex(debouncedPhone),
 				retry: false,
-			}
-		)
+			},
+		),
 	);
 
 	// Check email availability
@@ -105,8 +108,8 @@ export default function OnboardingSignUpPage() {
 			{
 				enabled: !!debouncedEmail && validateEmailRegex(debouncedEmail),
 				retry: false,
-			}
-		)
+			},
+		),
 	);
 	const { mutate, isPending } = requestPhoneOtp({
 		silent: false,
@@ -114,7 +117,7 @@ export default function OnboardingSignUpPage() {
 			// persist temporarily
 			localStorage.setItem(
 				localStorageStrings.onboardingSignupString,
-				JSON.stringify({ ...form })
+				JSON.stringify({ ...form }),
 			);
 			router.replace(PAGES_DATA.onboarding_verify_number_page);
 		},
@@ -190,7 +193,9 @@ export default function OnboardingSignUpPage() {
 		availabilityErrors.phone || availabilityErrors.email
 	);
 	const isFormValid =
-		Object.keys(errorsNow).length === 0 && !hasAvailabilityErrors && !isValidatingReferralCode;
+		Object.keys(errorsNow).length === 0 &&
+		!hasAvailabilityErrors &&
+		!isValidatingReferralCode;
 
 	function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -216,7 +221,7 @@ export default function OnboardingSignUpPage() {
 		};
 
 	return (
-		<AuthPageWrapper>
+		<AuthPageWrapper canSkip={false}>
 			<div className='flex flex-col gap-5 w-full max-w-md'>
 				<div className='w-full space-y-2 text-center'>
 					<h1 className='font-bold text-xl'>Welcome</h1>
@@ -294,26 +299,26 @@ export default function OnboardingSignUpPage() {
 						value={form.referralCode}
 						onChange={handleChange('referralCode')}
 						placeholder='Enter a referral code'
-					error={touched.referralCode && errorsNow.referralCode}
-					hint={
-						isValidatingReferralCode
-							? 'Validating code...'
-							: undefined
-					}
-				/>
-				<Button
-					type='submit'
-					variant={'game'}
-					className='w-full py-5'
-					disabled={
-						!isFormValid ||
-						isPending ||
-						isCheckingPhone ||
-						isCheckingEmail ||
-						isValidatingReferralCode
-					}>
-					{isPending ? 'Sending...' : 'Continue'}
-				</Button>
+						error={touched.referralCode && errorsNow.referralCode}
+						hint={
+							isValidatingReferralCode
+								? 'Validating code...'
+								: undefined
+						}
+					/>
+					<Button
+						type='submit'
+						variant={'game'}
+						className='w-full py-5'
+						disabled={
+							!isFormValid ||
+							isPending ||
+							isCheckingPhone ||
+							isCheckingEmail ||
+							isValidatingReferralCode
+						}>
+						{isPending ? 'Sending...' : 'Continue'}
+					</Button>
 				</form>
 				<div className='w-full space-y-2'>
 					<div className='w-full flex items-center gap-5 text-center text-foreground/50'>
@@ -333,7 +338,7 @@ export default function OnboardingSignUpPage() {
 								buttonVariants({
 									variant: 'link',
 									size: 'sm',
-								})
+								}),
 							)}>
 							Log in
 						</Link>

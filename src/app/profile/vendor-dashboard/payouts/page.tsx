@@ -3,6 +3,7 @@ import VendorDashboardRecentPayoutsSection from '@/component-sections/vendor-das
 import VendorDashboardMobileBottomNav from '@/components/navigation-components/VendorDashboardMobileBottomNav';
 import PageWrapper from '@/components/wrapers/PageWrapper';
 import SectionWrapper from '@/components/wrapers/SectionWrapper';
+import { Suspense } from 'react';
 
 export default function VendorDashboardPayoutsPage() {
 	return (
@@ -15,7 +16,9 @@ export default function VendorDashboardPayoutsPage() {
 			</SectionWrapper>
 			<VendorDashboardPayoutDetails />
 			<VendorDashboardRecentPayoutsSection />
-			<VendorDashboardMobileBottomNav />
+			<Suspense>
+				<VendorDashboardMobileBottomNav />
+			</Suspense>
 		</PageWrapper>
 	);
 }

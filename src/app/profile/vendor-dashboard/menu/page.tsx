@@ -9,7 +9,7 @@ import {
 	AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Trash2, Package } from 'lucide-react';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import ConfirmationAlertDialogue from '@/components/ConfirmationAlertDialogue';
 import VendorDashboardMobileBottomNav from '@/components/navigation-components/VendorDashboardMobileBottomNav';
@@ -20,6 +20,7 @@ import EditProductModal from '@/component-sections/VendorProductsManagementSecti
 import CreateProductItemModal from '@/component-sections/VendorProductsManagementSection/CreateProductItemModal';
 import ProductItemListItem from './ProductItemListItem';
 import { MenuInfoTrigger } from '@/components/vendor-dashboard-components/MenuInfoTrigger';
+import GoBackButton from '@/components/GoBackButton';
 
 export default function VendorDashboardMenuPage() {
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -80,6 +81,7 @@ export default function VendorDashboardMenuPage() {
 				<div className='flex-1 w-full flex md:h-screen items-center justify-center py-10 '>
 					<div className='flex items-center gap-10 w-full px-5 text-white'>
 						<div className='flex items-center gap-4'>
+							<GoBackButton />
 							<h1 className='font-semibold text-xl'>Menu</h1>
 							<MenuInfoTrigger />
 						</div>
@@ -227,7 +229,9 @@ export default function VendorDashboardMenuPage() {
 					buttonVariant='destructive'
 				/>
 			)}
+			<Suspense>
 			<VendorDashboardMobileBottomNav />
+			</Suspense>
 		</PageWrapper>
 	);
 }

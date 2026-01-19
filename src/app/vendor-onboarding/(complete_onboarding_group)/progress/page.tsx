@@ -72,7 +72,7 @@ export default function VendorOnboardingProgressPage() {
 		}
 	};
 
-	if (isLoading || isSessionLoading) {
+	if (isSessionLoading) {
 		return (
 			<VendorOnboardingFormsWrapper>
 				<div className='flex flex-col gap-5 w-full max-w-md'>
@@ -198,7 +198,7 @@ export default function VendorOnboardingProgressPage() {
 						completed={progress?.steps.menuItemsAdded || false}
 						loading={isLoading}
 						title='Add menu items'
-						link={PAGES_DATA.vendor_dashboard_menu_page}
+						link={`${PAGES_DATA.vendor_dashboard_menu_page}?noNav=true`}
 					/>
 				</div>
 

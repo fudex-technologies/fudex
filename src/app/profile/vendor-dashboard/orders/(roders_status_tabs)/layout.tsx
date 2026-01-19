@@ -15,7 +15,7 @@ import {
 	XCircle,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { BsBicycle } from 'react-icons/bs';
 
 export default function VendorOrderListByStatussLayout({
@@ -89,13 +89,15 @@ export default function VendorOrderListByStatussLayout({
 					className={'border-b mb-0! p-0'}
 					onTabChange={(id) => {
 						router.push(
-							`${PAGES_DATA.vendor_dashboard_orders_page}/${id}`
+							`${PAGES_DATA.vendor_dashboard_orders_page}/${id}`,
 						);
 					}}
 				/>
 			</div>
 			{children}
-			<VendorDashboardMobileBottomNav />
+			<Suspense>
+				<VendorDashboardMobileBottomNav />
+			</Suspense>
 		</PageWrapper>
 	);
 }
