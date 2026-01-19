@@ -36,70 +36,29 @@ export default function CreatePasswordPage() {
 	const { setPasswordAndCompleteSignUp } = useAuthActions();
 	const trpc = useTRPC();
 
-	// Mutation for confirming referral
-	const { mutate: confirmReferral } = useMutation(
-		trpc.phoneAuth.confirmReferral.mutationOptions({
-			onError: (err) => {
-				console.error('Referral confirmation failed:', err);
-			},
-			retry: false,
-		})
-	);
-
 	const { mutate, isPending } = setPasswordAndCompleteSignUp({
 		password: form.password,
 		token: token as string,
 		redirectTo: PAGES_DATA.onboarding_set_address_page,
 		referralCode: signupPayload?.referralCode,
 		onSuccess: () => {
-			// Store referral code in localStorage to be used after redirect
-			if (signupPayload?.referralCode) {
-				localStorage.setItem(
-					'referralCodeToConfirm',
-					signupPayload.referralCode
-				);
-			}
 			localStorage.removeItem(localStorageStrings.onboardingSignupString);
 			localStorage.removeItem(
-				localStorageStrings.onboardingVerificationToken
+				localStorageStrings.onboardingVerificationToken,
 			);
 		},
 	});
 
 	useEffect(() => {
 		const t = localStorage.getItem(
-			localStorageStrings.onboardingVerificationToken
+			localStorageStrings.onboardingVerificationToken,
 		);
 		setToken(t);
 		const raw = localStorage.getItem(
-			localStorageStrings.onboardingSignupString
+			localStorageStrings.onboardingSignupString,
 		);
 		if (raw) setSignupPayload(JSON.parse(raw));
 	}, []);
-
-	// Confirm referral after user is created and has logged in
-	useEffect(() => {
-		const confirmReferralIfNeeded = async () => {
-			const referralCode = localStorage.getItem('referralCodeToConfirm');
-			if (referralCode && !isPending) {
-				try {
-					// Get current user from session
-					const session = await fetch('/api/auth/session').then((r) => r.json());
-					if (session?.user?.id) {
-						confirmReferral({
-							referralCode,
-							newUserId: session.user.id,
-						});
-						localStorage.removeItem('referralCodeToConfirm');
-					}
-				} catch (err) {
-					console.error('Failed to confirm referral:', err);
-				}
-			}
-		};
-		
-		confirmReferralIfNeeded();
-	}, [isPending, confirmReferral]);
 
 	const validate = () => {
 		const newErrors: any = {};
