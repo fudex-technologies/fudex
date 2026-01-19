@@ -174,6 +174,18 @@ export function useAuthActions() {
                     // 2️⃣ Attach verified phone (now authenticated)
                     await attachPhoneMut.mutateAsync({ token: options.token });
 
+                    // 3️⃣ Confirm referral if code exists (Best effort)
+                    if (options.referralCode && newUserId) {
+                        try {
+                            await confirmReferralMut.mutateAsync({
+                                referralCode: options.referralCode,
+                                newUserId
+                            });
+                        } catch (error) {
+                            console.error("Referral confirmation failed silently:", error);
+                        }
+                    }
+
                     if (!options?.silent) toast.success("Account created successfully");
                     options?.onSuccess?.(data);
                     router.replace(options?.redirectTo || PAGES_DATA.home_page)
@@ -241,6 +253,15 @@ export function useAuthActions() {
                             ? err.message
                             : 'Something went wrong',
                 });
+            },
+            retry: false,
+        })
+    );
+
+    const confirmReferralMut = useMutation(
+        trpc.phoneAuth.confirmReferral.mutationOptions({
+            onError: (err) => {
+                console.error("Failed to confirm referral", err);
             },
             retry: false,
         })

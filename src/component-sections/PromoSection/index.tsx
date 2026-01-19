@@ -1,6 +1,7 @@
 'use client';
 
 import { useOrderingActions } from '@/api-hooks/useOrderingActions';
+import { useProfileActions } from '@/api-hooks/useProfileActions';
 import { buttonVariants } from '@/components/ui/button';
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
 import { PromoCarousel } from '@/components/ui/promo-carousel';
@@ -13,21 +14,37 @@ import Link from 'next/link';
 const PromoSection = () => {
 	const { data: session } = useSession();
 	const { useListMyOrders } = useOrderingActions();
+	const { getReferralStats } = useProfileActions();
+
+	const { data: referralData, isLoading: isLoadingReferralData } =
+		getReferralStats();
+	const confirmedReferred = referralData?.confirmedReferred || 0;
 	const { data: successfulOrders, isLoading } = useListMyOrders({
 		take: 3,
 		status: ['DELIVERED'],
 	});
 
+	const referralPromoStillValid =
+		!isLoadingReferralData && confirmedReferred <= 5;
 	const promoStillValid =
 		!isLoading && successfulOrders && successfulOrders?.length <= 3;
 	return (
 		<SectionWrapper className='w-full'>
 			<PromoCarousel>
-				<ReferralPromo
-					textLine1='Refer 5 friends and get'
-					textLine2='1 Free Delivery'
-					buttonLabel='Refer Now!'
-				/>
+				{!session ? (
+					<ReferralPromo
+						textLine1='Refer 5 friends and get'
+						textLine2='1 Free Delivery'
+						buttonLabel='Refer Now!'
+					/>
+				) : session && referralPromoStillValid ? (
+					<ReferralPromo
+						textLine1='Refer 5 friends and get'
+						textLine2='1 Free Delivery'
+						buttonLabel='Refer Now!'
+					/>
+				) : null}
+
 				{!session ? (
 					<ThreeOrdersPromo
 						textLine1='Make 3 Orders, and get'

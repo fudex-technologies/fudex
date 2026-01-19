@@ -118,7 +118,23 @@ export const orderRouter = createTRPCRouter({
             }
 
             // Calculate delivery fee based on area and current time
-            const deliveryFee = await calculateDeliveryFee(ctx.prisma, address.areaId);
+            let deliveryFee = await calculateDeliveryFee(ctx.prisma, address.areaId);
+
+            // Promo check: Free delivery after 3 delivered orders or for users with 5 confirmed referrals
+            const successfulOrdersCount = await ctx.prisma.order.count({
+                where: { userId, status: "DELIVERED" }
+            });
+            const confirmedReferredCount = await ctx.prisma.referral.count({
+                where: { referrerUserId: userId, status: "CONFIRMED" }
+            });
+
+            // Match frontend logic: length === 3 (of take 3) for orders, and exactly 5 for referrals
+            const orderPromoInitiated = successfulOrdersCount === 3;
+            const referralPromoInitiated = confirmedReferredCount === 5;
+
+            if (orderPromoInitiated || referralPromoInitiated) {
+                deliveryFee = 0;
+            }
 
             // Get service fee from platform settings
             const serviceFee = await getServiceFee(ctx.prisma);

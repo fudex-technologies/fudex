@@ -5,13 +5,11 @@ import GoBackButton from '@/components/GoBackButton';
 import MobileBottomNav from '@/components/navigation-components/MobileBottomNav';
 import { Button } from '@/components/ui/button';
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
-import { Label } from '@/components/ui/label';
 import PageWrapper from '@/components/wrapers/PageWrapper';
 import SectionWrapper from '@/components/wrapers/SectionWrapper';
 import { cn } from '@/lib/utils';
-import { Link, RefreshCw, Copy } from 'lucide-react';
+import { RefreshCw, Copy } from 'lucide-react';
 import { useProfileActions } from '@/api-hooks/useProfileActions';
-import { useState } from 'react';
 import { toast } from 'sonner';
 
 export default function ReferralPage() {
@@ -24,7 +22,6 @@ export default function ReferralPage() {
 				refetch();
 			},
 		});
-	const [copied, setCopied] = useState(false);
 
 	const referralCode = referralData?.referralCode || '';
 	const confirmedReferred = referralData?.confirmedReferred || 0;
@@ -160,7 +157,10 @@ export default function ReferralPage() {
 									style={{ width: `${percentageFilled}%` }}
 								/>
 								<p className='relative z-10 text-sm font-semibold'>
-									{confirmedReferred}/{totalCapacity}
+									{confirmedReferred >= totalCapacity
+										? totalCapacity
+										: confirmedReferred}
+									/{totalCapacity}
 								</p>
 							</div>
 							<ImageWithFallback
