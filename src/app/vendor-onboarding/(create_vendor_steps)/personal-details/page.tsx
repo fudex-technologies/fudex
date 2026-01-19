@@ -12,11 +12,11 @@ import { useTRPC } from '@/trpc/client';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { PAGES_DATA } from '@/data/pagesData';
 import { localStorageStrings } from '@/constants/localStorageStrings';
 import { useSession } from '@/lib/auth-client';
 import { Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { PAGES_DATA } from '@/data/pagesData';
 
 interface IFormData {
 	phone: string;
@@ -62,6 +62,7 @@ export default function VendorOnboardingPersonalDetailsPage() {
 	const [debouncedPhone, setDebouncedPhone] = useState('');
 	const [debouncedEmail, setDebouncedEmail] = useState('');
 	const [showExistingUserAlert, setShowExistingUserAlert] = useState(false);
+	const [showSplitIdentityAlert, setShowSplitIdentityAlert] = useState(false);
 	const [existingUserData, setExistingUserData] = useState<any>(null);
 
 	// Pre-fill form data if user is logged in
@@ -83,16 +84,16 @@ export default function VendorOnboardingPersonalDetailsPage() {
 		trpc.vendors.getVendorOnboardingProgress.queryOptions(undefined, {
 			enabled: !!session?.user,
 			retry: false,
-		})
+		}),
 	);
 
 	useEffect(() => {
 		if (vendorProgress?.hasVendor) {
 			// Already has vendor, redirect to progress or dashboard
 			if (vendorProgress.approvalStatus === 'APPROVED') {
-				router.push('/vendor/dashboard');
+				router.push(PAGES_DATA.vendor_dashboard_page);
 			} else {
-				router.push('/vendor-onboarding/progress');
+				router.push(PAGES_DATA.vendor_onboarding_progress_page);
 			}
 		}
 	}, [vendorProgress, router]);
@@ -100,29 +101,29 @@ export default function VendorOnboardingPersonalDetailsPage() {
 	// Check phone availability
 	const { data: phoneCheckData, isLoading: isCheckingPhone } = useQuery(
 		trpc.phoneAuth.checkPhoneInUse.queryOptions(
-			{ phone: debouncedPhone },
+			{ phone: debouncedPhone, email: debouncedEmail },
 			{
 				enabled:
 					!!debouncedPhone &&
 					validatePhoneNumberRegex(debouncedPhone) &&
 					!session?.user,
 				retry: false,
-			}
-		)
+			},
+		),
 	);
 
 	// Check email availability
 	const { data: emailCheckData, isLoading: isCheckingEmail } = useQuery(
 		trpc.phoneAuth.checkEmailInUse.queryOptions(
-			{ email: debouncedEmail },
+			{ email: debouncedEmail, phone: debouncedPhone },
 			{
 				enabled:
 					!!debouncedEmail &&
 					validateEmailRegex(debouncedEmail) &&
 					!session?.user,
 				retry: false,
-			}
-		)
+			},
+		),
 	);
 
 	// Check user by email or phone for linking flow
@@ -138,8 +139,8 @@ export default function VendorOnboardingPersonalDetailsPage() {
 					!session?.user &&
 					(phoneCheckData?.inUse || emailCheckData?.inUse),
 				retry: false,
-			}
-		)
+			},
+		),
 	);
 
 	// Debounce phone input
@@ -164,6 +165,27 @@ export default function VendorOnboardingPersonalDetailsPage() {
 	useEffect(() => {
 		if (session?.user) return; // Skip if logged in
 
+		// Split Identity Check
+		const isSplitIdentity =
+			phoneCheckData?.inUse &&
+			emailCheckData?.inUse &&
+			(phoneCheckData?.emailNotConnected ||
+				emailCheckData?.phoneNotConnected);
+
+		if (isSplitIdentity) {
+			setAvailabilityErrors({
+				phone: 'Phone and Email belong to different accounts',
+				email: 'Phone and Email belong to different accounts',
+			});
+			setShowSplitIdentityAlert(true);
+			setShowExistingUserAlert(false); // Can't link if they are different
+			setExistingUserData(null);
+			return;
+		} else {
+			setShowSplitIdentityAlert(false);
+		}
+
+		// Phone Check
 		if (phoneCheckData?.inUse && userCheckData?.exists) {
 			setAvailabilityErrors((prev) => ({
 				...prev,
@@ -174,18 +196,16 @@ export default function VendorOnboardingPersonalDetailsPage() {
 		} else if (phoneCheckData?.inUse) {
 			setAvailabilityErrors((prev) => ({
 				...prev,
-				phone: 'This phone number is already in use',
+				phone: 'This phone number is already in use, if its your account, you can link it as a vendor account',
 			}));
 			setShowExistingUserAlert(false);
 		} else {
 			setAvailabilityErrors((prev) => ({ ...prev, phone: undefined }));
-			setShowExistingUserAlert(false);
+			// Only clear alert if email check doesn't need it
+			if (!emailCheckData?.inUse) setShowExistingUserAlert(false);
 		}
-	}, [phoneCheckData, userCheckData, session?.user]);
 
-	useEffect(() => {
-		if (session?.user) return; // Skip if logged in
-
+		// Email Check
 		if (emailCheckData?.inUse && userCheckData?.exists) {
 			setAvailabilityErrors((prev) => ({
 				...prev,
@@ -196,14 +216,15 @@ export default function VendorOnboardingPersonalDetailsPage() {
 		} else if (emailCheckData?.inUse) {
 			setAvailabilityErrors((prev) => ({
 				...prev,
-				email: 'This email is already in use',
+				email: 'This email is already in use, if its your account, you can link it as a vendor account',
 			}));
 			setShowExistingUserAlert(false);
 		} else {
 			setAvailabilityErrors((prev) => ({ ...prev, email: undefined }));
-			setShowExistingUserAlert(false);
+			// Only clear alert if phone check doesn't need it
+			if (!phoneCheckData?.inUse) setShowExistingUserAlert(false);
 		}
-	}, [emailCheckData, userCheckData, session?.user]);
+	}, [phoneCheckData, emailCheckData, userCheckData, session?.user]);
 
 	const validate = () => {
 		const newErrors: any = {};
@@ -248,11 +269,11 @@ export default function VendorOnboardingPersonalDetailsPage() {
 		// Store form data in localStorage
 		localStorage.setItem(
 			localStorageStrings.vendorOnboardinPersonalDetailsstring,
-			JSON.stringify(form)
+			JSON.stringify(form),
 		);
 
 		// Navigate to location page
-		router.push('/vendor-onboarding/location');
+		router.push(PAGES_DATA.vendor_onboarding_location_page);
 	};
 
 	return (
@@ -267,14 +288,27 @@ export default function VendorOnboardingPersonalDetailsPage() {
 					</p>
 				</div>
 
-				{showExistingUserAlert && existingUserData && (
-					<Alert className='mb-4 border-blue-500 bg-blue-50'>
-						<Info className='h-4 w-4 text-blue-500' />
-						<AlertDescription className='text-sm text-blue-700'>
-							An account with this{' '}
-							{emailCheckData?.inUse ? 'email' : 'phone'} already
-							exists. If this is your account, you can proceed to
-							link it as a vendor account.
+				{showExistingUserAlert &&
+					existingUserData &&
+					!showSplitIdentityAlert && (
+						<Alert className='mb-4 border-primary bg-blue-50'>
+							<Info className='h-4 w-4 text-primary' />
+							<AlertDescription className='text-sm text-primary'>
+								An account with this{' '}
+								{emailCheckData?.inUse ? 'email' : 'phone'}{' '}
+								already exists. If this is your account, you can
+								proceed to link it as a vendor account.
+							</AlertDescription>
+						</Alert>
+					)}
+
+				{showSplitIdentityAlert && (
+					<Alert className='mb-4 border-red-500 bg-red-50'>
+						<Info className='h-4 w-4 text-red-500' />
+						<AlertDescription className='text-sm text-red-700'>
+							The email and phone number you entered belong to
+							different accounts. Please use details from a single
+							account or use new details found in neither.
 						</AlertDescription>
 					</Alert>
 				)}
@@ -313,14 +347,13 @@ export default function VendorOnboardingPersonalDetailsPage() {
 								className='w-5 h-5'
 							/>
 						}
-						error={
-							touched.phone &&
-							(errorsNow.phone || availabilityErrors.phone)
-						}
+						error={touched.phone && errorsNow.phone}
 						hint={
 							isCheckingPhone
 								? 'Checking availability...'
-								: undefined
+								: availabilityErrors.phone
+									? availabilityErrors.phone
+									: undefined
 						}
 						required
 						disabled={!!session?.user}
@@ -331,14 +364,13 @@ export default function VendorOnboardingPersonalDetailsPage() {
 						value={form.email}
 						onChange={handleChange('email')}
 						placeholder='example@gmail.com'
-						error={
-							touched.email &&
-							(errorsNow.email || availabilityErrors.email)
-						}
+						error={touched.email && errorsNow.email}
 						hint={
 							isCheckingEmail
 								? 'Checking availability...'
-								: undefined
+								: availabilityErrors.email
+									? availabilityErrors.email
+									: undefined
 						}
 						required
 						disabled={!!session?.user}
@@ -360,16 +392,12 @@ export default function VendorOnboardingPersonalDetailsPage() {
 								value: 'restaurant',
 							},
 							{
-								label: 'Grocery',
-								value: 'grocery',
+								label: 'Pastery Shop',
+								value: 'pastery_shop',
 							},
 							{
-								label: 'Pharmacy',
-								value: 'pharmacy',
-							},
-							{
-								label: 'Supermarket',
-								value: 'supermarket',
+								label: 'Grocery Store',
+								value: 'grocery_store',
 							},
 							{
 								label: 'Other',

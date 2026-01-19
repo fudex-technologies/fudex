@@ -61,8 +61,8 @@ export default function VendorOnboardingPhoneVerificationPage() {
 	};
 
 	return (
-		<PageWrapper>
-			<div className='flex items-center gap-10 w-full'>
+		<PageWrapper className='px-5'>
+			<div className='flex flex-wrap items-center gap-10 w-full'>
 				<GoBackButton
 					link={PAGES_DATA.vendor_onboarding_progress_page}
 				/>

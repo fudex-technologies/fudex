@@ -99,8 +99,13 @@ export const vendorRouter = createTRPCRouter({
                         name: { contains: input.q, mode: "insensitive" }
                     },
                     { description: { contains: input.q, mode: "insensitive" } }
-                ]
-            } : {};
+                ],
+                AND: {
+                    approvalStatus: 'APPROVED' // Only show approved vendors
+                }
+            } : {
+                approvalStatus: 'APPROVED' // Only show approved vendors
+            };// Only show approved vendors
 
             if (input?.ratingFilter) {
                 where.reviewsAverage = {
@@ -1542,6 +1547,7 @@ export const vendorRouter = createTRPCRouter({
                 _count: {
                     select: {
                         productItems: true,
+                        products: true,
                     }
                 }
             }
@@ -1571,17 +1577,17 @@ export const vendorRouter = createTRPCRouter({
         }
 
         // Check if vendor has addresses
-        const hasAddresses = await ctx.prisma.address.findFirst({
-            where: { vendorId: vendor.id }
-        });
+        // const hasAddresses = await ctx.prisma.address.findFirst({
+        //     where: { vendorId: vendor.id }
+        // });
 
         // Calculate progress
         const steps = {
             accountCreated: true, // Account is created if vendor exists
-            profileCompleted: !!(hasAddresses && vendor.coverImage),
-            paymentInfoAdded: !!(vendor.bankAccountNumber),
+            profileCompleted: !!(vendor?.phone && vendor?.documents.length > 0 && vendor.coverImage),
+            paymentInfoAdded: !!(vendor.bankAccountNumber && vendor?.bankAccountName && vendor?.bankCode),
             operationsSetup: (vendor.openingHours?.length || 0) > 0,
-            menuItemsAdded: (vendor._count?.productItems || 0) > 0,
+            menuItemsAdded: (vendor._count?.products + vendor._count?.productItems || 0) > 0,
             identityVerified: (vendor.documents?.length || 0) > 0,
         };
 

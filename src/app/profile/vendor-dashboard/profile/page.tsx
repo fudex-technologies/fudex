@@ -2,6 +2,7 @@ import VendorDashboardProfileMenu from '@/component-sections/vendor-dashboard-se
 import VendorDashboardProfileTopSection from '@/component-sections/vendor-dashboard-section-componnts/VendorDashboardProfileSections/VendorDashboardProfileTopSection';
 import VendorDashboardMobileBottomNav from '@/components/navigation-components/VendorDashboardMobileBottomNav';
 import PageWrapper from '@/components/wrapers/PageWrapper';
+import { Suspense } from 'react';
 
 export default function VendorProfilePage() {
 	return (
@@ -9,8 +10,9 @@ export default function VendorProfilePage() {
 			<VendorDashboardProfileTopSection />
 			<VendorDashboardProfileMenu />
 			{/* <VendorProfileSection /> */}
-			<VendorDashboardMobileBottomNav />
+			<Suspense>
+				<VendorDashboardMobileBottomNav />
+			</Suspense>
 		</PageWrapper>
 	);
 }
-

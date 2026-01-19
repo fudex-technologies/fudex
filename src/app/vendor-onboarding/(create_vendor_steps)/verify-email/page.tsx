@@ -38,10 +38,10 @@ export default function VendorOnboardingVerifyEmail() {
 				// Check if user already exists
 				if ((data as any)?.isExistingUser) {
 					// Existing user - skip password creation, go to terms
-					router.push('/vendor-onboarding/vendor-terms');
+					router.push(PAGES_DATA.vendor_onboarding_terms_page);
 				} else {
 					// New user - needs to create password
-					router.push('/vendor-onboarding/create-password');
+					router.push(PAGES_DATA.vendor_onboarding_create_password_page);
 				}
 			},
 		});

@@ -39,13 +39,8 @@ export default function Home() {
 				</Link>
 			</SectionWrapper>
 			<CategorySelectionSection />
-			<PromoSection
-				textLine1='Make 3 Orders, and get'
-				textLine2='1 Free Delivery'
-				image='/assets/promo.png'
-				buttonLabel='Order Now!'
-			/>
-			<PopularRestaurantsSection />
+			<PromoSection />
+			{/* <PopularRestaurantsSection /> */}
 			<Suspense
 				fallback={
 					<VendorListSectionSkeleton title={'Available Food Spots'} />

@@ -10,7 +10,6 @@ import { localStorageStrings } from "@/constants/localStorageStrings";
 import { signIn, signUp } from "@/lib/auth-client";
 
 export function useVendorOnboardingActions() {
-    const router = useRouter();
     const trpc = useTRPC();
 
     // Request email verification OTP

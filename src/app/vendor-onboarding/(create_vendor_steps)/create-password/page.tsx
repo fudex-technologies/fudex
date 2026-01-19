@@ -64,7 +64,7 @@ export default function VendorOnboardingCreatePasswordPage() {
 
 		if (!detailsRaw || !tokenRaw) {
 			// Redirect back if missing data
-			router.push('/vendor-onboarding/personal-details');
+			router.push(PAGES_DATA.vendor_onboarding_personal_details_page);
 			return;
 		}
 
@@ -73,7 +73,7 @@ export default function VendorOnboardingCreatePasswordPage() {
 			setVerificationToken(tokenRaw);
 		} catch (e) {
 			console.error('Failed to load onboarding data:', e);
-			router.push('/vendor-onboarding/personal-details');
+			router.push(PAGES_DATA.vendor_onboarding_personal_details_page);
 		}
 	}, [router]);
 

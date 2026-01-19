@@ -1,10 +1,11 @@
-"use client"
+'use client';
 
 import { useProfileActions } from '@/api-hooks/useProfileActions';
 import InputField, { SelectField } from '@/components/InputComponent';
 import { Button } from '@/components/ui/button';
 import VendorOnboardingFormsWrapper from '@/components/wrapers/VendorOnboardingFormsWrapper';
 import { localStorageStrings } from '@/constants/localStorageStrings';
+import { PAGES_DATA } from '@/data/pagesData';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -88,13 +89,13 @@ export default function VendorOnboardingLocation() {
 
 			localStorage.setItem(
 				localStorageStrings.vendorOnboardingLocationData,
-				JSON.stringify(locationData)
+				JSON.stringify(locationData),
 			);
 
 			toast.success('Location saved');
 
 			// Navigate to email verification
-			router.push('/vendor-onboarding/verify-email');
+			router.push(PAGES_DATA.vendor_onboarding_verify_email_page);
 		} catch (error) {
 			toast.error('Failed to save location');
 			console.error('Location save error:', error);
@@ -105,7 +106,9 @@ export default function VendorOnboardingLocation() {
 		<VendorOnboardingFormsWrapper>
 			<div className='w-full'>
 				<div className='w-full my-3 space-y-2'>
-					<p className='font-semibold text-xl'>Confirm your location</p>
+					<p className='font-semibold text-xl'>
+						Confirm your location
+					</p>
 					<p className='font-light text-foreground/50 leading-[100%]'>
 						This helps us determine delivery areas and fees
 					</p>
