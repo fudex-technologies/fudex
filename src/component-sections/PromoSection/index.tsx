@@ -29,7 +29,7 @@ const PromoSection = () => {
 	const promoStillValid =
 		!isLoading && successfulOrders && successfulOrders?.length <= 3;
 	return (
-		<SectionWrapper className='w-full'>
+		<SectionWrapper className='w-full p-0! overflow-hidden flex items-center justify-center'>
 			<PromoCarousel>
 				{!session ? (
 					<ReferralPromo
