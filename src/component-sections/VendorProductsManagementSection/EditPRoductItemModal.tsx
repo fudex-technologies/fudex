@@ -15,7 +15,7 @@ import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { vercelBlobFolderStructure } from '@/data/vercelBlobFolders';
-import { Edit, Plus } from 'lucide-react';
+import { Edit, Plus, Upload, X } from 'lucide-react';
 import React, { useRef, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -71,7 +71,7 @@ export default function EditProductItemModal({
 			uploadFormData.append('file', file);
 			uploadFormData.append(
 				'folder',
-				vercelBlobFolderStructure.vendorProductImages
+				vercelBlobFolderStructure.vendorProductImages,
 			);
 
 			const response = await fetch('/api/upload', {
@@ -105,6 +105,12 @@ export default function EditProductItemModal({
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
+
+		if (formData.images.length === 0) {
+			toast.error('Please upload at least one image');
+			return;
+		}
+
 		updateDetailsMutation.mutate({
 			id: item.id,
 			data: {
@@ -132,6 +138,81 @@ export default function EditProductItemModal({
 					<DialogTitle>Edit Menu Variation</DialogTitle>
 				</DialogHeader>
 				<form onSubmit={handleSubmit} className='space-y-4'>
+					<div className='space-y-2'>
+						<Label className='text-base font-semibold'>
+							Product Image *
+						</Label>
+						<div
+							className={`relative flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-6 transition-all cursor-pointer hover:bg-muted/50 ${
+								formData.images.length > 0
+									? 'border-primary/50'
+									: 'border-muted-foreground/25'
+							}`}
+							onClick={() => {
+								if (
+									formData.images.length === 0 &&
+									!isUploading
+								) {
+									fileInputRef.current?.click();
+								}
+							}}>
+							{formData.images.length > 0 ? (
+								<div className='relative w-full aspect-video md:aspect-[2.4/1] overflow-hidden rounded-lg'>
+									<ImageWithFallback
+										src={formData.images[0]}
+										alt='Product preview'
+										className='w-full h-full object-cover'
+									/>
+									<Button
+										type='button'
+										variant='destructive'
+										size='icon'
+										className='absolute top-2 right-2 h-8 w-8 rounded-full shadow-lg'
+										onClick={(e) => {
+											e.stopPropagation();
+											handleRemoveImage();
+										}}
+										disabled={
+											updateImageMutation.isPending
+										}>
+										<X size={16} />
+									</Button>
+								</div>
+							) : (
+								<div className='flex flex-col items-center py-4 space-y-3'>
+									<div className='p-4 rounded-full bg-primary/10 text-primary'>
+										{isUploading ? (
+											<div className='h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent' />
+										) : (
+											<Upload size={32} />
+										)}
+									</div>
+									<div className='text-center'>
+										<p className='text-sm font-medium'>
+											{isUploading
+												? 'Uploading image...'
+												: 'Click to upload product image'}
+										</p>
+										<p className='text-xs text-muted-foreground mt-1'>
+											PNG, JPG or WEBP (Max. 5MB)
+										</p>
+									</div>
+								</div>
+							)}
+							<input
+								ref={fileInputRef}
+								type='file'
+								accept='image/*'
+								className='hidden'
+								onChange={(e) => {
+									const file = e.target.files?.[0];
+									if (file) handleFileUpload(file);
+								}}
+								disabled={isUploading}
+							/>
+						</div>
+					</div>
+
 					<div className='space-y-2'>
 						<Label htmlFor='edit-name'>Item Name *</Label>
 						<Input
@@ -187,56 +268,6 @@ export default function EditProductItemModal({
 							</select>
 						</div>
 					)}
-					<div className='space-y-2'>
-						<Label>Image</Label>
-						<div className='flex gap-2 flex-wrap'>
-							{formData.images.length > 0 ? (
-								<div className='relative'>
-									<ImageWithFallback
-										src={formData.images[0]}
-										alt={`Product image`}
-										className='w-20 h-20 object-cover rounded border'
-									/>
-									<Button
-										type='button'
-										variant='destructive'
-										size='sm'
-										className='absolute -top-2 -right-2 h-5 w-5 p-0'
-										onClick={handleRemoveImage}
-										disabled={
-											updateImageMutation.isPending
-										}>
-										×
-									</Button>
-								</div>
-							) : (
-								<Button
-									type='button'
-									variant='outline'
-									size='sm'
-									onClick={() =>
-										fileInputRef.current?.click()
-									}
-									disabled={isUploading}>
-									{isUploading ? (
-										'Uploading...'
-									) : (
-										<Plus size={16} />
-									)}
-								</Button>
-							)}
-							<input
-								ref={fileInputRef}
-								type='file'
-								accept='image/*'
-								className='hidden'
-								onChange={(e) => {
-									const file = e.target.files?.[0];
-									if (file) handleFileUpload(file);
-								}}
-							/>
-						</div>
-					</div>
 					<div className='flex gap-4'>
 						<div className='flex items-center gap-2'>
 							<Checkbox

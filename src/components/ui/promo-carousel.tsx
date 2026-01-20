@@ -5,7 +5,6 @@ import {
 	animate,
 	motion,
 	useMotionValue,
-	useMotionValueEvent,
 } from 'motion/react';
 import React, { useEffect, useRef, useState } from 'react';
 
@@ -111,7 +110,7 @@ export const PromoCarousel = ({
 	}, [idx, isOverflowing, itemWidth, gap, childrenCount, x]);
 
 	return (
-		<div ref={containerRef} className={cn('w-full ', className)}>
+		<div ref={containerRef} className={cn('w-full overflow-x-hidden px-4', className)}>
 			{!isOverflowing ? (
 				// Centered Static Layout
 				<div
