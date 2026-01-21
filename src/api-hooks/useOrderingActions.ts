@@ -57,6 +57,22 @@ export function useOrderingActions() {
             })
         );
 
+    const confirmOrderDelivery = (options?: UseAPICallerOptions) =>
+        useMutation(
+            trpc.orders.confirmOrderDelivery.mutationOptions({
+                onSuccess: (data) => {
+                    if (!options?.silent) toast.success("Order delivery confirmed");
+                    options?.onSuccess?.(data);
+                },
+                onError: (err: unknown) => {
+                    if (!options?.silent) toast.error("Failed to confirm order delivery", { description: err instanceof Error ? err.message : String(err) });
+                    options?.onError?.(err);
+                },
+                retry: false,
+            })
+        );
+
+
     const useGetNumberOfMyDeliveredOrders = () => {
         const { data } = useQuery(trpc.orders.listMyOrders.queryOptions({ status: ["DELIVERED"] }))
         return data?.length || 0
@@ -70,6 +86,7 @@ export function useOrderingActions() {
         createOrder,
         createPayment,
         verifyPayment,
+        confirmOrderDelivery,
 
         // queries
         useGetOrder: (input: { id: string }) =>
@@ -86,7 +103,7 @@ export function useOrderingActions() {
 
         useListOngoingOrders: (input?: { take?: number; skip?: number, status?: OrderStatus }) =>
             useQuery(trpc.orders.listMyOrders.queryOptions({
-                ...input, status: ["PREPARING", "PAID", "PENDING", "ASSIGNED", "ACCEPTED", "READY", "OUT_FOR_DELIVERY"]
+                ...input, status: ["PREPARING", "PAID", "ASSIGNED", "ACCEPTED", "READY", "OUT_FOR_DELIVERY"]
             })),
 
         useListDeliveredOrders: (input?: { take?: number; skip?: number, status?: OrderStatus }) =>

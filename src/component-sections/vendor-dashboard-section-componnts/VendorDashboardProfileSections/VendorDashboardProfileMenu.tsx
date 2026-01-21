@@ -90,7 +90,7 @@ const VendorDashboardProfileMenu = () => {
 					menuItems={[
 						{
 							icon: <Headset />,
-							title: 'Contect support',
+							title: 'Contact support',
 							// link: PAGES_DATA.profile_notifications_page,
 							protected: false,
 							show: true,
