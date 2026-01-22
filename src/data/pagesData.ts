@@ -80,6 +80,7 @@ export const PAGES_DATA = {
 
     // vendor dashboard pages
     vendor_dashboard_page: `/profile/vendor-dashboard`,
+    vendor_dashboard_request_bike_page: `/profile/vendor-dashboard/request-bike`,
     vendor_dashboard_menu_page: `/profile/vendor-dashboard/menu`,
     vendor_dashboard_payouts_page: `/profile/vendor-dashboard/payouts`,
     vendor_dashboard_payouts_history_page: `/profile/vendor-dashboard/payouts/earnings`,
