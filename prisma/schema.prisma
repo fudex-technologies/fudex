@@ -482,6 +482,25 @@ model PhoneVerification {
   @@index([createdAt])
 }
 
+model Referral {
+  id              String   @id @default(uuid())
+  referrerUserId  String   // User who has the referral code
+  referredUserId  String   // User who signed up with code
+  referralCode    String   // The code used
+  status          ReferralStatus @default(PENDING) // PENDING, CONFIRMED
+  confirmedAt     DateTime? // When referred user completed signup
+  createdAt       DateTime @default(now())
+  
+  referrer        User     @relation("ReferrerReferrals", fields: [referrerUserId], references: [id], onDelete: Cascade)
+  referred        User     @relation("ReferredByReferrals", fields: [referredUserId], references: [id], onDelete: Cascade)
+  
+  @@unique([referredUserId]) // One user can only be referred by one person
+  @@index([referralCode])
+  @@index([referrerUserId])
+  @@index([status])
+}
+
+
 model PlatformSetting {
   id    String @id @default(uuid())
   key   String @unique
@@ -559,22 +578,4 @@ enum VendorAvailabilityStatus {
 enum ReferralStatus {
   PENDING
   CONFIRMED
-}
-
-model Referral {
-  id              String   @id @default(uuid())
-  referrerUserId  String   // User who has the referral code
-  referredUserId  String   // User who signed up with code
-  referralCode    String   // The code used
-  status          ReferralStatus @default(PENDING) // PENDING, CONFIRMED
-  confirmedAt     DateTime? // When referred user completed signup
-  createdAt       DateTime @default(now())
-  
-  referrer        User     @relation("ReferrerReferrals", fields: [referrerUserId], references: [id], onDelete: Cascade)
-  referred        User     @relation("ReferredByReferrals", fields: [referredUserId], references: [id], onDelete: Cascade)
-  
-  @@unique([referredUserId]) // One user can only be referred by one person
-  @@index([referralCode])
-  @@index([referrerUserId])
-  @@index([status])
 }

@@ -1,3 +1,5 @@
+'use client';
+
 import { Badge } from '../ui/badge';
 import { ChevronRight, Repeat } from 'lucide-react';
 import { Separator } from '../ui/separator';
@@ -6,7 +8,8 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { PAGES_DATA } from '@/data/pagesData';
 import { Button } from '../ui/button';
-import { OrderStatus } from '@prisma/client';
+import ConfirmOrderDeliveryModal from './ConfirmOrderDeliveryModal';
+import { useState } from 'react';
 
 const OngoingOrderItem = ({
 	vendorName,
@@ -38,6 +41,7 @@ const OngoingOrderItem = ({
 }) => {
 	// If orderId is short (8 chars), it's a display ID, otherwise use as-is
 	const linkOrderId = orderId.length === 8 ? orderId : orderId;
+	const [open, setOpen] = useState(false);
 
 	return (
 		<Link
@@ -46,7 +50,7 @@ const OngoingOrderItem = ({
 					? PAGES_DATA.completed_order_info_page(linkOrderId)
 					: PAGES_DATA.order_info_page(linkOrderId)
 			}
-			className='p-5 border border-foreground/50 rounded-md flex flex-col gap-3'>
+			className='p-5 border border-foreground/50 rounded-md flex flex-col gap-3 h-fit'>
 			<div className='flex gap-2'>
 				<div className=''>
 					<ImageWithFallback
@@ -69,7 +73,7 @@ const OngoingOrderItem = ({
 								orderStatus === 'on-the-way' &&
 									'text-chart-3 bg-chart-3/10',
 								orderStatus === 'delivered' &&
-									'text-primary bg-primary/10'
+									'text-primary bg-primary/10',
 							)}>
 							{orderStatus}
 						</Badge>
@@ -95,6 +99,20 @@ const OngoingOrderItem = ({
 					)}
 				</div>
 			</div>
+
+			{orderStatus === 'on-the-way' && (
+				<>
+					<Separator
+						orientation='horizontal'
+						className='bg-foreground/50'
+					/>
+					<ConfirmOrderDeliveryModal 
+						open={open} 
+						setOpen={setOpen}
+						orderId={orderId}
+					/>
+				</>
+			)}
 
 			{orderStatus === 'delivered' && (
 				<>

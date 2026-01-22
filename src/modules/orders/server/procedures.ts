@@ -482,6 +482,40 @@ export const orderRouter = createTRPCRouter({
             };
         }),
 
+    // user confirm delivery status of order and change status to delivered
+    confirmOrderDelivery: protectedProcedure
+        .input(z.object({
+            orderId: z.string()
+        }))
+        .mutation(async ({ ctx, input }) => {
+            const userId = ctx.user!.id;
+
+            // Find order and verify ownership and ensure order is for user
+            const order = await ctx.prisma.order.findUnique({
+                where: {
+                    id: input.orderId,
+                    userId: userId,
+                    status: {
+                        in: ["OUT_FOR_DELIVERY", "ASSIGNED"],
+                    },
+                },
+            });
+            if (!order) throw new Error("Order not found");
+            if (order.userId !== userId) throw new Error("Unauthorized: Order does not belong to you");
+
+            // Update order status to DELIVERED
+            const updated = await ctx.prisma.order.update({
+                where: { id: input.orderId },
+                data: { status: "DELIVERED" }
+            });
+
+            // Update order payout eligibility
+            await ensureOrderPayoutEligibility(ctx.prisma, input.orderId);
+
+            return updated;
+        }),
+
+
     // Admin/restaurant update status
     updateStatus: adminProcedure
         .input(z.object({

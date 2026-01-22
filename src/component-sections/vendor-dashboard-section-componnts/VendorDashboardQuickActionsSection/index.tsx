@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { PAGES_DATA } from '@/data/pagesData';
 import { useSession } from '@/lib/auth-client';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { BsBicycle } from 'react-icons/bs';
 
 
 const VendorDashboardQuickActionsSection = () => {
@@ -18,6 +19,14 @@ const VendorDashboardQuickActionsSection = () => {
 			<h2 className="px-5">Quick Actions</h2>
 			<ScrollArea className='w-screen max-w-[1400px] whitespace-nowrap'>
 				<div className='flex w-max space-x-4 mx-5'>
+					<Link
+						href={PAGES_DATA.vendor_dashboard_request_bike_page}
+						className='max-w-250px w-fit flex flex-col gap-3 items-center text-center text-[#2563EB] p-3'>
+						<div className='p-3 flex items-center justify-center rounded-full bg-[#2564eb35] text-[#2563EB]'>
+							<BsBicycle size={24} />
+						</div>
+						<p>Request delivery bike</p>
+					</Link>
 					<Link
 						href={PAGES_DATA.vendor_dashboard_menu_page}
 						className='max-w-250px w-fit flex flex-col gap-3 items-center text-center text-[#52AA24] p-3'>
