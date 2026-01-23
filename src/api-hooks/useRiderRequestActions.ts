@@ -83,5 +83,7 @@ export function useRiderRequestActions() {
                     refetchOnWindowFocus: true,
                 }
             )),
+        useGetRiderRequestDetails: (requestId: string) =>
+            useQuery(trpc.riderRequests.getRiderRequestDetails.queryOptions({ requestId })),
     };
 }

@@ -196,4 +196,33 @@ export const riderRequestRouter = createTRPCRouter({
                 },
             });
         }),
+    getRiderRequestDetails: vendorProcedure
+        .input(z.object({
+            requestId: z.string(),
+        }))
+        .query(async ({ ctx, input }) => {
+            const vendor = await ctx.prisma.vendor.findFirst({
+                where: { ownerId: ctx.user!.id }
+            });
+            if (!vendor) throw new TRPCError({ code: "NOT_FOUND", message: "Vendor not found" });
+
+            const request = await ctx.prisma.riderRequest.findUnique({
+                where: {
+                    id: input.requestId,
+                    vendorId: vendor.id
+                },
+                include: {
+                    items: {
+                        include: {
+                            area: true
+                        }
+                    },
+                    assignedRider: true,
+                }
+            });
+
+            if (!request) throw new TRPCError({ code: "NOT_FOUND", message: "Request not found" });
+
+            return request;
+        }),
 });

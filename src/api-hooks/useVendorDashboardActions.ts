@@ -167,6 +167,8 @@ export function useVendorDashboardActions() {
             useQuery(trpc.vendors.getMyProducts.queryOptions(input ?? {})),
         useGetMyProductItems: (input?: { take?: number; skip?: number; productId?: string }) =>
             useQuery(trpc.vendors.getMyProductItems.queryOptions(input ?? {})),
+        useGetMyTopSellingProductItems: (input?: { take?: number }) =>
+            useQuery(trpc.vendors.getMyTopSellingProductItems.queryOptions(input ?? {})),
         useGetMyOrders: (input?: { take?: number; skip?: number; status?: OrderStatus[] }) =>
             useQuery(trpc.vendors.getMyOrders.queryOptions(
                 { ...input },

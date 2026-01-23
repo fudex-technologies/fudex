@@ -68,7 +68,7 @@ const VendorDetailsSection = ({
 
 	const isOpen = isVendorOpen(
 		vendor?.openingHours,
-		vendor?.availabilityStatus
+		vendor?.availabilityStatus,
 	);
 	const nextOpenTime = getNextOpenTime(vendor?.openingHours || []);
 	const nextCloseTime = getNextCloseTime(vendor?.openingHours || []);
@@ -77,8 +77,11 @@ const VendorDetailsSection = ({
 		<SectionWrapper className='space-y-5'>
 			<div className='space-y-2'>
 				<h1 className='text-2xl font-bold'>{vendor.name}</h1>
+				{vendor.description && (
+					<p className='text-foreground/80'>{vendor.description}</p>
+				)}
 				<div className='flex gap-5 text-[14px]'>
-					<Link
+					{/* <Link
 						href={PAGES_DATA.single_vendor_reviews_page(vendor.id)}
 						className='flex items-center gap-1'>
 						<FaStar
@@ -94,12 +97,8 @@ const VendorDetailsSection = ({
 								</span>
 							)}
 						</p>
-					</Link>
-					{/* {vendor.description && (
-						<p className='text-foreground/80'>
-							{vendor.description}
-						</p>
-					)} */}
+					</Link> */}
+
 					{isOpen && nextCloseTime && (
 						<Link
 							href={PAGES_DATA.single_vendor_info_page(vendor.id)}

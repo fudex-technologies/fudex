@@ -1,4 +1,4 @@
-"use client"
+'use client';
 
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -7,10 +7,13 @@ import { useVendorDashboardActions } from '@/api-hooks/useVendorDashboardActions
 import { Skeleton } from '@/components/ui/skeleton';
 
 const VendorDashboardTopSellingItems = () => {
-	const { useGetMyProductItems } = useVendorDashboardActions();
-	const { data: items = [], isLoading } = useGetMyProductItems({
+	const { useGetMyTopSellingProductItems } = useVendorDashboardActions();
+	const { data, isLoading } = useGetMyTopSellingProductItems({
 		take: 10,
 	});
+
+	const items = data?.items || [];
+	const hasSales = data?.hasCompletedOrders || false;
 
 	if (isLoading) {
 		return (
@@ -28,6 +31,11 @@ const VendorDashboardTopSellingItems = () => {
 				</div>
 			</div>
 		);
+	}
+
+	// Only show this section if the vendor has actual sales (completed/delivered orders)
+	if (!hasSales) {
+		return null;
 	}
 
 	return (
@@ -55,8 +63,8 @@ const VendorDashboardTopSellingItems = () => {
 						className='w-[150px]'
 						alt='plate of food'
 					/>
-					<p className='text-foreground/50 text-center py-4 px-5'>
-						Add menu to see top selling items
+					<p className='text-foreground/50 text-center py-4 px-5 text-sm'>
+						Keep selling to see your top performing items here!
 					</p>
 				</div>
 			)}

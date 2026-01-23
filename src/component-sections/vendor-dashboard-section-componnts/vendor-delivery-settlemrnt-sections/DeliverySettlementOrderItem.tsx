@@ -1,4 +1,6 @@
+import { PAGES_DATA } from '@/data/pagesData';
 import { formatCurency, formatDate } from '@/lib/commonFunctions';
+import Link from 'next/link';
 import { AlertCircle, CheckCircle2, Clock } from 'lucide-react';
 import { BsBicycle } from 'react-icons/bs';
 
@@ -28,7 +30,11 @@ const DeliverySettlementOrderItem = ({
 	};
 
 	return (
-		<div className='w-full py-4 flex items-center justify-between gap-3 border-b last:border-0 hover:bg-muted/5 transition-colors'>
+		<Link
+			href={PAGES_DATA.vendor_dashboard_rider_request_details_page(
+				order.id,
+			)}
+			className='w-full py-4 flex items-center justify-between gap-3 border-b last:border-0 hover:bg-muted/5 transition-colors cursor-pointer'>
 			<div className='flex gap-3 items-center'>
 				<div
 					className={`p-2.5 flex items-center justify-center rounded-full ${
@@ -65,7 +71,7 @@ const DeliverySettlementOrderItem = ({
 					{order.settlementStatus.replace('_', ' ')}
 				</span>
 			</div>
-		</div>
+		</Link>
 	);
 };
 

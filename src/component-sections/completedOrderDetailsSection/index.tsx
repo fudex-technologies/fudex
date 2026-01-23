@@ -64,9 +64,9 @@ const CompletedOrderDetailsSection = ({ orderId }: { orderId: string }) => {
 	const deliveryAddress = order.address
 		? `${order.address.line1}${
 				order.address.line2 ? ', ' + order.address.line2 : ''
-		  }, ${order.address.city}${
+			}, ${order.address.city}${
 				order.address.state ? ', ' + order.address.state : ''
-		  }`
+			}`
 		: 'Address not available';
 
 	return (
@@ -187,7 +187,7 @@ const CompletedOrderDetailsSection = ({ orderId }: { orderId: string }) => {
 					<div className='w-full h-full flex gap-5 items-center justify-between max-w-lg'>
 						<a
 							href={`https://wa.me/${normalizePhoneNumber(
-								FUDEX_PHONE_NUMBER
+								FUDEX_PHONE_NUMBER,
 							)}?text=Hello%20FUDEX%20`}
 							target='__blacnk'
 							rel='noreferrer'
@@ -196,11 +196,11 @@ const CompletedOrderDetailsSection = ({ orderId }: { orderId: string }) => {
 									variant: 'outline',
 									className:
 										'border-primary text-primary flex-1 py-6',
-								})
+								}),
 							)}>
 							Need help?
 						</a>
-						{order.vendorId && (
+						{/* {order.vendorId && (
 							<Link
 								href={PAGES_DATA.single_vendor_rate_page(
 									order.vendorId
@@ -213,7 +213,7 @@ const CompletedOrderDetailsSection = ({ orderId }: { orderId: string }) => {
 								)}>
 								Rate your order
 							</Link>
-						)}
+						)} */}
 					</div>
 				</div>
 			</>
