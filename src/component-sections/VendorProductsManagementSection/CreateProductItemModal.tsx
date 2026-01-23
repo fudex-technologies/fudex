@@ -150,8 +150,6 @@ function CreateProductItemModal({
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
-		console.log(formData);
-
 		if (createdProductItemId) {
 			return;
 		}
@@ -316,6 +314,7 @@ function CreateProductItemModal({
 									}))
 								}
 								className='w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm'>
+								<option value=''>Select a category</option>
 								{categories.map((c) => (
 									<option key={c.id} value={c.id}>
 										{c.name}

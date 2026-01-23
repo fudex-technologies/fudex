@@ -9,8 +9,6 @@ import { useState, useEffect } from 'react';
 import { localStorageStrings } from '@/constants/localStorageStrings';
 import { validatepasswordRegex } from '@/lib/commonFunctions';
 import { useAuthActions } from '@/api-hooks/useAuthActions';
-import { useTRPC } from '@/trpc/client';
-import { useMutation } from '@tanstack/react-query';
 
 interface IFormData {
 	password: string;
@@ -34,7 +32,6 @@ export default function CreatePasswordPage() {
 	const [signupPayload, setSignupPayload] = useState<any>(null);
 
 	const { setPasswordAndCompleteSignUp } = useAuthActions();
-	const trpc = useTRPC();
 
 	const { mutate, isPending } = setPasswordAndCompleteSignUp({
 		password: form.password,

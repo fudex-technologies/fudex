@@ -1231,7 +1231,7 @@ export const vendorRouter = createTRPCRouter({
                 price: z.number(),
                 currency: z.string().optional().default("NGN"),
                 images: z.array(z.string()).optional(),
-                categories: z.array(z.string()).min(1),
+                categories: z.array(z.string()).optional().default([]),
                 isActive: z.boolean().optional().default(true),
                 inStock: z.boolean().optional().default(true),
             })
@@ -1253,10 +1253,6 @@ export const vendorRouter = createTRPCRouter({
                 where: { id: { in: input.categories } },
                 select: { id: true },
             });
-
-            if (existingCategories.length !== input.categories.length) {
-                throw new Error("One or more categories are invalid");
-            }
 
             const slug = await generateUniqueSlug(ctx.prisma, input.name, input.vendorId);
 
