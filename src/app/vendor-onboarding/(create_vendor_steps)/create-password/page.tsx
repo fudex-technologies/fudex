@@ -31,7 +31,7 @@ export default function VendorOnboardingCreatePasswordPage() {
 	const [touched, setTouched] = useState<IFormTouchedData>({});
 	const [personalDetails, setPersonalDetails] = useState<any>(null);
 	const [verificationToken, setVerificationToken] = useState<string | null>(
-		null
+		null,
 	);
 
 	const { setPasswordAndCompleteVendorSignup } = useVendorOnboardingActions();
@@ -56,13 +56,16 @@ export default function VendorOnboardingCreatePasswordPage() {
 	// Load personal details and verification token from localStorage
 	useEffect(() => {
 		const detailsRaw = localStorage.getItem(
-			localStorageStrings.vendorOnboardinPersonalDetailsstring
+			localStorageStrings.vendorOnboardinPersonalDetailsstring,
 		);
 		const tokenRaw = localStorage.getItem(
-			localStorageStrings.vendorOnboardingEmailVerificationToken
+			localStorageStrings.vendorOnboardingEmailVerificationToken,
 		);
 
-		if (!detailsRaw || !tokenRaw) {
+		if (
+			!detailsRaw
+			// || !tokenRaw
+		) {
 			// Redirect back if missing data
 			router.push(PAGES_DATA.vendor_onboarding_personal_details_page);
 			return;
