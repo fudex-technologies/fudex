@@ -11,6 +11,7 @@ import TabComponent from '@/components/TabComponent';
 import { useState, useEffect } from 'react';
 import { useTRPC } from '@/trpc/client';
 import { useQuery } from '@tanstack/react-query';
+import { BsBicycle } from 'react-icons/bs';
 
 export default function AdminDashboardLayout({
 	children,
@@ -34,6 +35,8 @@ export default function AdminDashboardLayout({
 			const path = window.location.pathname;
 			if (path.includes('/settings')) {
 				setActiveTab('settings');
+			} else if (path.includes('/settlements')) {
+				setActiveTab('settlements');
 			} else if (path.includes('/payouts')) {
 				setActiveTab('payouts');
 			} else if (path.includes('/vendor-requests')) {
@@ -77,7 +80,7 @@ export default function AdminDashboardLayout({
 					tabs={[
 						{
 							id: 'requests',
-							label: 'Requests',
+							label: 'Verification Requests',
 							icon: <FileCheck size={18} />,
 						},
 						{
@@ -89,6 +92,11 @@ export default function AdminDashboardLayout({
 							id: 'payouts',
 							label: 'Payouts',
 							icon: <Landmark size={18} />,
+						},
+						{
+							id: 'settlements',
+							label: 'Delivery Settlements',
+							icon: <BsBicycle size={18} />,
 						},
 						{
 							id: 'settings',
@@ -107,6 +115,10 @@ export default function AdminDashboardLayout({
 						} else if (id === 'requests') {
 							router.push(
 								PAGES_DATA.admin_dashboard_vendor_requests_page
+							);
+						} else if (id === 'settlements') {
+							router.push(
+								PAGES_DATA.admin_dashboard_settlements_page
 							);
 						} else {
 							router.push(PAGES_DATA.admin_dashboard_areas_page);

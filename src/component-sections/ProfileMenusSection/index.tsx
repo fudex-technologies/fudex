@@ -147,7 +147,7 @@ const ProfileMenusSection = () => {
 						},
 					]}
 				/>
-				<MenuListComponent
+				{/* <MenuListComponent
 					menuTitle='Payment'
 					menuItems={[
 						{
@@ -157,7 +157,7 @@ const ProfileMenusSection = () => {
 							protected: true,
 						},
 					]}
-				/>
+				/> */}
 
 				<MenuListComponent
 					menuTitle='More'

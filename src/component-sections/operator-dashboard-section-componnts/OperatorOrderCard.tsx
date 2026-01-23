@@ -294,24 +294,23 @@ export default function OperatorOrderCard({
 								<SelectValue placeholder='Assign Rider' />
 							</SelectTrigger>
 							<SelectContent>
-								{riders?.length > 0 ? (
-									<>
-										{riders
-											.filter((r) => r.isActive)
-											.map((rider) => (
-												<SelectItem
-													key={rider.id}
-													value={rider.id}>
-													{rider.name}{' '}
-													{rider.phone &&
-														`(${rider.phone})`}
-												</SelectItem>
-											))}
-									</>
+								{riders?.length > 0 &&
+								riders.filter((r) => r.isActive).length > 0 ? (
+									riders
+										.filter((r) => r.isActive)
+										.map((rider) => (
+											<SelectItem
+												key={rider.id}
+												value={rider.id}>
+												{rider.name}{' '}
+												{rider.phone &&
+													`(${rider.phone})`}
+											</SelectItem>
+										))
 								) : (
-									<SelectItem value='' disabled>
+									<div className='text-center text-sm text-muted-foreground p-4'>
 										No Riders Available
-									</SelectItem>
+									</div>
 								)}
 							</SelectContent>
 						</Select>
