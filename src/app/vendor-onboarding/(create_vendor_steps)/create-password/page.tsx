@@ -49,7 +49,7 @@ export default function VendorOnboardingCreatePasswordPage() {
 			lastName: personalDetails?.lastName || '',
 			phone: personalDetails?.phone || '',
 			businessName: personalDetails?.businessName || '',
-			businessType: personalDetails?.businessType || '',
+			businessDescription: personalDetails?.businessDescription || '',
 			verificationToken: verificationToken || '',
 		});
 

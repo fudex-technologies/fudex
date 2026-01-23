@@ -104,7 +104,7 @@ export function useVendorOnboardingActions() {
             lastName: string;
             phone: string;
             businessName: string;
-            businessType: string;
+            businessDescription: string;
             verificationToken: string;
         }
     ) => {
@@ -141,7 +141,7 @@ export function useVendorOnboardingActions() {
                     firstName: options.firstName,
                     lastName: options.lastName,
                     businessName: options.businessName,
-                    businessType: options.businessType,
+                    businessDescription: options.businessDescription,
                     verificationToken: options.verificationToken,
                     address: locationData.businessAddress,
                     areaId: locationData.areaId,
@@ -179,7 +179,7 @@ export function useVendorOnboardingActions() {
             firstName: string;
             lastName: string;
             businessName: string;
-            businessType: string;
+            businessDescription: string;
             verificationToken: string;
         }
     ) => {

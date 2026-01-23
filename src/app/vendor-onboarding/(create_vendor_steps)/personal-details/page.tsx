@@ -1,6 +1,6 @@
 'use client';
 
-import InputField, { SelectField } from '@/components/InputComponent';
+import InputField, { SelectField, TextAreaField } from '@/components/InputComponent';
 import { Button } from '@/components/ui/button';
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
 import VendorOnboardingFormsWrapper from '@/components/wrapers/VendorOnboardingFormsWrapper';
@@ -24,7 +24,7 @@ interface IFormData {
 	firstName: string;
 	lastName: string;
 	businessName: string;
-	businessType: string;
+	businessDescription: string;
 }
 
 interface IFormTouchedData {
@@ -33,7 +33,7 @@ interface IFormTouchedData {
 	firstName?: boolean;
 	lastName?: boolean;
 	businessName?: boolean;
-	businessType?: boolean;
+	businessDescription?: boolean;
 }
 
 interface IAvailabilityErrors {
@@ -47,7 +47,7 @@ const initialFormData = {
 	firstName: '',
 	lastName: '',
 	businessName: '',
-	businessType: '',
+	businessDescription: '',
 };
 
 export default function VendorOnboardingPersonalDetailsPage() {
@@ -74,7 +74,7 @@ export default function VendorOnboardingPersonalDetailsPage() {
 				firstName: (session.user as any).firstName || '',
 				lastName: (session.user as any).lastName || '',
 				businessName: '',
-				businessType: '',
+				businessDescription: '',
 			});
 		}
 	}, [session]);
@@ -244,8 +244,6 @@ export default function VendorOnboardingPersonalDetailsPage() {
 		if (!form.lastName) newErrors.lastName = 'Last name is required';
 		if (!form.businessName)
 			newErrors.businessName = 'Business name is required';
-		if (!form.businessType)
-			newErrors.businessType = 'Business type is required';
 		if (!form.email) newErrors.email = 'Email is required';
 		else if (!validateEmailRegex(form.email))
 			newErrors.email = 'Invalid email';
@@ -265,7 +263,7 @@ export default function VendorOnboardingPersonalDetailsPage() {
 
 	const handleChange =
 		(field: string) =>
-		(e: React.ChangeEvent<HTMLInputElement> | string) => {
+		(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | string) => {
 			setForm({
 				...form,
 				[field]: typeof e === 'string' ? e : e.target.value,
@@ -397,7 +395,15 @@ export default function VendorOnboardingPersonalDetailsPage() {
 						required
 						className=''
 					/>
-					<SelectField
+					<TextAreaField
+						type='text'
+						label='Business Description'
+						value={form.businessDescription}
+						onChange={handleChange('businessDescription')}
+						placeholder='Enter your business description here'
+						error={touched.businessDescription && errorsNow.businessDescription}
+					/>
+					{/* <SelectField
 						data={[
 							{
 								label: 'Restaurant',
@@ -422,7 +428,7 @@ export default function VendorOnboardingPersonalDetailsPage() {
 						onChange={handleChange('businessType')}
 						error={touched.businessType && errorsNow.businessType}
 						required
-					/>
+					/> */}
 
 					<Button
 						type='submit'
