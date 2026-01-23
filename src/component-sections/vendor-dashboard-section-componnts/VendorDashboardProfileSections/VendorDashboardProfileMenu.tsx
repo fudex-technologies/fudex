@@ -17,6 +17,7 @@ import {
 	Wallet2,
 } from 'lucide-react';
 import { useState } from 'react';
+import { FaMoneyBill } from 'react-icons/fa';
 
 const VendorDashboardProfileMenu = () => {
 	const [confirmLogout, setConfirmLogout] = useState(false);
@@ -59,7 +60,7 @@ const VendorDashboardProfileMenu = () => {
 							icon: <Heart />,
 							title: 'Ratings & reviews',
 							link: PAGES_DATA.single_vendor_reviews_page(
-								vendor?.id || ''
+								vendor?.id || '',
 							),
 							protected: true,
 							show: true,
@@ -80,6 +81,13 @@ const VendorDashboardProfileMenu = () => {
 							icon: <Wallet2 />,
 							title: 'Earning summary',
 							link: PAGES_DATA.vendor_dashboard_payouts_history_page,
+							protected: true,
+							show: true,
+						},
+						{
+							icon: <FaMoneyBill />,
+							title: 'Delivery Settlement',
+							link: PAGES_DATA.vendor_dashboard_delivery_settlement_page,
 							protected: true,
 							show: true,
 						},

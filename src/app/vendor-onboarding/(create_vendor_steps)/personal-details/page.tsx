@@ -186,7 +186,13 @@ export default function VendorOnboardingPersonalDetailsPage() {
 		}
 
 		// Phone Check
-		if (phoneCheckData?.inUse && userCheckData?.exists) {
+		if (phoneCheckData?.isVendor) {
+			setAvailabilityErrors((prev) => ({
+				...prev,
+				phone: 'This phone number is already used by a vendor account. Please use a different number or log in if you have access.',
+			}));
+			setShowExistingUserAlert(false);
+		} else if (phoneCheckData?.inUse && userCheckData?.exists) {
 			setAvailabilityErrors((prev) => ({
 				...prev,
 				phone: undefined, // Clear error, show alert instead
@@ -206,7 +212,13 @@ export default function VendorOnboardingPersonalDetailsPage() {
 		}
 
 		// Email Check
-		if (emailCheckData?.inUse && userCheckData?.exists) {
+		if (emailCheckData?.isVendor) {
+			setAvailabilityErrors((prev) => ({
+				...prev,
+				email: 'This email is already used by a vendor account. Please use a different email or log in if you have access.',
+			}));
+			setShowExistingUserAlert(false);
+		} else if (emailCheckData?.inUse && userCheckData?.exists) {
 			setAvailabilityErrors((prev) => ({
 				...prev,
 				email: undefined, // Clear error, show alert instead

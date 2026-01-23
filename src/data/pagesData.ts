@@ -39,6 +39,7 @@ export const PAGES_DATA = {
     admin_dashboard_vendor_requests_page: `/profile/admin-dashboard/vendor-requests`,
     admin_dashboard_vendor_request_details_page: (id: string) => `/profile/admin-dashboard/vendor-requests/${id}`,
     admin_dashboard_settings_page: `/profile/admin-dashboard/settings`,
+    admin_dashboard_settlements_page: `/profile/admin-dashboard/settlements`,
 
     // operator dashboard pages
     operator_dashboard_page: `/profile/operator-dashboard`,
@@ -46,6 +47,7 @@ export const PAGES_DATA = {
     operator_dashboard_riders_page: `/profile/operator-dashboard/riders`,
     operator_dashboard_categories_page: `/profile/operator-dashboard/categories`,
     operator_dashboard_vendors_page: `/profile/operator-dashboard/vendors`,
+    operator_dashboard_rider_requests_page: `/profile/operator-dashboard/rider-requests`,
 
     // auth pages
     onboarding_step_one_page: `/onboarding/step-1`,
@@ -86,6 +88,8 @@ export const PAGES_DATA = {
     vendor_dashboard_payouts_history_page: `/profile/vendor-dashboard/payouts/earnings`,
     vendor_dashboard_single_payout_page: (id: string) => `/profile/vendor-dashboard/payouts/${id}`,
 
+
+
     vendor_dashboard_orders_page: `/profile/vendor-dashboard/orders`,
     vendor_dashboard_new_orders_page: `/profile/vendor-dashboard/orders/new`,
     vendor_dashboard_ongoing_orders_page: `/profile/vendor-dashboard/orders/ongoing`,
@@ -100,4 +104,5 @@ export const PAGES_DATA = {
     vendor_dashboard_profile_addresses_page: `/profile/vendor-dashboard/profile/addresses`,
     vendor_dashboard_profile_opening_hours_page: `/profile/vendor-dashboard/profile/opening-hours`,
     vendor_dashboard_profile_bank_details_page: `/profile/vendor-dashboard/profile/bank-details`,
+    vendor_dashboard_delivery_settlement_page: `/profile/vendor-dashboard/profile/delivery-settlement`,
 }

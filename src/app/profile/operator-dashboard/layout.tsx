@@ -11,6 +11,7 @@ import TabComponent from '@/components/TabComponent';
 import { useState, useEffect } from 'react';
 import { useTRPC } from '@/trpc/client';
 import { useQuery } from '@tanstack/react-query';
+import { BsBicycle } from 'react-icons/bs';
 
 export default function OperatorDashboardLayout({
 	children,
@@ -34,6 +35,8 @@ export default function OperatorDashboardLayout({
 			const path = window.location.pathname;
 			if (path.includes('/riders')) {
 				setActiveTab('riders');
+			} else if (path.includes('/rider-requests')) {
+				setActiveTab('rider-requests');
 			} else if (path.includes('/categories')) {
 				setActiveTab('categories');
 			} else if (path.includes('/vendors')) {
@@ -79,6 +82,11 @@ export default function OperatorDashboardLayout({
 							id: 'orders',
 							label: 'Orders',
 							icon: <ShoppingBag size={18} />,
+						},
+						{
+							id: 'rider-requests',
+							label: 'Rider Requests',
+							icon: <BsBicycle size={18} />,
 						},
 						{
 							id: 'riders',

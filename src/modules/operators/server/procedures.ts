@@ -1,6 +1,6 @@
 import { createTRPCRouter, operatorProcedure, protectedProcedure } from "@/trpc/init";
 import { z } from "zod";
-import { OrderStatus } from "@prisma/client";
+import { OrderStatus, RiderRequestStatus } from "@prisma/client";
 import { normalizePhoneNumber } from "@/lib/commonFunctions";
 
 export const operatorRouter = createTRPCRouter({
@@ -433,7 +433,7 @@ export const operatorRouter = createTRPCRouter({
         }))
         .mutation(async ({ ctx, input }) => {
             const { id, city, ...rest } = input;
-            
+
             // Handle city field - update or create address
             if (city) {
                 const existingAddress = await ctx.prisma.address.findFirst({
@@ -454,7 +454,7 @@ export const operatorRouter = createTRPCRouter({
                         where: { id },
                         select: { ownerId: true }
                     });
-                    
+
                     if (vendor?.ownerId) {
                         await ctx.prisma.address.create({
                             data: {
@@ -473,6 +473,66 @@ export const operatorRouter = createTRPCRouter({
             return ctx.prisma.vendor.update({
                 where: { id },
                 data: rest
+            });
+        }),
+
+    // List rider requests (operators can view all rider requests)
+    listRiderRequests: operatorProcedure
+        .input(z.object({
+            limit: z.number().min(1).max(100).nullish(),
+            cursor: z.string().nullish(), // requestId
+            status: z.nativeEnum(RiderRequestStatus).nullish(),
+        }))
+        .query(async ({ ctx, input }) => {
+            const limit = input.limit ?? 50;
+            const { cursor, status } = input;
+
+            const where: any = {};
+            if (status) where.status = status;
+
+            const items = await ctx.prisma.riderRequest.findMany({
+                take: limit + 1,
+                where,
+                cursor: cursor ? { id: cursor } : undefined,
+                orderBy: { createdAt: "desc" },
+                include: {
+                    vendor: true,
+                    items: {
+                        include: {
+                            area: true
+                        }
+                    },
+                    assignedRider: true,
+                }
+            });
+
+            let nextCursor: typeof cursor | undefined = undefined;
+            if (items.length > limit) {
+                const nextItem = items.pop();
+                nextCursor = nextItem!.id;
+            }
+            return {
+                items,
+                nextCursor,
+            };
+        }),
+
+    assignRiderToRequest: operatorProcedure
+        .input(z.object({
+            requestId: z.string(),
+            riderId: z.string()
+        }))
+        .mutation(async ({ ctx, input }) => {
+            const operator = await ctx.prisma.operator.findUnique({ where: { userId: ctx.user!.id } });
+            if (!operator) throw new Error("Operator record not found");
+
+            return ctx.prisma.riderRequest.update({
+                where: { id: input.requestId },
+                data: {
+                    assignedRiderId: input.riderId,
+                    status: "ASSIGNED",
+                    operatorId: operator.id
+                }
             });
         }),
 });

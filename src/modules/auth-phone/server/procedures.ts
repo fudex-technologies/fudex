@@ -487,9 +487,13 @@ export const phoneAuthRouter = createTRPCRouter({
         .query(async ({ ctx, input }) => {
             const email = (input?.email || "").toLowerCase().trim();
             const phone = normalizePhoneNumber(input.phone)
-            const other = await ctx.prisma.user.findFirst({ where: { phone } });
+            const other = await ctx.prisma.user.findFirst({
+                where: { phone },
+                include: { vendors: true }
+            });
             const emailNotConnected = (email && other?.email) && (other?.email !== email);
-            return { inUse: !!other, emailNotConnected };
+            const isVendor = !!other?.vendors[0];
+            return { inUse: !!other, emailNotConnected, isVendor };
         }),
 
 
@@ -499,9 +503,13 @@ export const phoneAuthRouter = createTRPCRouter({
         .query(async ({ ctx, input }) => {
             const email = input.email.toLowerCase().trim();
             const phone = input?.phone ? normalizePhoneNumber(input.phone) : ""
-            const other = await ctx.prisma.user.findFirst({ where: { email } });
+            const other = await ctx.prisma.user.findFirst({
+                where: { email },
+                include: { vendors: true }
+            });
             const phoneNotConnected = (phone && other?.phone) && (other?.phone !== phone);
-            return { inUse: !!other, phoneNotConnected };
+            const isVendor = !!other?.vendors[0];
+            return { inUse: !!other, phoneNotConnected, isVendor };
         }),
 
     // ========================================
