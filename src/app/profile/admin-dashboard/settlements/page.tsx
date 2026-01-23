@@ -11,14 +11,16 @@ import { useState } from 'react';
 export default function AdminSettlementPage() {
 	const { useListAdminSettlements, approveSettlements } =
 		useRiderRequestActions();
-	const { data: settlements, isLoading, refetch: refetchSettlements } = useListAdminSettlements();
-	const { mutate: approve, isPending: approving } = approveSettlements(
-		{
-			onSuccess:()=>{
-				refetchSettlements()
-			}
-		}
-	);
+	const {
+		data: settlements,
+		isLoading,
+		refetch: refetchSettlements,
+	} = useListAdminSettlements();
+	const { mutate: approve, isPending: approving } = approveSettlements({
+		onSuccess: () => {
+			refetchSettlements();
+		},
+	});
 
 	const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
