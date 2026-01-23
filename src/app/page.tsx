@@ -1,5 +1,4 @@
 import CategorySelectionSection from '@/component-sections/CategorySelectionSection';
-import PopularRestaurantsSection from '@/component-sections/PopularRestaurantsSection.tsx';
 import PromoSection from '@/component-sections/PromoSection';
 import VendorListSection, {
 	VendorListSectionSkeleton,

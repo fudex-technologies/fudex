@@ -168,9 +168,27 @@ export function useVendorDashboardActions() {
         useGetMyProductItems: (input?: { take?: number; skip?: number; productId?: string }) =>
             useQuery(trpc.vendors.getMyProductItems.queryOptions(input ?? {})),
         useGetMyOrders: (input?: { take?: number; skip?: number; status?: OrderStatus[] }) =>
-            useQuery(trpc.vendors.getMyOrders.queryOptions(input ?? {})),
+            useQuery(trpc.vendors.getMyOrders.queryOptions(
+                { ...input },
+                {
+                    // Mark data as stale immediately so it refetches on mount
+                    staleTime: 0,
+                    // Refetch when component mounts or window regains focus
+                    refetchOnMount: 'always',
+                    refetchOnWindowFocus: true,
+                }
+            )),
         useGetMyOrderCounts: () =>
-            useQuery(trpc.vendors.getMyOrderCounts.queryOptions()),
+            useQuery(trpc.vendors.getMyOrderCounts.queryOptions(
+                {},
+                {
+                    // Mark data as stale immediately so it refetches on mount
+                    staleTime: 0,
+                    // Refetch when component mounts or window regains focus
+                    refetchOnMount: 'always',
+                    refetchOnWindowFocus: true,
+                }
+            )),
         useGetSupportedBanks: () =>
             useQuery(trpc.vendors.getSupportedBanks.queryOptions()),
         useGetMyOrdersInfinite: (input?: { limit?: number; status?: OrderStatus[] }) =>
@@ -183,6 +201,12 @@ export function useVendorDashboardActions() {
                     {
                         getNextPageParam: (lastPage) => lastPage.nextCursor,
                         initialCursor: 0,
+
+                        // Mark data as stale immediately so it refetches on mount
+                        staleTime: 0,
+                        // Refetch when component mounts or window regains focus
+                        refetchOnMount: 'always',
+                        refetchOnWindowFocus: true,
                     }
                 )
             ),

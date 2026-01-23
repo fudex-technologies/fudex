@@ -19,7 +19,8 @@ export const PAGES_DATA = {
     completed_order_info_page: (orderId: string) => `/orders/${orderId}/completed-order-info`,
     summary_page: (orderId: string) => `/orders/${orderId}/order-summary`,
     order_info_page: (orderId: string) => `/orders/${orderId}/order-info`,
-    checkout_page: (vendorId: string) => `/orders/vendor/${vendorId}/checkout`, order_summary_page: (vendorId: string) => `/orders/vendor/${vendorId}/order-summary`,
+    checkout_page: (vendorId: string) => `/orders/vendor/${vendorId}/checkout`, 
+    order_summary_page: (vendorId: string) => `/orders/vendor/${vendorId}/order-summary`,
 
 
     profile_account_page: `/profile/account`,

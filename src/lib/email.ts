@@ -1,3 +1,4 @@
+import { PAGES_DATA } from '@/data/pagesData';
 import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -164,7 +165,7 @@ export async function sendVendorApprovalEmail(email: string, businessName: strin
                         </div>
                         
                         <div style="text-align: center; margin: 30px 0;">
-                            <a href="${process.env.NEXT_PUBLIC_APP_URL}/vendor/dashboard" style="display: inline-block; background: #10b981; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Go to Dashboard</a>
+                            <a href="${process.env.NEXT_PUBLIC_APP_URL}${PAGES_DATA.vendor_dashboard_page}" style="display: inline-block; background: #10b981; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Go to Dashboard</a>
                         </div>
                         
                         <p style="font-size: 14px; color: #666; margin-bottom: 20px;">
@@ -310,7 +311,7 @@ export async function sendVendorSubmissionConfirmation(email: string, businessNa
                         </p>
                         
                         <div style="text-align: center; margin: 30px 0;">
-                            <a href="${process.env.NEXT_PUBLIC_APP_URL}/vendor/dashboard" style="display: inline-block; background: #00C16A; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Go to Dashboard</a>
+                            <a href="${process.env.NEXT_PUBLIC_APP_URL}${PAGES_DATA.vendor_dashboard_page}" style="display: inline-block; background: #00C16A; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Go to Dashboard</a>
                         </div>
                         
                         <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
