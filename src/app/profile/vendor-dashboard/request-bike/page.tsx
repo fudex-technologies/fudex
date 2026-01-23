@@ -156,10 +156,10 @@ export default function VendorDashboardRequestBikePage() {
 									'customerName',
 								)}
 								placeholder='Enter customer name'
-								error={
-									touched[`customerName_${index}`] &&
-									errorsNow[`customerName_${index}`]
-								}
+								// error={
+								// 	touched[`customerName_${index}`] &&
+								// 	errorsNow[`customerName_${index}`]
+								// }
 								required
 							/>
 
@@ -178,10 +178,10 @@ export default function VendorDashboardRequestBikePage() {
 										className='w-5 h-5'
 									/>
 								}
-								error={
-									touched[`customerPhone_${index}`] &&
-									errorsNow[`customerPhone_${index}`]
-								}
+								// error={
+								// 	touched[`customerPhone_${index}`] &&
+								// 	errorsNow[`customerPhone_${index}`]
+								// }
 								required
 							/>
 
@@ -202,10 +202,10 @@ export default function VendorDashboardRequestBikePage() {
 											'areaId',
 										)}
 										placeholder='Select area'
-										error={
-											touched[`areaId_${index}`] &&
-											errorsNow[`areaId_${index}`]
-										}
+										// error={
+										// 	touched[`areaId_${index}`] &&
+										// 	errorsNow[`areaId_${index}`]
+										// }
 										required
 									/>
 								)}
@@ -219,10 +219,10 @@ export default function VendorDashboardRequestBikePage() {
 									'customerAddress',
 								)}
 								placeholder='Enter customer address'
-								error={
-									touched[`customerAddress_${index}`] &&
-									errorsNow[`customerAddress_${index}`]
-								}
+								// error={
+								// 	touched[`customerAddress_${index}`] &&
+								// 	errorsNow[`customerAddress_${index}`]
+								// }
 								required
 								hint='Including Hostel name, Street, or nearest bus stop'
 							/>
