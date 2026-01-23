@@ -1487,13 +1487,13 @@ export const vendorRouter = createTRPCRouter({
             firstName: z.string(),
             lastName: z.string(),
             businessName: z.string(),
-            businessType: z.string(),
+            businessDescription: z.string(),
             verificationToken: z.string(), // Email verification token
             address: z.string().optional(), // Business address
             areaId: z.string().optional(), // Area ID for delivery zone
         }))
         .mutation(async ({ ctx, input }) => {
-            const { userId, email, phone, firstName, lastName, businessName, businessType, address, areaId } = input;
+            const { userId, email, phone, firstName, lastName, businessName, businessDescription, address, areaId } = input;
 
             // Use transaction to ensure atomicity
             const result = await ctx.prisma.$transaction(async (tx) => {
@@ -1587,7 +1587,7 @@ export const vendorRouter = createTRPCRouter({
                         ownerId: user.id,
                         name: businessName,
                         slug,
-                        description: `${businessType} vendor`,
+                        description: businessDescription,
                         email: email.toLowerCase().trim(),
                         phone,
                         areaId: areaId || undefined,
