@@ -99,8 +99,13 @@ export const vendorRouter = createTRPCRouter({
                         name: { contains: input.q, mode: "insensitive" }
                     },
                     { description: { contains: input.q, mode: "insensitive" } }
-                ]
-            } : {};
+                ],
+                AND: {
+                    approvalStatus: 'APPROVED' // Only show approved vendors
+                }
+            } : {
+                approvalStatus: 'APPROVED' // Only show approved vendors
+            };// Only show approved vendors
 
             if (input?.ratingFilter) {
                 where.reviewsAverage = {
@@ -347,7 +352,9 @@ export const vendorRouter = createTRPCRouter({
             skip: z.number().optional().default(0),
         }))
         .query(async ({ ctx, input }) => {
-            const vendorWhere: any = {};
+            const vendorWhere: any = {
+                approvalStatus: 'APPROVED' // Only show approved vendors
+            };
             if (input.q) {
                 vendorWhere.OR = [
                     { name: { contains: input.q, mode: "insensitive" } },
@@ -409,7 +416,9 @@ export const vendorRouter = createTRPCRouter({
             const limit = input.limit;
             const skip = input.cursor;
 
-            const vendorWhere: any = {};
+            const vendorWhere: any = {
+                approvalStatus: 'APPROVED' // Only show approved vendors
+            };
             if (input.q) {
                 vendorWhere.OR = [
                     { name: { contains: input.q, mode: "insensitive" } },
@@ -527,19 +536,36 @@ export const vendorRouter = createTRPCRouter({
         }))
         .query(async ({ ctx, input }) => {
             const vendors = await ctx.prisma.vendor.findMany({
+                where: { approvalStatus: 'APPROVED' },
                 take: input.take,
                 skip: input.skip,
                 include: {
                     openingHours: true,
+                    // _count: {
+                    //     select: {
+                    //         orders: true,
+                    //     }
+                    // },
                     _count: {
                         select: {
-                            orders: true,
-                        }
-                    }
+                            orders: {
+                                where: {
+                                    status: {
+                                        notIn: ['PENDING', 'CANCELLED'],
+                                    },
+                                },
+                            },
+                        },
+                    },
                 },
                 orderBy: [
                     {
                         orders: {
+                            _count: 'desc',
+                        },
+                    },
+                    {
+                        favoritedBy: {
                             _count: 'desc',
                         },
                     },
@@ -804,6 +830,7 @@ export const vendorRouter = createTRPCRouter({
                 }
             });
         }),
+
     getSupportedBanks: vendorProcedure.query(async () => {
         try {
             const res = await getPaystackBanks();
@@ -1050,6 +1077,11 @@ export const vendorRouter = createTRPCRouter({
         }),
 
     getMyOrderCounts: vendorProcedure
+        .input(
+            z.object({
+                status: z.array(z.enum(Object.values(OrderStatus))).optional()
+            })
+        )
         .query(async ({ ctx }) => {
             const userId = ctx.user!.id;
             const vendor = await ctx.prisma.vendor.findFirst({
@@ -1059,16 +1091,98 @@ export const vendorRouter = createTRPCRouter({
 
             const counts = await ctx.prisma.order.groupBy({
                 by: ['status'],
-                where: { vendorId: vendor.id },
+                where: {
+                    vendorId: vendor.id,
+                    status: {
+                        notIn: ['PENDING'], // Exclude PENDING orders from counts
+                    },
+                },
                 _count: {
-                    _all: true
-                }
+                    _all: true,
+                },
             });
 
             return counts.map(c => ({
                 status: c.status as OrderStatus,
                 count: c._count._all
             }));
+        }),
+
+    getMyTopSellingProductItems: vendorProcedure
+        .input(z.object({
+            take: z.number().optional().default(10)
+        }))
+        .query(async ({ ctx, input }) => {
+            const userId = ctx.user!.id;
+            const vendor = await ctx.prisma.vendor.findFirst({
+                where: { ownerId: userId }
+            });
+            if (!vendor) throw new Error("Vendor not found");
+
+            // 1. Get total completed orders to check if we should show anything
+            const completedOrdersCount = await ctx.prisma.order.count({
+                where: {
+                    vendorId: vendor.id,
+                    status: 'DELIVERED'
+                }
+            });
+
+            if (completedOrdersCount === 0) {
+                return { items: [], hasCompletedOrders: false };
+            }
+
+            // 2. Fetch top product items by completed order count
+            const topItems = await ctx.prisma.orderItem.groupBy({
+                by: ['productItemId'],
+                where: {
+                    order: {
+                        vendorId: vendor.id,
+                        status: 'DELIVERED'
+                    }
+                },
+                _count: {
+                    productItemId: true
+                },
+                orderBy: {
+                    _count: {
+                        productItemId: 'desc'
+                    }
+                },
+                take: input.take
+            });
+
+            if (topItems.length === 0) {
+                return { items: [], hasCompletedOrders: true };
+            }
+
+            // 3. Fetch full details for these items
+            const productItems = await ctx.prisma.productItem.findMany({
+                where: {
+                    id: { in: topItems.map(ti => ti.productItemId) }
+                },
+                include: {
+                    product: true,
+                    categories: {
+                        include: {
+                            category: true
+                        }
+                    }
+                }
+            });
+
+            // Re-sort items by the count from topItems because findMany doesn't guarantee order
+            const items = topItems.map(ti => {
+                const detailedItem = productItems.find(pi => pi.id === ti.productItemId);
+                return {
+                    ...detailedItem,
+                    orderCount: ti._count.productItemId
+                };
+            }).filter(item => item.id); // Filter out any that might have been deleted but still in OrderItems
+
+            return {
+                items,
+                hasCompletedOrders: true
+            };
         }),
 
     // Create a standalone product
@@ -1146,7 +1260,7 @@ export const vendorRouter = createTRPCRouter({
 
             const slug = await generateUniqueSlug(ctx.prisma, input.name, input.vendorId);
 
-            const { categories, ...restOfInput } = input;
+            const { categories: _, ...restOfInput } = input;
 
             return ctx.prisma.productItem.create({
                 data: {
@@ -1278,7 +1392,7 @@ export const vendorRouter = createTRPCRouter({
             }
 
 
-            const { categories, ...restOfData } = input.data;
+            const { categories: _, ...restOfData } = input.data;
 
             return ctx.prisma.productItem.update({
                 where: { id: input.id },
@@ -1542,6 +1656,7 @@ export const vendorRouter = createTRPCRouter({
                 _count: {
                     select: {
                         productItems: true,
+                        products: true,
                     }
                 }
             }
@@ -1571,17 +1686,17 @@ export const vendorRouter = createTRPCRouter({
         }
 
         // Check if vendor has addresses
-        const hasAddresses = await ctx.prisma.address.findFirst({
-            where: { vendorId: vendor.id }
-        });
+        // const hasAddresses = await ctx.prisma.address.findFirst({
+        //     where: { vendorId: vendor.id }
+        // });
 
         // Calculate progress
         const steps = {
             accountCreated: true, // Account is created if vendor exists
-            profileCompleted: !!(hasAddresses && vendor.coverImage),
-            paymentInfoAdded: !!(vendor.bankAccountNumber),
+            profileCompleted: !!(vendor?.phone && vendor?.documents.length > 0 && vendor.coverImage),
+            paymentInfoAdded: !!(vendor.bankAccountNumber && vendor?.bankAccountName && vendor?.bankCode),
             operationsSetup: (vendor.openingHours?.length || 0) > 0,
-            menuItemsAdded: (vendor._count?.productItems || 0) > 0,
+            menuItemsAdded: (vendor._count?.products + vendor._count?.productItems || 0) > 0,
             identityVerified: (vendor.documents?.length || 0) > 0,
         };
 

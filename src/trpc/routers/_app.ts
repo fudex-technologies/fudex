@@ -9,12 +9,15 @@ import { operatorRouter } from "@/modules/operators/server/procedures";
 import { adminRouter } from "@/modules/admin/server/procedures";
 import { payoutRouter } from "@/modules/payouts/server/procedures";
 
+import { riderRequestRouter } from "@/modules/rider-requests/server/procedures";
+
 export const appRouter = createTRPCRouter({
   users: userRouter,
   vendors: vendorRouter,
   categories: categoryRouter,
   phoneAuth: phoneAuthRouter,
   orders: orderRouter,
+  riderRequests: riderRequestRouter,
   payments: paymentRouter,
   operators: operatorRouter,
   admin: adminRouter,

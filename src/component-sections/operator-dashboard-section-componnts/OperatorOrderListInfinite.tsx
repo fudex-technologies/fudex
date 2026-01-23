@@ -59,13 +59,13 @@ export default function OperatorOrderListInfinite() {
 			? orders.filter(
 					(o) =>
 						o.status !== OrderStatus.DELIVERED &&
-						o.status !== OrderStatus.CANCELLED
-			  )
+						o.status !== OrderStatus.CANCELLED,
+				)
 			: orders;
 
 	return (
 		<div className='space-y-6'>
-			<div className='sticky top-[64px] z-20 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 py-2'>
+			<div className='sticky top-16 z-20 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 py-2'>
 				<TabComponent
 					activeTab={activeTab}
 					setActiveTab={setActiveTab}

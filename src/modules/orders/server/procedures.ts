@@ -118,7 +118,23 @@ export const orderRouter = createTRPCRouter({
             }
 
             // Calculate delivery fee based on area and current time
-            const deliveryFee = await calculateDeliveryFee(ctx.prisma, address.areaId);
+            let deliveryFee = await calculateDeliveryFee(ctx.prisma, address.areaId);
+
+            // Promo check: Free delivery after 3 delivered orders or for users with 5 confirmed referrals
+            const successfulOrdersCount = await ctx.prisma.order.count({
+                where: { userId, status: "DELIVERED" }
+            });
+            const confirmedReferredCount = await ctx.prisma.referral.count({
+                where: { referrerUserId: userId, status: "CONFIRMED" }
+            });
+
+            // Match frontend logic: length === 3 (of take 3) for orders, and exactly 5 for referrals
+            const orderPromoInitiated = successfulOrdersCount === 3;
+            const referralPromoInitiated = confirmedReferredCount === 5;
+
+            if (orderPromoInitiated || referralPromoInitiated) {
+                deliveryFee = 0;
+            }
 
             // Get service fee from platform settings
             const serviceFee = await getServiceFee(ctx.prisma);
@@ -465,6 +481,40 @@ export const orderRouter = createTRPCRouter({
                 packs,
             };
         }),
+
+    // user confirm delivery status of order and change status to delivered
+    confirmOrderDelivery: protectedProcedure
+        .input(z.object({
+            orderId: z.string()
+        }))
+        .mutation(async ({ ctx, input }) => {
+            const userId = ctx.user!.id;
+
+            // Find order and verify ownership and ensure order is for user
+            const order = await ctx.prisma.order.findUnique({
+                where: {
+                    id: input.orderId,
+                    userId: userId,
+                    status: {
+                        in: ["OUT_FOR_DELIVERY", "ASSIGNED"],
+                    },
+                },
+            });
+            if (!order) throw new Error("Order not found");
+            if (order.userId !== userId) throw new Error("Unauthorized: Order does not belong to you");
+
+            // Update order status to DELIVERED
+            const updated = await ctx.prisma.order.update({
+                where: { id: input.orderId },
+                data: { status: "DELIVERED" }
+            });
+
+            // Update order payout eligibility
+            await ensureOrderPayoutEligibility(ctx.prisma, input.orderId);
+
+            return updated;
+        }),
+
 
     // Admin/restaurant update status
     updateStatus: adminProcedure

@@ -45,21 +45,35 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 	const packs = getVendorPacks(vendorId);
 
 	const { getProfile, getAddresses } = useProfileActions();
+	const { useListMyOrders } = useOrderingActions();
+	const { getReferralStats } = useProfileActions();
+
+	const { data: referralData, isLoading: isLoadingReferralData } =
+		getReferralStats();
+	const confirmedReferred = referralData?.confirmedReferred || 0;
+	const { data: successfulOrders, isLoading } = useListMyOrders({
+		take: 3,
+		status: ['DELIVERED'],
+	});
+
+	const referralPromoInitiated =
+		!isLoadingReferralData && confirmedReferred === 5;
+	const orderPromoInitiated =
+		!isLoading && successfulOrders && successfulOrders?.length === 3;
 
 	// Fetch user information
 	const { data: prodileData, refetch: refetchProfile } = getProfile();
 	// Fetch addresses
 	const { data: addresses = [] } = getAddresses();
-
 	// Fetch vendor info
 	const { data: vendor } = useVendorProductActions().useGetVendorById(
-		vendorId ? { id: vendorId } : { id: '' }
+		vendorId ? { id: vendorId } : { id: '' },
 	);
 
 	// Check if vendor is open
 	const vendorIsOpen = isVendorOpen(
 		vendor?.openingHours,
-		vendor?.availabilityStatus
+		vendor?.availabilityStatus,
 	);
 
 	// Set default address
@@ -79,7 +93,7 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 	const allProductItemIds = useMemo(() => {
 		const mainIds = packs.map((p) => p.productItemId);
 		const addonIds = packs.flatMap(
-			(p) => p.addons?.map((a) => a.addonProductItemId) || []
+			(p) => p.addons?.map((a) => a.addonProductItemId) || [],
 		);
 		return Array.from(new Set([...mainIds, ...addonIds]));
 	}, [packs]);
@@ -117,7 +131,7 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 			if (pack.addons) {
 				for (const addon of pack.addons) {
 					const addonItem = productItemsMap.get(
-						addon.addonProductItemId
+						addon.addonProductItemId,
 					);
 					if (addonItem) {
 						total +=
@@ -139,13 +153,13 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 				},
 				{
 					enabled: !!selectedAddress,
-				}
-			)
+				},
+			),
 		);
 
 	// Fetch service fee
 	const { data: serviceFeeData, isLoading: isLoadingServiceFee } = useQuery(
-		trpc.users.getServiceFee.queryOptions(undefined)
+		trpc.users.getServiceFee.queryOptions(undefined),
 	);
 
 	const deliveryFee = deliveryFeeData?.deliveryFee || 0;
@@ -188,7 +202,7 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 				window.location.href = data.checkoutUrl;
 			} else {
 				toast.error(
-					'Payment initialization failed - no checkout URL received'
+					'Payment initialization failed - no checkout URL received',
 				);
 			}
 		},
@@ -222,7 +236,7 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 				`${vendor?.name || 'This vendor'} is currently closed`,
 				{
 					description: 'Please try again when they are open',
-				}
+				},
 			);
 			return;
 		}
@@ -231,6 +245,12 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 		if (!selectedAddressId) {
 			toast.error('Please select a delivery address');
 			setIsAddressDialogOpen(true);
+			return;
+		}
+		// Check phone
+		if (!prodileData?.phone) {
+			toast.error('Please provide a contact phone number');
+			setIsAddPhoneDrawerOpen(true);
 			return;
 		}
 
@@ -281,14 +301,14 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 						href={`${
 							PAGES_DATA.login_page
 						}?redirect=${encodeURIComponent(
-							PAGES_DATA.checkout_page(vendorId)
+							PAGES_DATA.checkout_page(vendorId),
 						)}`}
 						className={cn(
 							buttonVariants({
 								variant: 'game',
 								size: 'lg',
 								className: 'w-full',
-							})
+							}),
 						)}>
 						Login / Sign Up
 					</Link>
@@ -354,10 +374,10 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 											`${selectedAddress.line1}${
 												selectedAddress.line2
 													? ', ' +
-													  selectedAddress.line2
+														selectedAddress.line2
 													: ''
 											}, ${selectedAddress.city}`,
-											40
+											40,
 										)}
 									</p>
 								) : (
@@ -409,9 +429,9 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 													PAGES_DATA.profile_verify_phone_page
 												}?redirect=${encodeURIComponent(
 													PAGES_DATA.checkout_page(
-														vendorId
-													)
-												)}`
+														vendorId,
+													),
+												)}`,
 											);
 										} else {
 											setIsAddPhoneDrawerOpen(true);
@@ -500,9 +520,13 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 							<div className='flex items-center justify-between px-5'>
 								<p>Delivery fee</p>
 								<p className='font-semibold'>
-									{isLoadingDeliveryFeeData
-										? 'Loading...'
-										: formatCurency(deliveryFee)}
+									{referralPromoInitiated
+										? 'Free (Referral Promo)'
+										: orderPromoInitiated
+											? 'Free (4th Order Promo)'
+											: isLoadingDeliveryFeeData
+												? 'Loading...'
+												: formatCurency(deliveryFee)}
 								</p>
 							</div>
 							<div className='flex items-center justify-between px-5'>
@@ -535,16 +559,16 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 							disabled={
 								createOrderMutation.isPending ||
 								createPaymentMutation.isPending ||
-								!selectedAddressId ||
-								!prodileData?.phone ||
+								// !selectedAddressId ||
+								// !prodileData?.phone ||
 								!vendorIsOpen
 							}>
 							{createOrderMutation.isPending ||
 							createPaymentMutation.isPending
 								? 'Processing...'
 								: !vendorIsOpen
-								? 'Vendor is Closed'
-								: 'Make Payment'}
+									? 'Vendor is Closed'
+									: 'Make Payment'}
 						</Button>
 					</div>
 				</div>

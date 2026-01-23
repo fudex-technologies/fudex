@@ -2,7 +2,7 @@
 
 import { GoHome } from 'react-icons/go';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { ClassNameValue } from 'tailwind-merge';
 import { cn } from '@/lib/utils';
 import { PAGES_DATA } from '@/data/pagesData';
@@ -18,6 +18,8 @@ import { PiHamburger } from 'react-icons/pi';
 
 const VendorDashboardMobileBottomNav = () => {
 	const pathname = usePathname();
+	const searchParams = useSearchParams();
+	const noNav = searchParams.get('noNav');
 
 	const activeStyle = (baseUrl: string): ClassNameValue => {
 		if (
@@ -50,6 +52,7 @@ const VendorDashboardMobileBottomNav = () => {
 		}
 	};
 
+	if (noNav) return null;
 	return (
 		<>
 			<div className='mb-[110px]' />
@@ -58,7 +61,7 @@ const VendorDashboardMobileBottomNav = () => {
 					href={PAGES_DATA.vendor_dashboard_page}
 					className={cn(
 						'flex flex-1 flex-col justify-start pt-3 pb-5 items-center',
-						activeStyle(PAGES_DATA.vendor_dashboard_page)
+						activeStyle(PAGES_DATA.vendor_dashboard_page),
 					)}>
 					{isActive(PAGES_DATA.vendor_dashboard_page) ? (
 						<GoHomeFill
@@ -81,7 +84,7 @@ const VendorDashboardMobileBottomNav = () => {
 					href={PAGES_DATA.vendor_dashboard_new_orders_page}
 					className={cn(
 						'flex flex-1 flex-col justify-start pt-3 pb-5 items-center',
-						activeStyle(PAGES_DATA.vendor_dashboard_orders_page)
+						activeStyle(PAGES_DATA.vendor_dashboard_orders_page),
 					)}>
 					{isActive(PAGES_DATA.vendor_dashboard_orders_page) ? (
 						<div className='relative'>
@@ -116,7 +119,7 @@ const VendorDashboardMobileBottomNav = () => {
 					href={PAGES_DATA.vendor_dashboard_payouts_page}
 					className={cn(
 						'flex flex-1 flex-col justify-start pt-3 pb-5 items-center',
-						activeStyle(PAGES_DATA.vendor_dashboard_payouts_page)
+						activeStyle(PAGES_DATA.vendor_dashboard_payouts_page),
 					)}>
 					{isActive(PAGES_DATA.vendor_dashboard_payouts_page) ? (
 						<div className='relative'>
@@ -151,7 +154,7 @@ const VendorDashboardMobileBottomNav = () => {
 					href={PAGES_DATA.vendor_dashboard_menu_page}
 					className={cn(
 						'flex flex-1 flex-col justify-start pt-3 pb-5 items-center',
-						activeStyle(PAGES_DATA.vendor_dashboard_menu_page)
+						activeStyle(PAGES_DATA.vendor_dashboard_menu_page),
 					)}>
 					{isActive(PAGES_DATA.vendor_dashboard_menu_page) ? (
 						<div className='relative'>
@@ -186,7 +189,7 @@ const VendorDashboardMobileBottomNav = () => {
 					href={PAGES_DATA.vendor_dashboard_profile_page}
 					className={cn(
 						'flex flex-1 flex-col justify-start pt-3 pb-5 items-center',
-						activeStyle(PAGES_DATA.vendor_dashboard_profile_page)
+						activeStyle(PAGES_DATA.vendor_dashboard_profile_page),
 					)}>
 					{isActive(PAGES_DATA.vendor_dashboard_profile_page) ? (
 						<RiUser3Fill

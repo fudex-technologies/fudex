@@ -109,6 +109,50 @@ export function useAuthActions() {
         )
     }
 
+    const requestEmailFallbackOtp = (options?: UseAPICallerOptions) => {
+        return useMutation(
+            trpc.phoneAuth.requestEmailFallbackOtp.mutationOptions({
+                onSuccess: async (data) => {
+                    if (!options?.silent) toast.success("OTP sent to email");
+                    options?.onSuccess?.(data);
+                },
+                onError: (err: unknown) => {
+                    if (!options?.silent)
+                        toast.error("Failed to send code to email", {
+                            description:
+                                err instanceof Error ? err.message : "Something went wrong",
+                        });
+                    options?.onError?.(err);
+                },
+                retry: false,
+            }),
+        )
+    };
+
+    const verifyEmailFallbackOtp = (options?: UseAPICallerOptions) => {
+        return useMutation(
+            trpc.phoneAuth.verifyEmailFallbackOtp.mutationOptions({
+                onSuccess: async (data) => {
+                    localStorage.setItem(
+                        localStorageStrings.onboardingVerificationToken,
+                        data?.token
+                    );
+                    if (!options?.silent) toast.success("Email Verified successfully");
+                    options?.onSuccess?.(data);
+                },
+                onError: (err: unknown) => {
+                    if (!options?.silent)
+                        toast.error("Email verification failed", {
+                            description:
+                                err instanceof Error ? err.message : "Something went wrong",
+                        });
+                    options?.onError?.(err);
+                },
+                retry: false,
+            }),
+        )
+    }
+
 
     const setPasswordAndCompleteSignUp = (options?: UseAPICallerOptions & { password: string, redirectTo: string, token: string, referralCode?: string }) => {
         return useMutation(
@@ -129,6 +173,18 @@ export function useAuthActions() {
 
                     // 2️⃣ Attach verified phone (now authenticated)
                     await attachPhoneMut.mutateAsync({ token: options.token });
+
+                    // 3️⃣ Confirm referral if code exists (Best effort)
+                    if (options.referralCode && newUserId) {
+                        try {
+                            await confirmReferralMut.mutateAsync({
+                                referralCode: options.referralCode,
+                                newUserId
+                            });
+                        } catch (error) {
+                            console.error("Referral confirmation failed silently:", error);
+                        }
+                    }
 
                     if (!options?.silent) toast.success("Account created successfully");
                     options?.onSuccess?.(data);
@@ -197,6 +253,15 @@ export function useAuthActions() {
                             ? err.message
                             : 'Something went wrong',
                 });
+            },
+            retry: false,
+        })
+    );
+
+    const confirmReferralMut = useMutation(
+        trpc.phoneAuth.confirmReferral.mutationOptions({
+            onError: (err) => {
+                console.error("Failed to confirm referral", err);
             },
             retry: false,
         })
@@ -310,6 +375,8 @@ export function useAuthActions() {
         login,
         requestPhoneOtp,
         verifyPhoneOtp,
+        requestEmailFallbackOtp,
+        verifyEmailFallbackOtp,
         setPasswordAndCompleteSignUp,
         requestProfileOtp,
         verifyProfileOtp,

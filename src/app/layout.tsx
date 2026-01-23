@@ -1,18 +1,7 @@
 import type { Metadata, Viewport } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
 import Providers from './Providers';
 import { startupImage } from '@/constants/startupImages';
 import './globals.css';
-
-const geistSans = Geist({
-	variable: '--font-geist-sans',
-	subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-	variable: '--font-geist-mono',
-	subsets: ['latin'],
-});
 
 export const viewport: Viewport = {
 	maximumScale: 1,
@@ -53,8 +42,13 @@ export default function RootLayout({
 }>) {
 	return (
 		<html lang='en'>
-			<body
-				className={`${geistSans.variable} ${geistMono.variable} antialiased `}>
+			<head>
+				<link
+					href='https://api.fontshare.com/v2/css?f[]=satoshi@900,700,500,300,400&display=swap'
+					rel='stylesheet'
+				/>
+			</head>
+			<body className={`antialiased `}>
 				<Providers>{children}</Providers>
 			</body>
 		</html>

@@ -97,15 +97,16 @@ model Verification {
 }
 
 model Area {
-  id           String            @id @default(uuid())
-  name         String
-  state        String
-  meta         Json?
-  createdAt    DateTime          @default(now())
-  addresses    Address[]
-  vendors      Vendor[]          @relation("AreaVendors") // Add relation name
-  deliveryFees DeliveryFeeRule[]
-  operators    Operator[]
+  id                String             @id @default(uuid())
+  name              String
+  state             String
+  meta              Json?
+  createdAt         DateTime           @default(now())
+  addresses         Address[]
+  vendors           Vendor[]           @relation("AreaVendors") // Add relation name
+  riderRequestItems RiderRequestItem[]
+  deliveryFees      DeliveryFeeRule[]
+  operators         Operator[]
 
   @@unique([name, state])
   @@index([state])
@@ -123,30 +124,70 @@ model DeliveryFeeRule {
   @@index([areaId])
 }
 
+model RiderRequest {
+  id               String             @id @default(uuid())
+  vendorId         String
+  operatorId       String?
+  assignedRiderId  String?
+  status           RiderRequestStatus @default(PENDING)
+  settlementStatus SettlementStatus   @default(UNSETTLED)
+  totalFee         Float              @default(0)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  vendor        Vendor             @relation(fields: [vendorId], references: [id])
+  operator      Operator?          @relation(fields: [operatorId], references: [id])
+  assignedRider Rider?             @relation(fields: [assignedRiderId], references: [id])
+  items         RiderRequestItem[]
+
+  @@index([vendorId])
+  @@index([status])
+  @@index([settlementStatus])
+}
+
+model RiderRequestItem {
+  id              String   @id @default(uuid())
+  riderRequestId  String
+  customerName    String
+  customerPhone   String
+  customerAddress String
+  areaId          String
+  deliveryFee     Float
+  createdAt       DateTime @default(now())
+
+  riderRequest RiderRequest @relation(fields: [riderRequestId], references: [id], onDelete: Cascade)
+  area         Area         @relation(fields: [areaId], references: [id])
+
+  @@index([riderRequestId])
+  @@index([areaId])
+}
+
 model Operator {
-  id        String   @id @default(uuid())
-  userId    String   @unique
-  areaId    String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  area      Area?    @relation(fields: [areaId], references: [id])
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  orders    Order[]
-  riders    Rider[]
+  id            String         @id @default(uuid())
+  userId        String         @unique
+  areaId        String?
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  area          Area?          @relation(fields: [areaId], references: [id])
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders        Order[]
+  riders        Rider[]
+  riderRequests RiderRequest[]
 
   @@index([areaId])
 }
 
 model Rider {
-  id         String    @id @default(uuid())
-  operatorId String?
-  name       String
-  phone      String?
-  isActive   Boolean   @default(true)
-  notes      String?
-  createdAt  DateTime  @default(now())
-  orders     Order[]
-  operator   Operator? @relation(fields: [operatorId], references: [id])
+  id            String         @id @default(uuid())
+  operatorId    String?
+  name          String
+  phone         String?
+  isActive      Boolean        @default(true)
+  notes         String?
+  createdAt     DateTime       @default(now())
+  orders        Order[]
+  operator      Operator?      @relation(fields: [operatorId], references: [id])
+  riderRequests RiderRequest[]
 
   @@index([operatorId])
   @@index([isActive])
@@ -206,18 +247,19 @@ model Vendor {
   vendorCategories   VendorCategory[]
   openingHours       VendorOpeningHour[]
   vendorPayouts      VendorPayout[]
-  areaId             String?                 // Add missing areaId field
+  areaId             String? // Add missing areaId field
   area               Area?                    @relation("AreaVendors", fields: [areaId], references: [id]) // Add relation name
+  riderRequests      RiderRequest[]
 
   // Approval workflow fields
-  approvalStatus        VendorApprovalStatus @default(PENDING)
+  approvalStatus        VendorApprovalStatus         @default(PENDING)
   approvalDate          DateTime?
   approvedById          String?
-  approvedBy            User?                @relation("VendorApprovedBy", fields: [approvedById], references: [id])
+  approvedBy            User?                        @relation("VendorApprovedBy", fields: [approvedById], references: [id])
   declineReason         String?
-  verificationDocuments String[]             @default([]) // Deprecated in favor of documents relation
+  verificationDocuments String[]                     @default([]) // Deprecated in favor of documents relation
   documents             VendorVerificationDocument[]
-  submittedForApproval  Boolean              @default(false)
+  submittedForApproval  Boolean                      @default(false)
   submittedAt           DateTime?
   addresses             Address[] // New relation to Address
 
@@ -482,6 +524,24 @@ model PhoneVerification {
   @@index([createdAt])
 }
 
+model Referral {
+  id             String         @id @default(uuid())
+  referrerUserId String // User who has the referral code
+  referredUserId String // User who signed up with code
+  referralCode   String // The code used
+  status         ReferralStatus @default(PENDING) // PENDING, CONFIRMED
+  confirmedAt    DateTime? // When referred user completed signup
+  createdAt      DateTime       @default(now())
+
+  referrer User @relation("ReferrerReferrals", fields: [referrerUserId], references: [id], onDelete: Cascade)
+  referred User @relation("ReferredByReferrals", fields: [referredUserId], references: [id], onDelete: Cascade)
+
+  @@unique([referredUserId]) // One user can only be referred by one person
+  @@index([referralCode])
+  @@index([referrerUserId])
+  @@index([status])
+}
+
 model PlatformSetting {
   id    String @id @default(uuid())
   key   String @unique
@@ -561,20 +621,18 @@ enum ReferralStatus {
   CONFIRMED
 }
 
-model Referral {
-  id              String   @id @default(uuid())
-  referrerUserId  String   // User who has the referral code
-  referredUserId  String   // User who signed up with code
-  referralCode    String   // The code used
-  status          ReferralStatus @default(PENDING) // PENDING, CONFIRMED
-  confirmedAt     DateTime? // When referred user completed signup
-  createdAt       DateTime @default(now())
-  
-  referrer        User     @relation("ReferrerReferrals", fields: [referrerUserId], references: [id], onDelete: Cascade)
-  referred        User     @relation("ReferredByReferrals", fields: [referredUserId], references: [id], onDelete: Cascade)
-  
-  @@unique([referredUserId]) // One user can only be referred by one person
-  @@index([referralCode])
-  @@index([referrerUserId])
-  @@index([status])
+enum RiderRequestStatus {
+  PENDING
+  ACCEPTED
+  ASSIGNED
+  READY
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+}
+
+enum SettlementStatus {
+  UNSETTLED
+  PENDING_VERIFICATION
+  SETTLED
 }

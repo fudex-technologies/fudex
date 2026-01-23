@@ -11,7 +11,6 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { PAGES_DATA } from '@/data/pagesData';
@@ -30,27 +29,29 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { use, useState } from 'react';
 import { toast } from 'sonner';
 
 export default function VendorRequestDetailsPage({
 	params,
 }: {
-	params: { vendorId: string };
+	params: Promise<{ vendorId: string }>;
 }) {
+	const { vendorId } = use(params);
 	const trpc = useTRPC();
 	const router = useRouter();
 	const queryClient = useQueryClient();
 	const [declineReason, setDeclineReason] = useState('');
 	const [isDeclineModalOpen, setIsDeclineModalOpen] = useState(false);
+	console.log(vendorId);
 
 	const { data: vendor, isLoading } = useQuery(
 		trpc.vendors.getVendorApprovalDetails.queryOptions(
-			{ vendorId: params.vendorId },
+			{ vendorId },
 			{
-				enabled: !!params.vendorId,
-			}
-		)
+				enabled: !!vendorId,
+			},
+		),
 	);
 
 	const approveMutation = useMutation(
@@ -65,7 +66,7 @@ export default function VendorRequestDetailsPage({
 			onError: (error) => {
 				toast.error(error.message || 'Failed to approve vendor');
 			},
-		})
+		}),
 	);
 
 	const declineMutation = useMutation(
@@ -81,12 +82,12 @@ export default function VendorRequestDetailsPage({
 			onError: (error) => {
 				toast.error(error.message || 'Failed to decline vendor');
 			},
-		})
+		}),
 	);
 
 	const handleApprove = () => {
 		if (confirm('Are you sure you want to approve this vendor?')) {
-			approveMutation.mutate({ vendorId: params.vendorId });
+			approveMutation.mutate({ vendorId });
 		}
 	};
 
@@ -96,7 +97,7 @@ export default function VendorRequestDetailsPage({
 			return;
 		}
 		declineMutation.mutate({
-			vendorId: params.vendorId,
+			vendorId,
 			reason: declineReason,
 		});
 	};
@@ -132,7 +133,7 @@ export default function VendorRequestDetailsPage({
 								<span className='text-sm text-muted-foreground'>
 									Current Status
 								</span>
-								<div className='font-medium mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800'>
+								<div className='font-medium mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-800'>
 									{vendor.approvalStatus}
 								</div>
 							</div>
@@ -144,8 +145,8 @@ export default function VendorRequestDetailsPage({
 									{vendor.submittedAt
 										? format(
 												new Date(vendor.submittedAt),
-												'PPP'
-										  )
+												'PPP',
+											)
 										: 'N/A'}
 								</p>
 							</div>
@@ -166,7 +167,8 @@ export default function VendorRequestDetailsPage({
 											Address
 										</span>
 										<p className='font-medium'>
-											{vendor.addresses && vendor.addresses.length > 0
+											{vendor.addresses &&
+											vendor.addresses.length > 0
 												? `${vendor.addresses[0].line1}, ${vendor.addresses[0].city}`
 												: 'Not provided'}
 										</p>
@@ -243,19 +245,19 @@ export default function VendorRequestDetailsPage({
 																{doc.type
 																	? doc.type.replace(
 																			/_/g,
-																			' '
-																	  )
+																			' ',
+																		)
 																	: `Document ${
 																			index +
 																			1
-																	  }`}
+																		}`}
 															</p>
 															<p className='text-xs text-muted-foreground'>
 																{format(
 																	new Date(
-																		doc.createdAt
+																		doc.createdAt,
 																	),
-																	'PP p'
+																	'PP p',
 																)}
 															</p>
 														</div>
@@ -273,8 +275,8 @@ export default function VendorRequestDetailsPage({
 														</Link>
 													</Button>
 												</div>
-											)
-									  )
+											),
+										)
 									: vendor.verificationDocuments?.map(
 											(doc: string, index: number) => (
 												<div
@@ -305,8 +307,8 @@ export default function VendorRequestDetailsPage({
 														</Link>
 													</Button>
 												</div>
-											)
-									  )}
+											),
+										)}
 							</div>
 						) : (
 							<div className='text-center py-8 text-muted-foreground bg-secondary/10 rounded-lg'>

@@ -9,8 +9,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: 'Satoshi', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -229,6 +229,10 @@ html {
   }
 }
 
+.blur-effect{
+  backdrop-filter: blur(0px);
+}
+
 .lighteffect {
   box-shadow: 0px 3px 4px 0px #FFFFFF73 inset;
 }
@@ -256,10 +260,43 @@ html {
 }
 
 @keyframes slideUp {
+
   from {
+
     height: var(--radix-collapsible-content-height);
+
   }
+
   to {
+
     height: 0;
+
   }
+
+}
+
+
+
+@keyframes marquee-normal {
+
+  from {
+
+    transform: translateX(0);
+
+  }
+
+  to {
+
+    transform: translateX(-100%);
+
+  }
+
+}
+
+
+
+.animate-marquee-normal {
+
+  animation: marquee-normal 40s linear infinite;
+
 }

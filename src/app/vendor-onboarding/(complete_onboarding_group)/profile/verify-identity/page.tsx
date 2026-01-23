@@ -34,6 +34,7 @@ export default function VendorOnboardingVerifyIdentitiyPage() {
 	const [isBlobUploading, setIsBlobUploading] = useState(false);
 	const [idType, setIdType] = useState('');
 
+	
 	// Load existing documents on mount
 	useEffect(() => {
 		if (vendor?.documents && vendor.documents.length > 0) {
@@ -89,8 +90,8 @@ export default function VendorOnboardingVerifyIdentitiyPage() {
 	};
 
 	return (
-		<PageWrapper>
-			<div className='flex items-center gap-10 w-full'>
+		<PageWrapper className='px-5'>
+			<div className='flex flex-wrap items-center gap-10 w-full'>
 				<GoBackButton
 					link={PAGES_DATA.vendor_onboarding_progress_page}
 				/>
@@ -195,7 +196,7 @@ export default function VendorOnboardingVerifyIdentitiyPage() {
 												{doc.type}
 											</p>
 											<p className='truncate text-xs text-muted-foreground'>
-												{doc.url.split('/').pop()}
+												{doc?.url?.split('/').pop()}
 											</p>
 										</div>
 										<CheckCircle
@@ -203,7 +204,7 @@ export default function VendorOnboardingVerifyIdentitiyPage() {
 											className='text-primary'
 										/>
 										<Link
-											href={doc.url}
+											href={doc?.url || "#"}
 											target='_blank'
 											className='text-xs text-primary underline ml-2'>
 											View

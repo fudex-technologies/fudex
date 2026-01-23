@@ -15,7 +15,7 @@ import {
 	XCircle,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { BsBicycle } from 'react-icons/bs';
 
 export default function VendorOrderListByStatussLayout({
@@ -27,7 +27,7 @@ export default function VendorOrderListByStatussLayout({
 	const router = useRouter();
 	const { useGetMyVendor, useGetMyOrderCounts } = useVendorDashboardActions();
 	const { data: vendor } = useGetMyVendor();
-	const { data: counts = [] } = useGetMyOrderCounts();
+	const { data: counts = [], refetch: refetchCounts} = useGetMyOrderCounts();
 
 	const getCount = (statuses: OrderStatus[]) => {
 		return counts
@@ -51,15 +51,15 @@ export default function VendorOrderListByStatussLayout({
 			label: `Ready (${getCount(['READY'])})`,
 			icon: <AlarmCheck size={18} />,
 		},
-		{
-			id: 'given-to-rider',
-			label: `Given to rider (${getCount(['ASSIGNED'])})`,
-			icon: <BsBicycle size={18} />,
-		},
+		// {
+		// 	id: 'given-to-rider',
+		// 	label: `Given to rider (${getCount(['ASSIGNED', 'OUT_FOR_DELIVERY'])})`,
+		// 	icon: <BsBicycle size={18} />,
+		// },
 		{
 			id: 'out-for-delivery',
-			label: `Out for delivery (${getCount(['OUT_FOR_DELIVERY'])})`,
-			icon: <Truck size={18} />,
+			label: `Out for delivery (${getCount(['ASSIGNED', 'OUT_FOR_DELIVERY'])})`,
+			icon: <BsBicycle size={18} />,
 		},
 		{
 			id: 'completed',
@@ -88,14 +88,17 @@ export default function VendorOrderListByStatussLayout({
 					tabs={tabs}
 					className={'border-b mb-0! p-0'}
 					onTabChange={(id) => {
+						refetchCounts();
 						router.push(
-							`${PAGES_DATA.vendor_dashboard_orders_page}/${id}`
+							`${PAGES_DATA.vendor_dashboard_orders_page}/${id}`,
 						);
 					}}
 				/>
 			</div>
 			{children}
-			<VendorDashboardMobileBottomNav />
+			<Suspense>
+				<VendorDashboardMobileBottomNav />
+			</Suspense>
 		</PageWrapper>
 	);
 }

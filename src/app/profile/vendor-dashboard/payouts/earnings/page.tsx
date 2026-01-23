@@ -2,6 +2,7 @@ import VendorDashboardPayoutsHistorySection from '@/component-sections/vendor-da
 import GoBackButton from '@/components/GoBackButton';
 import VendorDashboardMobileBottomNav from '@/components/navigation-components/VendorDashboardMobileBottomNav';
 import PageWrapper from '@/components/wrapers/PageWrapper';
+import { Suspense } from 'react';
 
 export default async function EarningsHistoryPage() {
 	return (
@@ -11,7 +12,9 @@ export default async function EarningsHistoryPage() {
 				<h1 className='font-semibold text-xl'>Earning History</h1>
 			</div>
 			<VendorDashboardPayoutsHistorySection />
-			<VendorDashboardMobileBottomNav />
+			<Suspense>
+				<VendorDashboardMobileBottomNav />
+			</Suspense>
 		</PageWrapper>
 	);
 }

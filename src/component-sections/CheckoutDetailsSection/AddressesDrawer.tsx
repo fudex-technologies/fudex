@@ -53,7 +53,7 @@ const AddressesDrawer = ({
 								onClick={() => {
 									setIsAddressDialogOpen(false);
 									router.push(
-										PAGES_DATA.profile_addresses_page
+										PAGES_DATA.profile_addresses_page,
 									);
 								}}
 								className='w-full'>
@@ -61,49 +61,62 @@ const AddressesDrawer = ({
 							</Button>
 						</div>
 					) : (
-						<RadioGroup
-							value={selectedAddressId ?? ''}
-							onValueChange={(value) => {
-								setSelectedAddressId(value);
-								setIsAddressDialogOpen(false);
-							}}
-							className='space-y-2'>
-							{addresses.map((address) => (
-								<div key={address.id}>
-									<div className='flex items-center gap-3 p-3 rounded border'>
-										<RadioGroupItem
-											value={address.id}
-											id={`address-${address.id}`}
-										/>
-										<Label
-											htmlFor={`address-${address.id}`}
-											className='flex-1 cursor-pointer'>
-											<div>
-												{address.label && (
-													<p className='font-semibold'>
-														{address.label}
+						<div className='w-full'>
+							<RadioGroup
+								value={selectedAddressId ?? ''}
+								onValueChange={(value) => {
+									setSelectedAddressId(value);
+									setIsAddressDialogOpen(false);
+								}}
+								className='space-y-2'>
+								{addresses.map((address) => (
+									<div key={address.id}>
+										<div className='flex items-center gap-3 p-3 rounded border'>
+											<RadioGroupItem
+												value={address.id}
+												id={`address-${address.id}`}
+											/>
+											<Label
+												htmlFor={`address-${address.id}`}
+												className='flex-1 cursor-pointer'>
+												<div>
+													{address.label && (
+														<p className='font-semibold'>
+															{address.label}
+														</p>
+													)}
+													<p className='text-sm'>
+														{address.line1}
+														{address.line2 &&
+															`, ${address.line2}`}
 													</p>
-												)}
-												<p className='text-sm'>
-													{address.line1}
-													{address.line2 &&
-														`, ${address.line2}`}
-												</p>
-												<p className='text-sm text-foreground/50'>
-													{address.city}
-													{address.state &&
-														`, ${address.state}`}
-												</p>
-											</div>
-										</Label>
+													<p className='text-sm text-foreground/50'>
+														{address.city}
+														{address.state &&
+															`, ${address.state}`}
+													</p>
+												</div>
+											</Label>
+										</div>
+										{addresses.indexOf(address) <
+											addresses.length - 1 && (
+											<Separator className='my-2' />
+										)}
 									</div>
-									{addresses.indexOf(address) <
-										addresses.length - 1 && (
-										<Separator className='my-2' />
-									)}
-								</div>
-							))}
-						</RadioGroup>
+								))}
+							</RadioGroup>
+							<Button
+								variant='game'
+								onClick={() => {
+									setIsAddressDialogOpen(false);
+									router.push(
+										PAGES_DATA.profile_set_address_manually,
+									);
+								}}
+								className='w-full'>
+								Add New Address
+							</Button>
+						</div>
 					)}
 				</div>
 			</DrawerContent>
