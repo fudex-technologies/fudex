@@ -19,7 +19,7 @@ export const PAGES_DATA = {
     completed_order_info_page: (orderId: string) => `/orders/${orderId}/completed-order-info`,
     summary_page: (orderId: string) => `/orders/${orderId}/order-summary`,
     order_info_page: (orderId: string) => `/orders/${orderId}/order-info`,
-    checkout_page: (vendorId: string) => `/orders/vendor/${vendorId}/checkout`, 
+    checkout_page: (vendorId: string) => `/orders/vendor/${vendorId}/checkout`,
     order_summary_page: (vendorId: string) => `/orders/vendor/${vendorId}/order-summary`,
 
 
@@ -106,4 +106,5 @@ export const PAGES_DATA = {
     vendor_dashboard_profile_opening_hours_page: `/profile/vendor-dashboard/profile/opening-hours`,
     vendor_dashboard_profile_bank_details_page: `/profile/vendor-dashboard/profile/bank-details`,
     vendor_dashboard_delivery_settlement_page: `/profile/vendor-dashboard/profile/delivery-settlement`,
+    vendor_dashboard_rider_request_details_page: (id: string) => `/profile/vendor-dashboard/rider-requests/${id}`,
 }

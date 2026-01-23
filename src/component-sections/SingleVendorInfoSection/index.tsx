@@ -78,7 +78,7 @@ const SingleVendorInfoSection = ({ vendorId }: { vendorId: string }) => {
 
 	const rating = vendor.reviewsAverage || 0;
 	const reviewCount = vendor.reviewsCount || 0;
-	
+
 	// Get address from the first address record
 	const defaultAddress = vendor.addresses?.[0];
 	const address = defaultAddress
@@ -91,6 +91,9 @@ const SingleVendorInfoSection = ({ vendorId }: { vendorId: string }) => {
 		<SectionWrapper className='w-full max-w-lg mx-auto p-0!'>
 			<div className='w-full p-5'>
 				<h1 className='w-full text-xl font-bold'>{vendor.name}</h1>
+				<p className='flex-1 text-wrap text-start text-foreground/80'>
+					{vendor.description}
+				</p>
 				{address && (
 					<div className='w-full flex items-center gap-3 my-5'>
 						<PiMapPinAreaFill className='text-foreground/70 shrink-0' />
@@ -100,7 +103,7 @@ const SingleVendorInfoSection = ({ vendorId }: { vendorId: string }) => {
 					</div>
 				)}
 			</div>
-			<Separator orientation='horizontal' />
+			{/* <Separator orientation='horizontal' />
 			<div className='my-5 w-full'>
 				<p className='text-lg px-5'>Vendor rating</p>
 				<Link
@@ -125,7 +128,7 @@ const SingleVendorInfoSection = ({ vendorId }: { vendorId: string }) => {
 					</div>
 					<ChevronRight />
 				</Link>
-			</div>
+			</div> */}
 			<Separator orientation='horizontal' />
 			<div className='w-full p-5 space-y-3'>
 				<div className='flex justify-between items-center'>
@@ -145,7 +148,7 @@ const SingleVendorInfoSection = ({ vendorId }: { vendorId: string }) => {
 				{vendor.openingHours && vendor.openingHours.length > 0 ? (
 					DAY_ORDER.map((day) => {
 						const dayHours = vendor.openingHours?.find(
-							(h) => h.day === day
+							(h) => h.day === day,
 						);
 						const dayName =
 							day.charAt(0) + day.slice(1).toLowerCase();
@@ -161,13 +164,13 @@ const SingleVendorInfoSection = ({ vendorId }: { vendorId: string }) => {
 									{dayHours?.isClosed
 										? 'Closed'
 										: dayHours?.openTime &&
-										  dayHours?.closeTime
-										? `${formatTime(
-												dayHours.openTime
-										  )} - ${formatTime(
-												dayHours.closeTime
-										  )}`
-										: 'Not set'}
+											  dayHours?.closeTime
+											? `${formatTime(
+													dayHours.openTime,
+												)} - ${formatTime(
+													dayHours.closeTime,
+												)}`
+											: 'Not set'}
 								</p>
 							</div>
 						);

@@ -1108,6 +1108,83 @@ export const vendorRouter = createTRPCRouter({
             }));
         }),
 
+    getMyTopSellingProductItems: vendorProcedure
+        .input(z.object({
+            take: z.number().optional().default(10)
+        }))
+        .query(async ({ ctx, input }) => {
+            const userId = ctx.user!.id;
+            const vendor = await ctx.prisma.vendor.findFirst({
+                where: { ownerId: userId }
+            });
+            if (!vendor) throw new Error("Vendor not found");
+
+            // 1. Get total completed orders to check if we should show anything
+            const completedOrdersCount = await ctx.prisma.order.count({
+                where: {
+                    vendorId: vendor.id,
+                    status: 'DELIVERED'
+                }
+            });
+
+            if (completedOrdersCount === 0) {
+                return { items: [], hasCompletedOrders: false };
+            }
+
+            // 2. Fetch top product items by completed order count
+            const topItems = await ctx.prisma.orderItem.groupBy({
+                by: ['productItemId'],
+                where: {
+                    order: {
+                        vendorId: vendor.id,
+                        status: 'DELIVERED'
+                    }
+                },
+                _count: {
+                    productItemId: true
+                },
+                orderBy: {
+                    _count: {
+                        productItemId: 'desc'
+                    }
+                },
+                take: input.take
+            });
+
+            if (topItems.length === 0) {
+                return { items: [], hasCompletedOrders: true };
+            }
+
+            // 3. Fetch full details for these items
+            const productItems = await ctx.prisma.productItem.findMany({
+                where: {
+                    id: { in: topItems.map(ti => ti.productItemId) }
+                },
+                include: {
+                    product: true,
+                    categories: {
+                        include: {
+                            category: true
+                        }
+                    }
+                }
+            });
+
+            // Re-sort items by the count from topItems because findMany doesn't guarantee order
+            const items = topItems.map(ti => {
+                const detailedItem = productItems.find(pi => pi.id === ti.productItemId);
+                return {
+                    ...detailedItem,
+                    orderCount: ti._count.productItemId
+                };
+            }).filter(item => item.id); // Filter out any that might have been deleted but still in OrderItems
+
+            return {
+                items,
+                hasCompletedOrders: true
+            };
+        }),
+
     // Create a standalone product
     createProduct: vendorAndOperatorProcedure
         .input(z.object({
@@ -1183,7 +1260,7 @@ export const vendorRouter = createTRPCRouter({
 
             const slug = await generateUniqueSlug(ctx.prisma, input.name, input.vendorId);
 
-            const { categories, ...restOfInput } = input;
+            const { categories: _, ...restOfInput } = input;
 
             return ctx.prisma.productItem.create({
                 data: {
@@ -1315,7 +1392,7 @@ export const vendorRouter = createTRPCRouter({
             }
 
 
-            const { categories, ...restOfData } = input.data;
+            const { categories: _, ...restOfData } = input.data;
 
             return ctx.prisma.productItem.update({
                 where: { id: input.id },
