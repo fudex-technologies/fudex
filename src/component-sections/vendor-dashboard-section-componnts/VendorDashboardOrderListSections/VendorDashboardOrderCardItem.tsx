@@ -18,11 +18,14 @@ const VendorDashboardOrderCardItem = ({
 	refetch: () => void;
 }) => {
 	const [showMore, setShowMore] = useState(false);
-	const { updateOrderStatus } = useVendorDashboardActions();
+	const { updateOrderStatus, useGetMyOrderCounts } =
+		useVendorDashboardActions();
 	const status = order.status as OrderStatus;
 
+	const { refetch: refetchCounts } = useGetMyOrderCounts();
 	const updateStatusMutation = updateOrderStatus({
 		onSuccess: () => {
+			refetchCounts();
 			refetch();
 		},
 	});
@@ -69,7 +72,7 @@ const VendorDashboardOrderCardItem = ({
 		return (
 			order.items?.reduce(
 				(sum: number, it: any) => sum + it.quantity,
-				0
+				0,
 			) || 0
 		);
 	}, [order.items]);
@@ -143,7 +146,7 @@ const VendorDashboardOrderCardItem = ({
 								{totalQuantity} items:
 							</p>
 							<p className='font-bold'>
-								{formatCurency(order.totalAmount)}
+								{formatCurency(order.productAmount)}
 							</p>
 						</div>
 
@@ -154,7 +157,7 @@ const VendorDashboardOrderCardItem = ({
 							<ChevronDown
 								className={cn(
 									'transition-all easy-out',
-									showMore && 'rotate-180'
+									showMore && 'rotate-180',
 								)}
 							/>
 						</Button>

@@ -247,6 +247,12 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 			setIsAddressDialogOpen(true);
 			return;
 		}
+		// Check phone
+		if (!prodileData?.phone) {
+			toast.error('Please provide a contact phone number');
+			setIsAddPhoneDrawerOpen(true);
+			return;
+		}
 
 		// Convert cart packs to order items
 		const items = packs.map((pack) => ({
@@ -553,8 +559,8 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 							disabled={
 								createOrderMutation.isPending ||
 								createPaymentMutation.isPending ||
-								!selectedAddressId ||
-								!prodileData?.phone ||
+								// !selectedAddressId ||
+								// !prodileData?.phone ||
 								!vendorIsOpen
 							}>
 							{createOrderMutation.isPending ||

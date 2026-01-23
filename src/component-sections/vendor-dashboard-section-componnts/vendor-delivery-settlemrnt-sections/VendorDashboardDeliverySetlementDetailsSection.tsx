@@ -1,14 +1,20 @@
-"use client"
+'use client';
 
 import SectionWrapper from '@/components/wrapers/SectionWrapper';
 import { formatCurency } from '@/lib/commonFunctions';
 import { Landmark, Loader2 } from 'lucide-react';
 import { useRiderRequestActions } from '@/api-hooks/useRiderRequestActions';
+import {
+	FUDEX_SETTLEMENT_ACCOUNT_NAME,
+	FUDEX_SETTLEMENT_ACCOUNT_NUMBER,
+	FUDEX_SETTLEMENT_BANK_NAME,
+} from '@/lib/staticData/contactData';
+import CopyDataComponent from '@/components/CopyDataComponent';
 
 const VendorDashboardDeliverySetlementDetailsSection = () => {
 	const { useListMyRiderRequests } = useRiderRequestActions();
 	const { data: pendingRiderRequests, isLoading } = useListMyRiderRequests({
-		settlementStatus: ['UNSETTLED'],
+		settlementStatus: ['UNSETTLED']
 	});
 
 	const totalPending =
@@ -39,15 +45,18 @@ const VendorDashboardDeliverySetlementDetailsSection = () => {
 						Payment Account
 					</div>
 					<div className='p-6 text-center space-y-3'>
-						<p className='font-black text-2xl tracking-tighter'>
-							9020271386
+						<p className='font-black text-2xl tracking-tighter flex items-center justify-center gap-2'>
+							{FUDEX_SETTLEMENT_ACCOUNT_NUMBER}{' '}
+							<CopyDataComponent
+								data={FUDEX_SETTLEMENT_ACCOUNT_NUMBER}
+							/>
 						</p>
 						<div className='space-y-1'>
 							<p className='text-sm font-bold text-muted-foreground'>
-								Opay
+								{FUDEX_SETTLEMENT_BANK_NAME}
 							</p>
 							<p className='text-xs font-medium opacity-70 uppercase'>
-								IGOTUN MARY OLAIDE
+								{FUDEX_SETTLEMENT_ACCOUNT_NAME}
 							</p>
 						</div>
 					</div>

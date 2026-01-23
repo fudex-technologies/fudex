@@ -6,14 +6,11 @@ import { RiShoppingBag2Line } from 'react-icons/ri';
 import {
 	AlarmClock,
 	BadgeCheck,
-	Check,
-	Truck,
-	CheckCircle,
-	XCircle,
+	Check
 } from 'lucide-react';
 import { useVendorDashboardActions } from '@/api-hooks/useVendorDashboardActions';
 import { OrderStatus } from '@prisma/client';
-import { FaBicycle } from 'react-icons/fa';
+
 
 const VendorDashboardOrdertats = () => {
 	const { useGetMyOrderCounts } = useVendorDashboardActions();

@@ -78,7 +78,16 @@ export function useOrderingActions() {
         return data?.length || 0
     }
     const useGetNumberOfMyOngoingOrders = () => {
-        const { data } = useQuery(trpc.orders.listMyOrders.queryOptions({ status: ["PREPARING", "PAID", "PENDING", "ASSIGNED", "ACCEPTED", "READY", "OUT_FOR_DELIVERY"] }))
+        const { data } = useQuery(trpc.orders.listMyOrders.queryOptions(
+            { status: ["PREPARING", "PAID", "ASSIGNED", "ACCEPTED", "READY", "OUT_FOR_DELIVERY"] },
+            {
+                // Mark data as stale immediately so it refetches on mount
+                staleTime: 0,
+                // Refetch when component mounts or window regains focus
+                refetchOnMount: 'always',
+                refetchOnWindowFocus: true,
+            }
+        ))
         return data?.length || 0
     }
 

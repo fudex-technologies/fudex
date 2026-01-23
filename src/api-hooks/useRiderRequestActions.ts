@@ -61,9 +61,27 @@ export function useRiderRequestActions() {
 
         // queries
         useListMyRiderRequests: (input?: { settlementStatus?: SettlementStatus[] }) =>
-            useQuery(trpc.riderRequests.listMyRiderRequests.queryOptions(input ?? {})),
+            useQuery(trpc.riderRequests.listMyRiderRequests.queryOptions(
+                { ...input },
+                {
+                    // Mark data as stale immediately so it refetches on mount
+                    staleTime: 0,
+                    // Refetch when component mounts or window regains focus
+                    refetchOnMount: 'always',
+                    refetchOnWindowFocus: true,
+                }
+            )),
 
         useListAdminSettlements: (input?: { settlementStatus?: SettlementStatus }) =>
-            useQuery(trpc.riderRequests.listAdminSettlements.queryOptions(input ?? {})),
+            useQuery(trpc.riderRequests.listAdminSettlements.queryOptions(
+                { ...input },
+                {
+                    // Mark data as stale immediately so it refetches on mount
+                    staleTime: 0,
+                    // Refetch when component mounts or window regains focus
+                    refetchOnMount: 'always',
+                    refetchOnWindowFocus: true,
+                }
+            )),
     };
 }

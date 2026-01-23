@@ -70,7 +70,7 @@ const VendorCard = ({ vendor, deliveryPrice = 600, deliveryTime }: Props) => {
 
 			<div className='w-full flex justify-between'>
 				<p className='font-semibold '>{vendor.name}</p>
-				{rating && (
+				{/* {rating && (
 					<div className='flex items-center gap-1'>
 						<FaStar
 							width={15}
@@ -86,7 +86,7 @@ const VendorCard = ({ vendor, deliveryPrice = 600, deliveryTime }: Props) => {
 							)}
 						</p>
 					</div>
-				)}
+				)} */}
 			</div>
 
 			<div className='flex items-center text-[14px] text-foreground/50'>

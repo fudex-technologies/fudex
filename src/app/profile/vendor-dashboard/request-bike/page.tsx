@@ -8,7 +8,7 @@ import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
 import PageWrapper from '@/components/wrapers/PageWrapper';
 import SectionWrapper from '@/components/wrapers/SectionWrapper';
 import { validatePhoneNumberRegex } from '@/lib/commonFunctions';
-import { Loader2, Plus } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useRiderRequestActions } from '@/api-hooks/useRiderRequestActions';
 import { useRouter } from 'next/navigation';
 import { PAGES_DATA } from '@/data/pagesData';

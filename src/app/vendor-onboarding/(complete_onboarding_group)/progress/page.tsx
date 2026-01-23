@@ -274,7 +274,7 @@ export default function VendorOnboardingProgressPage() {
 								</p>
 							</div>
 							<Button asChild className='w-full' size='lg'>
-								<Link href='/vendor/dashboard'>
+								<Link href={PAGES_DATA.vendor_dashboard_page}>
 									Go to Dashboard
 								</Link>
 							</Button>
