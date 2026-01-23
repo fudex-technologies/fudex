@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { UseAPICallerOptions } from "./api-hook-types";
 import { localStorageStrings } from "@/constants/localStorageStrings";
 import { signIn, signUp } from "@/lib/auth-client";
+import { normalizePhoneNumber } from "@/lib/commonFunctions";
 
 export function useVendorOnboardingActions() {
     const trpc = useTRPC();
@@ -137,7 +138,7 @@ export function useVendorOnboardingActions() {
                 // 3. Create vendor account now that user is authenticated
                 const vendorResult = await createVendorMutation.mutateAsync({
                     email: options.email,
-                    phone: options.phone,
+                    phone: normalizePhoneNumber(options.phone),
                     firstName: options.firstName,
                     lastName: options.lastName,
                     businessName: options.businessName,
