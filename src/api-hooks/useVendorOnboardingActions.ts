@@ -1,7 +1,7 @@
 "use client";
 
 import { useTRPC } from "@/trpc/client";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { UseAPICallerOptions } from "./api-hook-types";
 import { localStorageStrings } from "@/constants/localStorageStrings";
@@ -10,6 +10,7 @@ import { normalizePhoneNumber } from "@/lib/commonFunctions";
 
 export function useVendorOnboardingActions() {
     const trpc = useTRPC();
+    const queryClient = useQueryClient();
 
     // Request email verification OTP
     const requestEmailVerification = (options?: UseAPICallerOptions) => {
@@ -111,6 +112,11 @@ export function useVendorOnboardingActions() {
             trpc.vendors.createVendorAccount.mutationOptions({
                 onSuccess: async (data) => {
                     if (!options?.silent) toast.success("Vendor account activated!");
+
+                    // Invalidate onboarding progress query
+                    queryClient.invalidateQueries({
+                        queryKey: [['vendors', 'getVendorOnboardingProgress']]
+                    });
 
                     // Clear onboarding data
                     localStorage.removeItem(localStorageStrings.vendorOnboardinPersonalDetailsstring);

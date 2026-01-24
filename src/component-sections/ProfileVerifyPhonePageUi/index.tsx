@@ -92,8 +92,7 @@ const ProfileVerifyPhonePageUi = () => {
 				<h1 className='font-bold text-xl'>Verify phone number</h1>
 				<p className='font-light text-foreground/50'>
 					We have sent a 6-digit code to {phone} via{' '}
-					<span className='text-primary'>SMS</span> and{' '}
-					<span className='text-primary'>Whatsapp</span>
+					<span className='text-primary'>SMS</span>
 				</p>
 			</div>
 
