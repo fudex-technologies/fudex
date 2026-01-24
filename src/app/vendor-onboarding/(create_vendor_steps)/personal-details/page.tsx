@@ -1,6 +1,6 @@
 'use client';
 
-import InputField, { SelectField, TextAreaField } from '@/components/InputComponent';
+import InputField, { TextAreaField } from '@/components/InputComponent';
 import { Button } from '@/components/ui/button';
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
 import VendorOnboardingFormsWrapper from '@/components/wrapers/VendorOnboardingFormsWrapper';
@@ -263,7 +263,11 @@ export default function VendorOnboardingPersonalDetailsPage() {
 
 	const handleChange =
 		(field: string) =>
-		(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | string) => {
+		(
+			e:
+				| React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+				| string,
+		) => {
 			setForm({
 				...form,
 				[field]: typeof e === 'string' ? e : e.target.value,
@@ -401,34 +405,11 @@ export default function VendorOnboardingPersonalDetailsPage() {
 						value={form.businessDescription}
 						onChange={handleChange('businessDescription')}
 						placeholder='Enter your business description here'
-						error={touched.businessDescription && errorsNow.businessDescription}
+						error={
+							touched.businessDescription &&
+							errorsNow.businessDescription
+						}
 					/>
-					{/* <SelectField
-						data={[
-							{
-								label: 'Restaurant',
-								value: 'restaurant',
-							},
-							{
-								label: 'Pastery Shop',
-								value: 'pastery_shop',
-							},
-							{
-								label: 'Grocery Store',
-								value: 'grocery_store',
-							},
-							{
-								label: 'Other',
-								value: 'other',
-							},
-						]}
-						type='text'
-						label='Business Type'
-						value={form.businessType}
-						onChange={handleChange('businessType')}
-						error={touched.businessType && errorsNow.businessType}
-						required
-					/> */}
 
 					<Button
 						type='submit'

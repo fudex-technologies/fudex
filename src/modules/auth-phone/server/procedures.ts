@@ -37,7 +37,7 @@ function signVerificationToken(payload: { phone: string; pvId: string; exp: numb
     return `${b64}.${sig}`;
 }
 
-function verifyVerificationToken(token: string) {
+export function verifyVerificationToken(token: string) {
     try {
         const [b64, sig] = token.split('.');
         const expected = crypto.createHmac('sha256', HMAC_SECRET).update(b64).digest('base64url');
