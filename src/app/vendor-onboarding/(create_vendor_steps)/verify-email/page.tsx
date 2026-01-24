@@ -41,7 +41,9 @@ export default function VendorOnboardingVerifyEmail() {
 					router.push(PAGES_DATA.vendor_onboarding_terms_page);
 				} else {
 					// New user - needs to create password
-					router.push(PAGES_DATA.vendor_onboarding_create_password_page);
+					router.push(
+						PAGES_DATA.vendor_onboarding_create_password_page,
+					);
 				}
 			},
 		});
@@ -49,7 +51,7 @@ export default function VendorOnboardingVerifyEmail() {
 	// Load email from localStorage
 	useEffect(() => {
 		const raw = localStorage.getItem(
-			localStorageStrings.vendorOnboardinPersonalDetailsstring
+			localStorageStrings.vendorOnboardinPersonalDetailsstring,
 		);
 		if (raw) {
 			try {

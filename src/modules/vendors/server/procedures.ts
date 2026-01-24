@@ -18,6 +18,7 @@ import {
     sendAdminNewVendorNotification
 } from '@/lib/email';
 import { createPaystackRecipient, getPaystackBanks } from "@/lib/paystack";
+import { verifyVerificationToken } from '@/modules/auth-phone/server/procedures';
 
 const generateUniqueSlug = async (prisma: any, name: string, vendorId: string): Promise<string> => {
     let slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
@@ -1493,7 +1494,18 @@ export const vendorRouter = createTRPCRouter({
             areaId: z.string().optional(), // Area ID for delivery zone
         }))
         .mutation(async ({ ctx, input }) => {
-            const { userId, email, phone, firstName, lastName, businessName, businessDescription, address, areaId } = input;
+            const { userId, email, phone, firstName, lastName, businessName, businessDescription, address, areaId, verificationToken } = input;
+
+            // Verify email token
+            const payload = verifyVerificationToken(verificationToken);
+            if (!payload) {
+                throw new TRPCError({ code: "BAD_REQUEST", message: "INVALID_VERIFICATION_TOKEN" });
+            }
+
+            // In Step 48 of phoneAuth.verifyEmailOtp, payload.phone was set to email
+            if (payload.phone !== email.toLowerCase().trim()) {
+                throw new TRPCError({ code: "BAD_REQUEST", message: "EMAIL_MISMATCH" });
+            }
 
             // Use transaction to ensure atomicity
             const result = await ctx.prisma.$transaction(async (tx) => {
