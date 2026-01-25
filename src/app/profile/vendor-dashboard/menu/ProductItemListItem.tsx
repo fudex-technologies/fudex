@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { formatCurency } from '@/lib/commonFunctions';
 import { useVendorDashboardActions } from '@/api-hooks/useVendorDashboardActions';
+import { useAdminActions } from '@/api-hooks/useAdminActions';
 import { toast } from 'sonner';
 import { Trash2 } from 'lucide-react';
 
@@ -12,12 +13,15 @@ export default function ProductItemListItem({
 	item,
 	onSuccess,
 	onDelete,
+	isAdmin = false,
 }: {
 	item: any;
 	onSuccess: () => void;
 	onDelete: () => void;
+	isAdmin?: boolean;
 }) {
 	const { updateProductItem } = useVendorDashboardActions();
+	const { updateProductItemByAdmin } = useAdminActions();
 
 	const updateMutation = updateProductItem({
 		onSuccess: () => {
@@ -26,11 +30,25 @@ export default function ProductItemListItem({
 		},
 	});
 
+	const adminUpdateMutation = updateProductItemByAdmin({
+		onSuccess: () => {
+			toast.success('Item updated');
+			onSuccess();
+		},
+	});
+
 	const handleStockToggle = (inStock: boolean) => {
-		updateMutation.mutate({
-			id: item.id,
-			data: { inStock },
-		});
+		if (isAdmin) {
+			adminUpdateMutation.mutate({
+				id: item.id,
+				inStock,
+			});
+		} else {
+			updateMutation.mutate({
+				id: item.id,
+				data: { inStock },
+			});
+		}
 	};
 
 	return (
@@ -44,7 +62,10 @@ export default function ProductItemListItem({
 				<Switch
 					checked={item.inStock}
 					onCheckedChange={handleStockToggle}
-					disabled={updateMutation.isPending}
+					disabled={
+						updateMutation.isPending ||
+						adminUpdateMutation.isPending
+					}
 				/>
 				<p
 					className={`text-sm ${

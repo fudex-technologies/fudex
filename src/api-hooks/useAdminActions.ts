@@ -1,7 +1,7 @@
 "use client";
 
 import { useTRPC } from "@/trpc/client";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { UseAPICallerOptions } from "./api-hook-types";
 
@@ -147,6 +147,90 @@ export function useAdminActions() {
                     },
                     onError: (err: unknown) => {
                         if (!options?.silent) toast.error("Failed to assign vendor role", { description: err instanceof Error ? err.message : String(err) });
+                        options?.onError?.(err);
+                    },
+                    retry: false,
+                })
+            ),
+
+        // Vendors
+        useInfiniteListVendors: (input: { limit?: number; q?: string } = {}) =>
+            useInfiniteQuery(
+                trpc.admin.listVendorsInfinite.infiniteQueryOptions(
+                    { ...input },
+                    {
+                        getNextPageParam: (lastPage: any) => lastPage.nextCursor,
+                    }
+                )
+            ),
+
+        updateVendorByAdmin: (options?: UseAPICallerOptions) =>
+            useMutation(
+                trpc.admin.updateVendorByAdmin.mutationOptions({
+                    onSuccess: (data) => {
+                        if (!options?.silent) toast.success("Vendor updated successfully");
+                        options?.onSuccess?.(data);
+                    },
+                    onError: (err: unknown) => {
+                        if (!options?.silent) toast.error("Failed to update vendor", { description: err instanceof Error ? err.message : String(err) });
+                        options?.onError?.(err);
+                    },
+                    retry: false,
+                })
+            ),
+
+        // Menu Management
+        useListVendorCategories: (input: { vendorId: string }) =>
+            useQuery(trpc.admin.listVendorCategories.queryOptions(input, { enabled: !!input.vendorId })),
+
+        useInfiniteListVendorProducts: (input: { vendorId: string; limit?: number } = { vendorId: "" }) =>
+            useInfiniteQuery(
+                trpc.admin.listVendorProducts.infiniteQueryOptions(
+                    { ...input },
+                    {
+                        enabled: !!input.vendorId,
+                        getNextPageParam: (lastPage: any) => lastPage.nextCursor,
+                    }
+                )
+            ),
+
+        updateProductItemByAdmin: (options?: UseAPICallerOptions) =>
+            useMutation(
+                trpc.admin.updateProductItemByAdmin.mutationOptions({
+                    onSuccess: (data) => {
+                        if (!options?.silent) toast.success("Product item updated");
+                        options?.onSuccess?.(data);
+                    },
+                    onError: (err: unknown) => {
+                        if (!options?.silent) toast.error("Failed to update product item", { description: err instanceof Error ? err.message : String(err) });
+                        options?.onError?.(err);
+                    },
+                    retry: false,
+                })
+            ),
+
+        toggleProductItemCategory: (options?: UseAPICallerOptions) =>
+            useMutation(
+                trpc.admin.toggleProductItemCategory.mutationOptions({
+                    onSuccess: (data) => {
+                        options?.onSuccess?.(data);
+                    },
+                    onError: (err: unknown) => {
+                        if (!options?.silent) toast.error("Failed to update category", { description: err instanceof Error ? err.message : String(err) });
+                        options?.onError?.(err);
+                    },
+                    retry: false,
+                })
+            ),
+
+        toggleVendorCategory: (options?: UseAPICallerOptions) =>
+            useMutation(
+                trpc.admin.toggleVendorCategory.mutationOptions({
+                    onSuccess: (data) => {
+                        options?.onSuccess?.(data);
+                    },
+                    onError: (err: unknown) => {
+                        if (!options?.silent) toast.error("Failed to update vendor category", { description: err instanceof Error ? err.message : String(err) });
                         options?.onError?.(err);
                     },
                     retry: false,

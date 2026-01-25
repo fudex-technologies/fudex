@@ -485,4 +485,187 @@ export const adminRouter = createTRPCRouter({
                 recentVendors
             };
         }),
+
+    // ========== VENDOR & MENU MANAGEMENT ==========
+
+    // List all vendors with infinite scroll (paginated)
+    listVendorsInfinite: adminProcedure
+        .input(z.object({
+            limit: z.number().min(1).max(100).default(50),
+            cursor: z.string().nullish(), // vendorId
+            q: z.string().optional()
+        }))
+        .query(async ({ ctx, input }) => {
+            const limit = input.limit;
+            const { cursor, q } = input;
+
+            const where: any = {};
+            if (q) {
+                where.OR = [
+                    { name: { contains: q, mode: "insensitive" } },
+                    { description: { contains: q, mode: "insensitive" } },
+                    { slug: { contains: q, mode: "insensitive" } }
+                ];
+            }
+
+            const items = await ctx.prisma.vendor.findMany({
+                where,
+                take: limit + 1,
+                cursor: cursor ? { id: cursor } : undefined,
+                orderBy: { createdAt: "desc" },
+                include: {
+                    owner: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                        }
+                    },
+                    addresses: true,
+                    _count: {
+                        select: {
+                            products: true,
+                            orders: true
+                        }
+                    }
+                }
+            });
+
+            let nextCursor: typeof cursor | undefined = undefined;
+            if (items.length > limit) {
+                const nextItem = items.pop();
+                nextCursor = nextItem!.id;
+            }
+            return {
+                items,
+                nextCursor,
+            };
+        }),
+
+    // Update vendor (Full admin power)
+    updateVendorByAdmin: adminProcedure
+        .input(z.object({
+            id: z.string(),
+            name: z.string().optional(),
+            description: z.string().optional(),
+            phone: z.string().optional(),
+            email: z.string().email().optional(),
+            approvalStatus: z.enum(["PENDING", "APPROVED", "DECLINED"]).optional(),
+            isActive: z.boolean().optional(),
+            coverImage: z.string().optional(),
+            areaId: z.string().optional()
+        }))
+        .mutation(async ({ ctx, input }) => {
+            const { id, ...data } = input;
+            return ctx.prisma.vendor.update({
+                where: { id },
+                data
+            });
+        }),
+
+    // List categories for a vendor
+    listVendorCategories: adminProcedure
+        .input(z.object({ vendorId: z.string() }))
+        .query(async ({ ctx, input }) => {
+            return ctx.prisma.vendorCategory.findMany({
+                where: { vendorId: input.vendorId },
+                include: { category: true }
+            });
+        }),
+
+    // List products for a vendor
+    listVendorProducts: adminProcedure
+        .input(z.object({
+            vendorId: z.string(),
+            limit: z.number().min(1).max(100).default(50),
+            cursor: z.string().nullish()
+        }))
+        .query(async ({ ctx, input }) => {
+            const limit = input.limit;
+            const items = await ctx.prisma.product.findMany({
+                where: { vendorId: input.vendorId },
+                take: limit + 1,
+                cursor: input.cursor ? { id: input.cursor } : undefined,
+                orderBy: { createdAt: "desc" },
+                include: {
+                    items: {
+                        where: { isActive: true },
+                        include: {
+                            categories: { include: { category: true } }
+                        }
+                    }
+                }
+            });
+
+            let nextCursor: string | undefined = undefined;
+            if (items.length > limit) {
+                const nextItem = items.pop();
+                nextCursor = nextItem!.id;
+            }
+            return {
+                items,
+                nextCursor,
+            };
+        }),
+
+    // Manage Product Item (Admin power)
+    updateProductItemByAdmin: adminProcedure
+        .input(z.object({
+            id: z.string(),
+            name: z.string().optional(),
+            description: z.string().optional(),
+            price: z.number().optional(),
+            inStock: z.boolean().optional(),
+            isActive: z.boolean().optional(),
+            images: z.array(z.string()).optional()
+        }))
+        .mutation(async ({ ctx, input }) => {
+            const { id, ...data } = input;
+            return ctx.prisma.productItem.update({
+                where: { id },
+                data
+            });
+        }),
+
+    // Manage Category for Product Item
+    toggleProductItemCategory: adminProcedure
+        .input(z.object({
+            productItemId: z.string(),
+            categoryId: z.string(),
+            action: z.enum(["add", "remove"])
+        }))
+        .mutation(async ({ ctx, input }) => {
+            if (input.action === "add") {
+                return ctx.prisma.productItemCategory.upsert({
+                    where: { productItemId_categoryId: { productItemId: input.productItemId, categoryId: input.categoryId } },
+                    update: {},
+                    create: { productItemId: input.productItemId, categoryId: input.categoryId }
+                });
+            } else {
+                return ctx.prisma.productItemCategory.deleteMany({
+                    where: { productItemId: input.productItemId, categoryId: input.categoryId }
+                });
+            }
+        }),
+
+    // Manage Vendor Category
+    toggleVendorCategory: adminProcedure
+        .input(z.object({
+            vendorId: z.string(),
+            categoryId: z.string(),
+            action: z.enum(["add", "remove"])
+        }))
+        .mutation(async ({ ctx, input }) => {
+            if (input.action === "add") {
+                return ctx.prisma.vendorCategory.upsert({
+                    where: { vendorId_categoryId: { vendorId: input.vendorId, categoryId: input.categoryId } },
+                    update: {},
+                    create: { vendorId: input.vendorId, categoryId: input.categoryId }
+                });
+            } else {
+                return ctx.prisma.vendorCategory.deleteMany({
+                    where: { vendorId: input.vendorId, categoryId: input.categoryId }
+                });
+            }
+        }),
 });

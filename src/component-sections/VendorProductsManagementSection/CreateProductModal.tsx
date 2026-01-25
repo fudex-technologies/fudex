@@ -18,8 +18,10 @@ import { toast } from 'sonner';
 
 export default function CreateProductModal({
 	onSuccess,
+	vendorId,
 }: {
 	onSuccess: () => void;
+	vendorId?: string;
 }) {
 	const [open, setOpen] = useState(false);
 	const [name, setName] = useState('');
@@ -38,12 +40,13 @@ export default function CreateProductModal({
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
-		if (!vendor) {
+		const targetVendorId = vendorId || vendor?.id;
+		if (!targetVendorId) {
 			toast.error('Vendor not found');
 			return;
 		}
 		createProductMutate.mutate({
-			vendorId: vendor.id,
+			vendorId: targetVendorId,
 			name,
 			description: description || undefined,
 			inStock: true,
@@ -54,8 +57,9 @@ export default function CreateProductModal({
 		<Dialog open={open} onOpenChange={setOpen}>
 			<DialogTrigger asChild>
 				<Button variant='game' size='lg'>
-					     <Plus size={16} className='mr-2' />
-					     Add Menu Item				</Button>
+					<Plus size={16} className='mr-2' />
+					Add Menu Item{' '}
+				</Button>
 			</DialogTrigger>
 			<DialogContent>
 				<DialogHeader>
