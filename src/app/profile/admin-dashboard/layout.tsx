@@ -6,9 +6,15 @@ import { redirect } from 'next/navigation';
 import PageWrapper from '@/components/wrapers/PageWrapper';
 import GoBackButton from '@/components/GoBackButton';
 import { PAGES_DATA } from '@/data/pagesData';
-import { MapPin, Settings, Landmark, FileCheck } from 'lucide-react';
+import {
+	MapPin,
+	Settings,
+	Landmark,
+	FileCheck,
+	LayoutDashboard,
+} from 'lucide-react';
 import TabComponent from '@/components/TabComponent';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTRPC } from '@/trpc/client';
 import { useQuery } from '@tanstack/react-query';
 import { BsBicycle } from 'react-icons/bs';
@@ -27,7 +33,7 @@ export default function AdminDashboardLayout({
 	const { data: isAdmin, isPending: isAdminPending } = useQuery(
 		trpc.users.checkAdminRole.queryOptions(undefined, {
 			enabled: !!session,
-		})
+		}),
 	);
 
 	useEffect(() => {
@@ -41,8 +47,10 @@ export default function AdminDashboardLayout({
 				setActiveTab('payouts');
 			} else if (path.includes('/vendor-requests')) {
 				setActiveTab('requests');
-			} else {
+			} else if (path.includes('/areas')) {
 				setActiveTab('areas');
+			} else {
+				setActiveTab('overview');
 			}
 		}
 	}, [router]);
@@ -79,6 +87,11 @@ export default function AdminDashboardLayout({
 					activeByPathname={true}
 					tabs={[
 						{
+							id: 'overview',
+							label: 'Overview',
+							icon: <LayoutDashboard size={18} />,
+						},
+						{
 							id: 'requests',
 							label: 'Verification Requests',
 							icon: <FileCheck size={18} />,
@@ -108,20 +121,22 @@ export default function AdminDashboardLayout({
 					onTabChange={(id) => {
 						if (id === 'settings') {
 							router.push(
-								PAGES_DATA.admin_dashboard_settings_page
+								PAGES_DATA.admin_dashboard_settings_page,
 							);
 						} else if (id === 'payouts') {
 							router.push('/profile/admin-dashboard/payouts');
 						} else if (id === 'requests') {
 							router.push(
-								PAGES_DATA.admin_dashboard_vendor_requests_page
+								PAGES_DATA.admin_dashboard_vendor_requests_page,
 							);
 						} else if (id === 'settlements') {
 							router.push(
-								PAGES_DATA.admin_dashboard_settlements_page
+								PAGES_DATA.admin_dashboard_settlements_page,
 							);
-						} else {
+						} else if (id === 'areas') {
 							router.push(PAGES_DATA.admin_dashboard_areas_page);
+						} else {
+							router.push(PAGES_DATA.admin_dashboard_page);
 						}
 					}}
 				/>
