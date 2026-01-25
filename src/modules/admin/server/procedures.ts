@@ -130,7 +130,7 @@ export const adminRouter = createTRPCRouter({
         }),
 
     // ========== AREA MANAGEMENT ==========
-    
+
     // List all areas
     listAreas: adminProcedure
         .input(z.object({
@@ -314,5 +314,175 @@ export const adminRouter = createTRPCRouter({
             return ctx.prisma.platformSetting.delete({
                 where: { key: input.key }
             });
+        }),
+
+    // ========== DASHBOARD STATISTICS ==========
+
+    // Get overview statistics
+    getDashboardOverview: adminProcedure
+        .query(async ({ ctx }) => {
+            const [
+                totalRevenue,
+                totalOrders,
+                totalUsers,
+                totalVendors,
+                activeVendors,
+                totalRiders,
+                pendingVendorRequests,
+                confirmedReferrals
+            ] = await Promise.all([
+                ctx.prisma.payment.aggregate({
+                    _sum: { amount: true },
+                    where: { status: "COMPLETED" }
+                }),
+                ctx.prisma.order.count(),
+                ctx.prisma.user.count(),
+                ctx.prisma.vendor.count(),
+                ctx.prisma.vendor.count({ where: { approvalStatus: "APPROVED" } }),
+                ctx.prisma.rider.count(),
+                ctx.prisma.vendor.count({ where: { approvalStatus: "PENDING", submittedForApproval: true } }),
+                ctx.prisma.referral.count({ where: { status: "CONFIRMED" } })
+            ]);
+
+            // Get revenue for last 30 days vs previous 30 days for trend
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            const sixtyDaysAgo = new Date();
+            sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+
+            const [currentMonthRevenue, previousMonthRevenue] = await Promise.all([
+                ctx.prisma.payment.aggregate({
+                    _sum: { amount: true },
+                    where: { status: "COMPLETED", createdAt: { gte: thirtyDaysAgo } }
+                }),
+                ctx.prisma.payment.aggregate({
+                    _sum: { amount: true },
+                    where: { status: "COMPLETED", createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } }
+                })
+            ]);
+
+            const revChange = previousMonthRevenue._sum.amount
+                ? ((currentMonthRevenue._sum.amount || 0) - previousMonthRevenue._sum.amount) / previousMonthRevenue._sum.amount * 100
+                : 0;
+
+            return {
+                totalRevenue: totalRevenue._sum.amount || 0,
+                revenueTrend: revChange,
+                totalOrders,
+                totalUsers,
+                totalVendors,
+                activeVendors,
+                totalRiders,
+                pendingVendorRequests,
+                confirmedReferrals
+            };
+        }),
+
+    // Get data for charts
+    getDashboardCharts: adminProcedure
+        .input(z.object({
+            period: z.enum(["7d", "30d", "90d", "1y", "all"]).default("30d")
+        }))
+        .query(async ({ ctx, input }) => {
+            const now = new Date();
+            let startDate = new Date();
+            let interval: "day" | "week" | "month" = "day";
+
+            if (input.period === "7d") startDate.setDate(now.getDate() - 7);
+            else if (input.period === "30d") startDate.setDate(now.getDate() - 30);
+            else if (input.period === "90d") {
+                startDate.setDate(now.getDate() - 90);
+                interval = "week";
+            }
+            else if (input.period === "1y") {
+                startDate.setFullYear(now.getFullYear() - 1);
+                interval = "month";
+            }
+            else {
+                startDate = new Date(0); // All time
+                interval = "month";
+            }
+
+            const orders = await ctx.prisma.order.findMany({
+                where: { createdAt: { gte: startDate } },
+                select: { createdAt: true, totalAmount: true, status: true },
+                orderBy: { createdAt: "asc" }
+            });
+
+            // Process data for charts (grouping by date)
+            const chartData: Record<string, { date: string, orders: number, revenue: number }> = {};
+
+            orders.forEach(order => {
+                let key = "";
+                const d = new Date(order.createdAt);
+                if (interval === "day") {
+                    key = d.toISOString().split('T')[0];
+                } else if (interval === "week") {
+                    // Start of week
+                    const first = d.getDate() - d.getDay();
+                    const startOfWeek = new Date(d.setDate(first));
+                    key = startOfWeek.toISOString().split('T')[0];
+                } else {
+                    key = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+                }
+
+                if (!chartData[key]) {
+                    chartData[key] = { date: key, orders: 0, revenue: 0 };
+                }
+                chartData[key].orders++;
+                if (order.status !== "CANCELLED") {
+                    chartData[key].revenue += order.totalAmount;
+                }
+            });
+
+            return Object.values(chartData);
+        }),
+
+    // Get top performing vendors
+    getTopVendors: adminProcedure
+        .input(z.object({ limit: z.number().default(5) }))
+        .query(async ({ ctx, input }) => {
+            const vendors = await ctx.prisma.vendor.findMany({
+                take: input.limit,
+                include: {
+                    _count: { select: { orders: true } },
+                },
+                orderBy: { orders: { _count: "desc" } }
+            });
+
+            // Also get revenue per vendor (simplified, might need more complex aggregation if many orders)
+            const vendorsWithRevenue = await Promise.all(vendors.map(async (v) => {
+                const revenue = await ctx.prisma.order.aggregate({
+                    _sum: { totalAmount: true },
+                    where: { vendorId: v.id, status: { not: "CANCELLED" } }
+                });
+                return {
+                    ...v,
+                    revenue: revenue._sum.totalAmount || 0,
+                    orderCount: v._count.orders
+                };
+            }));
+
+            return vendorsWithRevenue.sort((a, b) => b.revenue - a.revenue);
+        }),
+
+    // Get recent activity
+    getRecentActivity: adminProcedure
+        .query(async ({ ctx }) => {
+            const [recentOrders, recentUsers, recentVendors] = await Promise.all([
+                ctx.prisma.order.findMany({
+                    take: 5,
+                    orderBy: { createdAt: "desc" },
+                    include: { user: { select: { name: true } }, vendor: { select: { name: true } } }
+                }),
+                ctx.prisma.user.findMany({ take: 5, orderBy: { createdAt: "desc" } }),
+                ctx.prisma.vendor.findMany({ take: 5, orderBy: { createdAt: "desc" } })
+            ]);
+
+            return {
+                recentOrders,
+                recentUsers,
+                recentVendors
+            };
         }),
 });
