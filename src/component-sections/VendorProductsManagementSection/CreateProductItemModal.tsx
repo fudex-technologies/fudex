@@ -23,9 +23,11 @@ import { toast } from 'sonner';
 function CreateProductItemModal({
 	products,
 	onSuccess,
+	vendorId,
 }: {
 	products: Array<{ id: string; name: string }>;
 	onSuccess: () => void;
+	vendorId?: string;
 }) {
 	const [open, setOpen] = useState(false);
 	const [createdProductItemId, setCreatedProductItemId] = useState<
@@ -154,7 +156,8 @@ function CreateProductItemModal({
 			return;
 		}
 
-		if (!vendor) {
+		const targetVendorId = vendorId || vendor?.id;
+		if (!targetVendorId) {
 			toast.error('Vendor not found');
 			return;
 		}
@@ -164,7 +167,7 @@ function CreateProductItemModal({
 			return;
 		}
 		createProductMutate.mutate({
-			vendorId: vendor.id,
+			vendorId: targetVendorId,
 			productId: formData.productId || undefined,
 			name: formData.name,
 			categories: [formData.category],
