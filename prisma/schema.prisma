@@ -7,33 +7,34 @@ datasource db {
 }
 
 model User {
-  id              String           @id @default(uuid())
-  name            String
-  email           String           @unique
-  emailVerified   Boolean          @default(false)
-  image           String?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  firstName       String?
-  lastName        String?
-  phone           String?          @unique
-  phoneVerified   Boolean          @default(false)
-  referralCode    String?          @unique // Unique code for sharing
-  addresses       Address[]
-  favoriteVendors FavoriteVendor[]
-  operator        Operator?
-  orders          Order[]
-  payments        Payment[]
-  payoutBatches   PayoutBatch[]
-  reviews         Review[]
-  roles           UserRole[]
-  vendors         Vendor[]         @relation("VendorOwner")
-  approvedVendors Vendor[]         @relation("VendorApprovedBy")
-  accounts        Account[]
-  sessions        Session[]
-  vendorPayouts   VendorPayout[]
-  referrals       Referral[]       @relation("ReferrerReferrals") // People I referred
-  referredBy      Referral?        @relation("ReferredByReferrals") // Who referred me
+  id                String             @id @default(uuid())
+  name              String
+  email             String             @unique
+  emailVerified     Boolean            @default(false)
+  image             String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  firstName         String?
+  lastName          String?
+  phone             String?            @unique
+  phoneVerified     Boolean            @default(false)
+  referralCode      String?            @unique // Unique code for sharing
+  addresses         Address[]
+  favoriteVendors   FavoriteVendor[]
+  operator          Operator?
+  orders            Order[]
+  payments          Payment[]
+  payoutBatches     PayoutBatch[]
+  reviews           Review[]
+  roles             UserRole[]
+  vendors           Vendor[]           @relation("VendorOwner")
+  approvedVendors   Vendor[]           @relation("VendorApprovedBy")
+  accounts          Account[]
+  sessions          Session[]
+  vendorPayouts     VendorPayout[]
+  referrals         Referral[]         @relation("ReferrerReferrals") // People I referred
+  referredBy        Referral?          @relation("ReferredByReferrals") // Who referred me
+  pushSubscriptions PushSubscription[]
 
   @@map("user")
 }
@@ -540,6 +541,20 @@ model Referral {
   @@index([referralCode])
   @@index([referrerUserId])
   @@index([status])
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model PlatformSetting {

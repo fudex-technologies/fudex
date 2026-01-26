@@ -2,6 +2,9 @@ import { createTRPCRouter, protectedProcedure, publicProcedure, adminProcedure, 
 import { OrderStatus } from "@prisma/client";
 import { z } from "zod";
 import { calculateDeliveryFee, getServiceFee } from "@/lib/deliveryFeeCalculator";
+import { NotificationService } from "@/modules/notifications/server/service";
+import { PAGES_DATA } from "@/data/pagesData";
+
 
 export const orderRouter = createTRPCRouter({
     // Create an order: supports item-level addons and optional grouping (groupKey) for "packs".
@@ -221,6 +224,23 @@ export const orderRouter = createTRPCRouter({
                 // return full order with items and addons
                 return prisma.order.findUnique({ where: { id: order.id }, include: { items: { include: { productItem: true, addons: { include: { addonProductItem: true } } } }, payment: true } });
             });
+
+            // Notify Vendor
+            if (vendorId) {
+                const vendor = await ctx.prisma.vendor.findUnique({
+                    where: { id: vendorId },
+                    select: { ownerId: true }
+                });
+
+                if (vendor?.ownerId) {
+                    // Fire and forget notification
+                    NotificationService.sendToUser(vendor.ownerId, {
+                        title: 'New Order Received! 🛍️',
+                        body: `You have a new order (#${created?.id.slice(0, 8)}) worth ${created?.currency} ${created?.totalAmount}`,
+                        url: PAGES_DATA.vendor_dashboard_new_orders_page,
+                    }).catch(console.error);
+                }
+            }
 
             return created;
         }),
@@ -532,6 +552,18 @@ export const orderRouter = createTRPCRouter({
                 await ensureOrderPayoutEligibility(ctx.prisma, input.id);
             }
 
+            // Notify Customer
+            {
+                const order = await ctx.prisma.order.findUnique({ where: { id: input.id }, select: { userId: true, id: true } });
+                if (order) {
+                    NotificationService.sendToUser(order.userId, {
+                        title: `Order Update: ${input.status}`,
+                        body: `Your order #${order.id.slice(0, 8)} is now ${input.status.toLowerCase().replace('_', ' ')}.`,
+                        url: PAGES_DATA.order_info_page(order.id)
+                    }).catch(console.error);
+                }
+            }
+
             return updated;
         }),
 
@@ -567,6 +599,18 @@ export const orderRouter = createTRPCRouter({
             // If delivered, check payout eligibility
             if (input.status === "DELIVERED") {
                 await ensureOrderPayoutEligibility(ctx.prisma, input.id);
+            }
+
+            // Notify Customer
+            {
+                const order = await ctx.prisma.order.findUnique({ where: { id: input.id }, select: { userId: true, id: true } });
+                if (order) {
+                    NotificationService.sendToUser(order.userId, {
+                        title: `Order Update: ${input.status}`,
+                        body: `Your order #${order.id.slice(0, 8)} is now ${input.status.toLowerCase().replace('_', ' ')}.`,
+                        url: `/profile/orders/${order.id}`,
+                    }).catch(console.error);
+                }
             }
 
             return updated;

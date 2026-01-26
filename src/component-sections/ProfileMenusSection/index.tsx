@@ -165,7 +165,6 @@ const ProfileMenusSection = () => {
 						{
 							icon: <Headset />,
 							title: 'Contact support',
-							// link: PAGES_DATA.profile_notifications_page,
 							protected: false,
 							show: true,
 							onClick: () => {
@@ -179,13 +178,13 @@ const ProfileMenusSection = () => {
 								window.open(url, '_blank');
 							},
 						},
-						// {
-						// 	icon: <Bell />,
-						// 	title: 'Notifications',
-						// 	link: PAGES_DATA.profile_notifications_page,
-						// 	protected: true,
-						// 	show: true,
-						// },
+						{
+							icon: <Bell />,
+							title: 'Notifications',
+							link: PAGES_DATA.profile_notifications_page,
+							protected: true,
+							show: true,
+						},
 						{
 							icon: <CircleQuestionMark />,
 							title: 'FAQs',

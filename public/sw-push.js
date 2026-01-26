@@ -1,28 +1,50 @@
 self.addEventListener('push', function (event) {
 	if (event.data) {
-		const data = event.data.json();
-		const options = {
-			body: data.body,
-			icon: data.icon || '/android-chrome-192x192.png',
-			badge: '/android-chrome-512x512.png',
-			vibrate: [100, 50, 100],
-			data: {
-				dateOfArrival: Date.now(),
-				primaryKey: '2',
-			},
-		};
-		event.waitUntil(
-			self.registration.showNotification(data.title, options)
-		);
+		try {
+			const data = event.data.json();
+			const options = {
+				body: data.body,
+				icon: data.icon || '/android-chrome-192x192.png',
+				badge: '/android-chrome-512x512.png',
+				vibrate: [100, 50, 100],
+				data: {
+					url: data.url || '/',
+					dateOfArrival: Date.now(),
+				},
+			};
+
+			event.waitUntil(
+				self.registration.showNotification(
+					data.title || 'New Notification',
+					options,
+				),
+			);
+		} catch (e) {
+			console.error('Error handling push event:', e);
+		}
 	}
 });
 
 self.addEventListener('notificationclick', function (event) {
-	console.log('Notification click received.');
 	event.notification.close();
+
+	const urlToOpen = event.notification.data?.url || '/';
+
 	event.waitUntil(
-		clients.openWindow(
-			`<${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}>`
-		)
+		clients
+			.matchAll({ type: 'window', includeUncontrolled: true })
+			.then((windowClients) => {
+				// Check if there is already a window/tab open with the target URL
+				for (let i = 0; i < windowClients.length; i++) {
+					const client = windowClients[i];
+					if (client.url === urlToOpen && 'focus' in client) {
+						return client.focus();
+					}
+				}
+				// If not, open a new window
+				if (clients.openWindow) {
+					return clients.openWindow(urlToOpen);
+				}
+			}),
 	);
 });
