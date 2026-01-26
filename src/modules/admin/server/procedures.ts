@@ -696,7 +696,6 @@ export const adminRouter = createTRPCRouter({
             phone: z.string().optional(),
             email: z.string().email().optional(),
             approvalStatus: z.enum(["PENDING", "APPROVED", "DECLINED"]).optional(),
-            isActive: z.boolean().optional(),
             coverImage: z.string().optional(),
             areaId: z.string().optional()
         }))

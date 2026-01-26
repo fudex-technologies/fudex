@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import AssignVendorModal from '@/components/admin-components/AssignVendorModal';
+import Link from 'next/link';
 
 export default function AdminUsersPage() {
 	const { useInfiniteListUsers } = useAdminActions();
@@ -222,13 +223,16 @@ export default function AdminUsersPage() {
 							</div>
 
 							<div className='flex md:flex-col gap-2 md:justify-center'>
-								<Button
-									variant='outline'
-									size='sm'
-									className='flex-1 md:flex-none'
-									onClick={() => setSelectedUser(user)}>
-									View Details
-								</Button>
+								<Link
+									href={`/profile/admin-dashboard/users/${user.id}`}
+									className='flex-1 md:flex-none'>
+									<Button
+										variant='outline'
+										size='sm'
+										className='w-full'>
+										View Details
+									</Button>
+								</Link>
 								{(!user.vendors ||
 									user.vendors.length === 0) && (
 									<Button

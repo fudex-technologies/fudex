@@ -749,7 +749,7 @@ export const vendorRouter = createTRPCRouter({
                 city: z.string().optional(),
                 country: z.string().optional(),
                 postalCode: z.string().optional(),
-                coverImage: z.string().url().optional(),
+                coverImage: z.string().url().or(z.literal('')).optional().nullable(),
                 lat: z.number().optional(),
                 lng: z.number().optional(),
                 bankName: z.string().optional(),
