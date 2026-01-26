@@ -72,7 +72,7 @@ const VendorDetailsSection = ({
 	const rating = vendor.reviewsAverage || 0;
 	const reviewCount = vendor.reviewsCount || 0;
 	const deliveryPrice =
-		(platformSettings?.BASE_DELIVERY_FEE as number) ?? 600;
+		((platformSettings as any)?.BASE_DELIVERY_FEE as number) ?? 600;
 
 	const isOpen = isVendorOpen(
 		vendor?.openingHours,

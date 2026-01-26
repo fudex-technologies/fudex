@@ -32,7 +32,7 @@ const VendorCard = ({ vendor, deliveryPrice, deliveryTime }: Props) => {
 	const { data: platformSettings } = usePublicPlatformSettings();
 
 	const baseDeliveryFee =
-		(platformSettings?.BASE_DELIVERY_FEE as number) ?? 600;
+		((platformSettings as any)?.BASE_DELIVERY_FEE as number) ?? 600;
 	const finalDeliveryPrice = deliveryPrice ?? baseDeliveryFee;
 	const rating = vendor.reviewsAverage ?? undefined;
 	const numberFoRatings = vendor.reviewsCount ?? undefined;
