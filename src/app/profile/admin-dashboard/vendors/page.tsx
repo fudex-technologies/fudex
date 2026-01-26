@@ -187,7 +187,7 @@ export default function AdminVendorsPage() {
 								</p>
 
 								{vendor.description && (
-									<p className='text-sm text-foreground/70 mb-4 line-clamp-2 min-h-[2.5rem]'>
+									<p className='text-sm text-foreground/70 mb-4 line-clamp-2 min-h-10'>
 										{vendor.description}
 									</p>
 								)}
