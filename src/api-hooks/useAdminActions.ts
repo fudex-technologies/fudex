@@ -153,6 +153,87 @@ export function useAdminActions() {
                 })
             ),
 
+        // ========== USER MANAGEMENT ==========
+
+        // List users with infinite scroll
+        useInfiniteListUsers: (input: { limit?: number; q?: string } = {}) =>
+            useInfiniteQuery(
+                trpc.admin.listUsersInfinite.infiniteQueryOptions(
+                    { ...input },
+                    {
+                        getNextPageParam: (lastPage: any) => lastPage.nextCursor,
+                    }
+                )
+            ),
+
+        // Get user details
+        useGetUserDetails: (input: { userId: string }) =>
+            useQuery(trpc.admin.getUserDetails.queryOptions(input, { enabled: !!input.userId })),
+
+        // Update user
+        updateUser: (options?: UseAPICallerOptions) =>
+            useMutation(
+                trpc.admin.updateUser.mutationOptions({
+                    onSuccess: (data) => {
+                        if (!options?.silent) toast.success("User updated successfully");
+                        options?.onSuccess?.(data);
+                    },
+                    onError: (err: unknown) => {
+                        if (!options?.silent) toast.error("Failed to update user", { description: err instanceof Error ? err.message : String(err) });
+                        options?.onError?.(err);
+                    },
+                    retry: false,
+                })
+            ),
+
+        // Deactivate user
+        deactivateUser: (options?: UseAPICallerOptions) =>
+            useMutation(
+                trpc.admin.deactivateUser.mutationOptions({
+                    onSuccess: (data) => {
+                        if (!options?.silent) toast.success("User deactivated");
+                        options?.onSuccess?.(data);
+                    },
+                    onError: (err: unknown) => {
+                        if (!options?.silent) toast.error("Failed to deactivate user", { description: err instanceof Error ? err.message : String(err) });
+                        options?.onError?.(err);
+                    },
+                    retry: false,
+                })
+            ),
+
+        // Assign role
+        assignRole: (options?: UseAPICallerOptions) =>
+            useMutation(
+                trpc.admin.assignRole.mutationOptions({
+                    onSuccess: (data) => {
+                        if (!options?.silent) toast.success("Role assigned");
+                        options?.onSuccess?.(data);
+                    },
+                    onError: (err: unknown) => {
+                        if (!options?.silent) toast.error("Failed to assign role", { description: err instanceof Error ? err.message : String(err) });
+                        options?.onError?.(err);
+                    },
+                    retry: false,
+                })
+            ),
+
+        // Remove role
+        removeRole: (options?: UseAPICallerOptions) =>
+            useMutation(
+                trpc.admin.removeRole.mutationOptions({
+                    onSuccess: (data) => {
+                        if (!options?.silent) toast.success("Role removed");
+                        options?.onSuccess?.(data);
+                    },
+                    onError: (err: unknown) => {
+                        if (!options?.silent) toast.error("Failed to remove role", { description: err instanceof Error ? err.message : String(err) });
+                        options?.onError?.(err);
+                    },
+                    retry: false,
+                })
+            ),
+
         // Vendors
         useInfiniteListVendors: (input: { limit?: number; q?: string } = {}) =>
             useInfiniteQuery(

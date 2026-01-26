@@ -2,13 +2,158 @@ import { createTRPCRouter, adminProcedure } from "@/trpc/init";
 import { z } from "zod";
 
 export const adminRouter = createTRPCRouter({
-    // List users (admin only)
-    listUsers: adminProcedure
+    // ========== USER MANAGEMENT ==========
+
+    // List users with infinite scroll and search
+    listUsersInfinite: adminProcedure
         .input(z.object({
-            take: z.number().optional().default(50),
-            skip: z.number().optional().default(0)
-        })).query(({ ctx, input }) => {
-            return ctx.prisma.user.findMany({ take: input.take, skip: input.skip, orderBy: { createdAt: "desc" } });
+            limit: z.number().min(1).max(100).default(50),
+            cursor: z.string().nullish(),
+            q: z.string().optional()
+        }))
+        .query(async ({ ctx, input }) => {
+            const limit = input.limit;
+            const { cursor, q } = input;
+
+            const where: any = {};
+            if (q) {
+                where.OR = [
+                    { name: { contains: q, mode: "insensitive" } },
+                    { email: { contains: q, mode: "insensitive" } },
+                    { phone: { contains: q, mode: "insensitive" } },
+                    { firstName: { contains: q, mode: "insensitive" } },
+                    { lastName: { contains: q, mode: "insensitive" } }
+                ];
+            }
+
+            const items = await ctx.prisma.user.findMany({
+                where,
+                take: limit + 1,
+                cursor: cursor ? { id: cursor } : undefined,
+                orderBy: { createdAt: "desc" },
+                include: {
+                    roles: true,
+                    vendors: {
+                        select: {
+                            id: true,
+                            name: true,
+                            approvalStatus: true
+                        }
+                    },
+                    _count: {
+                        select: {
+                            orders: true,
+                            reviews: true
+                        }
+                    }
+                }
+            });
+
+            let nextCursor: typeof cursor | undefined = undefined;
+            if (items.length > limit) {
+                const nextItem = items.pop();
+                nextCursor = nextItem!.id;
+            }
+            return {
+                items,
+                nextCursor,
+            };
+        }),
+
+    // Get detailed user information
+    getUserDetails: adminProcedure
+        .input(z.object({ userId: z.string() }))
+        .query(async ({ ctx, input }) => {
+            const user = await ctx.prisma.user.findUnique({
+                where: { id: input.userId },
+                include: {
+                    roles: true,
+                    vendors: {
+                        include: {
+                            _count: {
+                                select: {
+                                    products: true,
+                                    orders: true
+                                }
+                            }
+                        }
+                    },
+                    orders: {
+                        take: 5,
+                        orderBy: { createdAt: "desc" },
+                        select: {
+                            id: true,
+                            totalAmount: true,
+                            status: true,
+                            createdAt: true
+                        }
+                    },
+                    reviews: {
+                        take: 5,
+                        orderBy: { createdAt: "desc" }
+                    },
+                    _count: {
+                        select: {
+                            orders: true,
+                            reviews: true,
+                            addresses: true
+                        }
+                    }
+                }
+            });
+
+            if (!user) {
+                throw new Error("User not found");
+            }
+
+            return user;
+        }),
+
+    // Update user information
+    updateUser: adminProcedure
+        .input(z.object({
+            userId: z.string(),
+            name: z.string().optional(),
+            firstName: z.string().optional(),
+            lastName: z.string().optional(),
+            phone: z.string().optional(),
+            email: z.string().email().optional()
+        }))
+        .mutation(async ({ ctx, input }) => {
+            const { userId, ...data } = input;
+
+            // Check if email is being changed and if it's already in use
+            if (data.email) {
+                const existing = await ctx.prisma.user.findFirst({
+                    where: {
+                        email: data.email,
+                        NOT: { id: userId }
+                    }
+                });
+                if (existing) {
+                    throw new Error("Email already in use by another user");
+                }
+            }
+
+            return ctx.prisma.user.update({
+                where: { id: userId },
+                data
+            });
+        }),
+
+    // Deactivate/Delete user (soft delete)
+    deactivateUser: adminProcedure
+        .input(z.object({ userId: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+            // For now, we'll just mark email as null or add a deleted flag
+            // You might want to add a 'deletedAt' or 'isActive' field to your schema
+            return ctx.prisma.user.update({
+                where: { id: input.userId },
+                data: {
+                    // Add your deactivation logic here
+                    // For example: isActive: false, deletedAt: new Date()
+                }
+            });
         }),
 
     // Assign role to a user

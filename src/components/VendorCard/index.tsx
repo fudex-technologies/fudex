@@ -10,6 +10,8 @@ import { formatCurency } from '@/lib/commonFunctions';
 import VendorCover from '../VendorCover';
 import { VendorAvailabilityStatus } from '@prisma/client';
 
+import { useVendorProductActions } from '@/api-hooks/useVendorActions';
+
 interface VendorData {
 	id: string;
 	name: string;
@@ -22,17 +24,23 @@ interface VendorData {
 
 interface Props {
 	vendor: VendorData;
-	deliveryPrice?: number; // Optional, defaults to 600
+	deliveryPrice?: number; // Optional override
 	deliveryTime?: string;
 }
-const VendorCard = ({ vendor, deliveryPrice = 600, deliveryTime }: Props) => {
+const VendorCard = ({ vendor, deliveryPrice, deliveryTime }: Props) => {
+	const { usePublicPlatformSettings } = useVendorProductActions();
+	const { data: platformSettings } = usePublicPlatformSettings();
+
+	const baseDeliveryFee =
+		((platformSettings as any)?.BASE_DELIVERY_FEE as number) ?? 600;
+	const finalDeliveryPrice = deliveryPrice ?? baseDeliveryFee;
 	const rating = vendor.reviewsAverage ?? undefined;
 	const numberFoRatings = vendor.reviewsCount ?? undefined;
 	const image = vendor.coverImage || '/assets/restaurants/restaurant1.png';
 
 	const isOpen = isVendorOpen(
 		vendor.openingHours,
-		vendor.availabilityStatus || 'AUTO'
+		vendor.availabilityStatus || 'AUTO',
 	);
 	const nextOpenTime = !isOpen
 		? getNextOpenTime(vendor?.openingHours || [])
@@ -92,7 +100,7 @@ const VendorCard = ({ vendor, deliveryPrice = 600, deliveryTime }: Props) => {
 			<div className='flex items-center text-[14px] text-foreground/50'>
 				<div className='flex items-center gap-1'>
 					<FaBicycle />
-					<p>From {formatCurency(deliveryPrice)}</p>
+					<p>From {formatCurency(finalDeliveryPrice)}</p>
 				</div>
 				{deliveryTime && (
 					<>
