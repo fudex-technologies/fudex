@@ -96,5 +96,7 @@ export function useVendorProductActions() {
                     }
                 )
             ),
+        usePublicPlatformSettings: () =>
+            useQuery(trpc.vendors.getPublicPlatformSettings.queryOptions(undefined)),
     };
 }

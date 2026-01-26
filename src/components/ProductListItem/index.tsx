@@ -40,7 +40,7 @@ const ProductListItem = ({ productItem }: { productItem: ProductItemData }) => {
 	// Build URL with slug as query parameter if available
 	const baseUrl = PAGES_DATA.single_vendor_product_page(
 		productItem?.vendorId,
-		productId
+		productId,
 	);
 	const url = productItem?.slug
 		? `${baseUrl}?variant=${encodeURIComponent(productItem.slug)}`
@@ -55,7 +55,7 @@ const ProductListItem = ({ productItem }: { productItem: ProductItemData }) => {
 			onClick={(e) => !isAvailable && e.preventDefault()}
 			className={cn(
 				'w-full min-h-[100px] flex relative gap-2 p-5 transition-all',
-				!isAvailable && 'opacity-60 cursor-not-allowed grayscale-[0.5]'
+				!isAvailable && 'opacity-60 cursor-not-allowed grayscale-[0.5]',
 			)}>
 			<div className='relative w-[100px] h-[100px] shrink-0'>
 				<DynamicCover
@@ -69,12 +69,14 @@ const ProductListItem = ({ productItem }: { productItem: ProductItemData }) => {
 					imageClassName='object-cover'
 				/>
 				{!isAvailable && (
-					<div className='absolute inset-0 bg-black/40 flex items-center justify-center rounded-md'>
-						<p className='text-[10px] font-bold text-white px-2 py-1 bg-black/60 rounded uppercase'>
-							{productItem?.isActive === false
-								? 'Unavailable'
-								: 'Sold Out'}
-						</p>
+					<div className='absolute inset-0 bg-black/60 z-1 flex items-center justify-center pointer-events-none'>
+						<div className='mx-auto flex flex-col items-center text-white/90 justify-center text-center'>
+							<p className='font-bold text-sm uppercase tracking-wider'>
+								{productItem?.isActive === false
+									? 'Unavailable'
+									: 'Sold Out'}
+							</p>
+						</div>
 					</div>
 				)}
 			</div>
@@ -83,7 +85,7 @@ const ProductListItem = ({ productItem }: { productItem: ProductItemData }) => {
 					<p className='font-medium'>
 						{shortenText(
 							`${productItem?.product?.name} (${productItem?.name})`,
-							30
+							30,
 						)}
 					</p>
 					{description && (

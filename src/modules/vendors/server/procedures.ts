@@ -45,6 +45,22 @@ const generateUniqueSlug = async (prisma: any, name: string, vendorId: string): 
 };
 
 export const vendorRouter = createTRPCRouter({
+    // Get non-sensitive platform settings
+    getPublicPlatformSettings: publicProcedure
+        .query(async ({ ctx }) => {
+            const keys = ["BASE_DELIVERY_FEE", "SERVICE_FEE"];
+            const settings = await ctx.prisma.platformSetting.findMany({
+                where: { key: { in: keys } }
+            });
+
+            const resultMap: Record<string, any> = {};
+            settings.forEach(s => {
+                resultMap[s.key] = s.value;
+            });
+
+            return resultMap;
+        }),
+
     // Public listings with optional search / pagination
     list: publicProcedure
         .input(z.object({
