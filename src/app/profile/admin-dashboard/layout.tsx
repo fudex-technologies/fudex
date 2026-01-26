@@ -13,6 +13,7 @@ import {
 	FileCheck,
 	LayoutDashboard,
 	Store,
+	Users,
 } from 'lucide-react';
 import TabComponent from '@/components/TabComponent';
 import { useState, useEffect, useMemo } from 'react';
@@ -48,6 +49,8 @@ export default function AdminDashboardLayout({
 				setActiveTab('payouts');
 			} else if (path.includes('/vendor-requests')) {
 				setActiveTab('requests');
+			} else if (path.includes('/users')) {
+				setActiveTab('users');
 			} else if (path.includes('/vendors')) {
 				setActiveTab('vendors');
 			} else if (path.includes('/areas')) {
@@ -100,6 +103,11 @@ export default function AdminDashboardLayout({
 							icon: <Store size={18} />,
 						},
 						{
+							id: 'users',
+							label: 'Users',
+							icon: <Users size={18} />,
+						},
+						{
 							id: 'requests',
 							label: 'Verification Requests',
 							icon: <FileCheck size={18} />,
@@ -145,6 +153,8 @@ export default function AdminDashboardLayout({
 							router.push(PAGES_DATA.admin_dashboard_areas_page);
 						} else if (id === 'vendors') {
 							router.push('/profile/admin-dashboard/vendors');
+						} else if (id === 'users') {
+							router.push('/profile/admin-dashboard/users');
 						} else {
 							router.push(PAGES_DATA.admin_dashboard_page);
 						}
