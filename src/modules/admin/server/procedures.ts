@@ -717,6 +717,185 @@ export const adminRouter = createTRPCRouter({
             });
         }),
 
+    // List vendor products infinite (admin)
+    listVendorProductsInfinite: adminProcedure
+        .input(z.object({
+            vendorId: z.string(),
+            limit: z.number().min(1).max(100).default(50),
+            cursor: z.string().nullish(),
+        }))
+        .query(async ({ ctx, input }) => {
+            const limit = input.limit;
+            const { cursor, vendorId } = input;
+
+            const items = await ctx.prisma.product.findMany({
+                where: {
+                    vendorId,
+                    isActive: true // Show only active products by default like vendor dashboard
+                },
+                take: limit + 1,
+                cursor: cursor ? { id: cursor } : undefined,
+                orderBy: { createdAt: "desc" },
+                include: {
+                    items: {
+                        where: { isActive: true },
+                        orderBy: { price: "asc" },
+                        include: {
+                            categories: {
+                                include: {
+                                    category: true
+                                }
+                            }
+                        }
+                    },
+                    category: true
+                }
+            });
+
+            let nextCursor: typeof cursor | undefined = undefined;
+            if (items.length > limit) {
+                const nextItem = items.pop();
+                nextCursor = nextItem!.id;
+            }
+
+            return {
+                items,
+                nextCursor,
+            };
+        }),
+
+    // Create product (admin)
+    createVendorProduct: adminProcedure
+        .input(z.object({
+            vendorId: z.string(),
+            name: z.string(),
+            description: z.string().optional(),
+            categoryId: z.string().optional(),
+        }))
+        .mutation(async ({ ctx, input }) => {
+            return ctx.prisma.product.create({
+                data: {
+                    vendorId: input.vendorId,
+                    name: input.name,
+                    description: input.description,
+                    categoryId: input.categoryId
+                }
+            });
+        }),
+
+    // Update product (admin)
+    updateVendorProduct: adminProcedure
+        .input(z.object({
+            id: z.string(),
+            name: z.string().optional(),
+            description: z.string().optional(),
+            categoryId: z.string().optional(),
+            isActive: z.boolean().optional(),
+        }))
+        .mutation(async ({ ctx, input }) => {
+            const { id, ...data } = input;
+            return ctx.prisma.product.update({
+                where: { id },
+                data
+            });
+        }),
+
+    // Delete (deactivate) product (admin)
+    deleteVendorProduct: adminProcedure
+        .input(z.object({ id: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+            return ctx.prisma.product.update({
+                where: { id: input.id },
+                data: { isActive: false }
+            });
+        }),
+
+    // Create product item (admin)
+    createVendorProductItem: adminProcedure
+        .input(z.object({
+            vendorId: z.string(),
+            productId: z.string(),
+            name: z.string(),
+            description: z.string().optional(),
+            price: z.number(),
+            preparationTime: z.string().optional(),
+            images: z.array(z.string()).optional(),
+            categoryIds: z.array(z.string()).optional()
+        }))
+        .mutation(async ({ ctx, input }) => {
+            const { categoryIds, ...data } = input;
+
+            // Generate slug
+            let slug = data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+            // Simple uniqueness check could be improved
+            const timestamp = new Date().getTime().toString().slice(-4);
+            slug = `${slug}-${timestamp}`;
+
+            return ctx.prisma.productItem.create({
+                data: {
+                    ...data,
+                    slug,
+                    categories: categoryIds ? {
+                        create: categoryIds.map(id => ({
+                            category: { connect: { id } }
+                        }))
+                    } : undefined
+                }
+            });
+        }),
+
+    // Update product item (admin)
+    updateVendorProductItem: adminProcedure
+        .input(z.object({
+            id: z.string(),
+            name: z.string().optional(),
+            description: z.string().optional(),
+            price: z.number().optional(),
+            preparationTime: z.string().optional(),
+            images: z.array(z.string()).optional(),
+            inStock: z.boolean().optional(),
+            isActive: z.boolean().optional(),
+            categoryIds: z.array(z.string()).optional()
+        }))
+        .mutation(async ({ ctx, input }) => {
+            const { id, categoryIds, ...data } = input;
+
+            if (categoryIds) {
+                // Delete existing category relations first
+                await ctx.prisma.productItemCategory.deleteMany({
+                    where: { productItemId: id }
+                });
+
+                // Then update with new ones
+                return ctx.prisma.productItem.update({
+                    where: { id },
+                    data: {
+                        ...data,
+                        categories: {
+                            create: categoryIds.map(catId => ({
+                                category: { connect: { id: catId } }
+                            }))
+                        }
+                    }
+                });
+            }
+
+            return ctx.prisma.productItem.update({
+                where: { id },
+                data
+            });
+        }),
+
+    // Delete (deactivate) product item (admin)
+    deleteVendorProductItem: adminProcedure
+        .input(z.object({ id: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+            return ctx.prisma.productItem.update({
+                where: { id: input.id },
+                data: { isActive: false }
+            });
+        }),
+
     // List products for a vendor
     listVendorProducts: adminProcedure
         .input(z.object({

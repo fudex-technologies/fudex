@@ -115,8 +115,7 @@ export default function AdminVendorMenuPage({
 					</div>
 					<CreateProductModal
 						onSuccess={refetchProducts}
-						// Admin side needs to pass vendorId if the modal doesn't use the session's vendor
-						// Assuming CreateProductModal might need adjustment if it only uses "getMyVendor"
+						vendorId={vendorId}
 					/>
 				</div>
 
@@ -161,6 +160,7 @@ export default function AdminVendorMenuPage({
 										<CreateProductItemModal
 											products={[product]}
 											onSuccess={refetchProducts}
+											vendorId={vendorId}
 										/>
 										<div className='h-4 w-px bg-border mx-1' />
 										<EditProductModal
