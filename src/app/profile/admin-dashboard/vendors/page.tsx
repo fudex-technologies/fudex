@@ -78,7 +78,7 @@ export default function AdminVendorsPage() {
 			description: (formData.get('description') as string) || undefined,
 			phone: (formData.get('phone') as string) || undefined,
 			approvalStatus: formData.get('approvalStatus') as any,
-			isActive: formData.get('isActive') === 'true',
+			// isActive: formData.get('isActive') === 'true',
 		});
 	};
 
@@ -328,7 +328,7 @@ export default function AdminVendorsPage() {
 										</option>
 									</select>
 								</div>
-								<div className='space-y-2'>
+								{/* <div className='space-y-2'>
 									<Label htmlFor='edit-isActive'>
 										Visibility Status
 									</Label>
@@ -348,7 +348,7 @@ export default function AdminVendorsPage() {
 											Inactive (Hidden)
 										</option>
 									</select>
-								</div>
+								</div> */}
 							</div>
 							<div className='flex gap-3 justify-end pt-4'>
 								<Button
