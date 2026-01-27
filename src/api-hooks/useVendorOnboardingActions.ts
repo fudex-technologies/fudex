@@ -1,16 +1,16 @@
 "use client";
 
-import { PAGES_DATA } from "@/data/pagesData";
 import { useTRPC } from "@/trpc/client";
-import { useMutation } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { UseAPICallerOptions } from "./api-hook-types";
 import { localStorageStrings } from "@/constants/localStorageStrings";
-import { signIn, signUp } from "@/lib/auth-client";
+import { signUp } from "@/lib/auth-client";
+import { normalizePhoneNumber } from "@/lib/commonFunctions";
 
 export function useVendorOnboardingActions() {
     const trpc = useTRPC();
+    const queryClient = useQueryClient();
 
     // Request email verification OTP
     const requestEmailVerification = (options?: UseAPICallerOptions) => {
@@ -67,101 +67,37 @@ export function useVendorOnboardingActions() {
         );
     };
 
-    // Create vendor account
-    const createVendorAccount = (options?: UseAPICallerOptions) => {
-        return useMutation(
-            trpc.vendors.createVendorAccount.mutationOptions({
-                onSuccess: async (data) => {
-                    if (!options?.silent) toast.success("Vendor account created successfully");
-
-                    // Store vendor info
-                    localStorage.setItem(
-                        localStorageStrings.vendorOnboardingUserLinked,
-                        "true"
-                    );
-
-                    options?.onSuccess?.(data);
-                },
-                onError: (err: unknown) => {
-                    if (!options?.silent)
-                        toast.error("Failed to create vendor account", {
-                            description:
-                                err instanceof Error ? err.message : "Something went wrong",
-                        });
-                    options?.onError?.(err);
-                },
-                retry: false,
-            })
-        );
-    };
-
-    // Set password and complete vendor signup for new users
-    const setPasswordAndCompleteVendorSignup = (
+    // Set password and sign up for new users (Step 4)
+    const setPasswordAndSignUp = (
         options?: UseAPICallerOptions & {
             password: string;
             email: string;
             firstName: string;
             lastName: string;
-            phone: string;
-            businessName: string;
-            businessType: string;
-            verificationToken: string;
         }
     ) => {
-        // Create a mutation for vendor account creation that can be called with mutateAsync
-        const createVendorMutation = useMutation(
-            trpc.vendors.createVendorAccount.mutationOptions()
-        );
-
         return useMutation({
             mutationFn: async () => {
                 if (!options?.password || !options?.email || !options?.firstName || !options?.lastName) {
                     throw new Error("Missing required fields");
                 }
 
-                // Get location data from localStorage
-                const locationDataStr = localStorage.getItem(localStorageStrings.vendorOnboardingLocationData);
-                const locationData = locationDataStr ? JSON.parse(locationDataStr) : {};
-
-                // 1. Create user account via signUp
+                // Create user account via signUp
                 const name = `${options.firstName} ${options.lastName}`;
                 await signUp.email({
                     email: options.email,
                     name,
                     password: options.password,
                 });
-
-                // 2. Wait a moment for session to be established
-                await new Promise(resolve => setTimeout(resolve, 500));
-
-                // 3. Create vendor account now that user is authenticated
-                const vendorResult = await createVendorMutation.mutateAsync({
-                    email: options.email,
-                    phone: options.phone,
-                    firstName: options.firstName,
-                    lastName: options.lastName,
-                    businessName: options.businessName,
-                    businessType: options.businessType,
-                    verificationToken: options.verificationToken,
-                    address: locationData.businessAddress,
-                    areaId: locationData.areaId,
-                });
-
-                return vendorResult;
+                return { success: true };
             },
             onSuccess: (data) => {
                 if (!options?.silent) toast.success("Account created successfully");
-
-                // Clear onboarding data
-                localStorage.removeItem(localStorageStrings.vendorOnboardinPersonalDetailsstring);
-                localStorage.removeItem(localStorageStrings.vendorOnboardingEmailVerificationToken);
-                localStorage.removeItem(localStorageStrings.vendorOnboardingLocationData);
-
                 options?.onSuccess?.(data);
             },
             onError: (err: unknown) => {
                 if (!options?.silent)
-                    toast.error("Failed to complete registration", {
+                    toast.error("Failed to create account", {
                         description: err instanceof Error ? err.message : "Something went wrong",
                     });
                 options?.onError?.(err);
@@ -170,27 +106,18 @@ export function useVendorOnboardingActions() {
         });
     };
 
-    // Link existing user and create vendor account
-    const linkExistingUserAndCreateVendor = (
-        options?: UseAPICallerOptions & {
-            userId: string;
-            email: string;
-            phone: string;
-            firstName: string;
-            lastName: string;
-            businessName: string;
-            businessType: string;
-            verificationToken: string;
-        }
-    ) => {
+    // Finalize vendor onboarding (Step 5 - Terms page)
+    const finalizeVendorOnboarding = (options?: UseAPICallerOptions) => {
         return useMutation(
             trpc.vendors.createVendorAccount.mutationOptions({
                 onSuccess: async (data) => {
-                    if (!options?.silent) toast.success("Vendor account linked successfully");
+                    if (!options?.silent) toast.success("Vendor account activated!");
 
-                    // Get location data from localStorage
-                    const locationDataStr = localStorage.getItem(localStorageStrings.vendorOnboardingLocationData);
-                    
+                    // Invalidate onboarding progress query
+                    queryClient.invalidateQueries({
+                        queryKey: [['vendors', 'getVendorOnboardingProgress']]
+                    });
+
                     // Clear onboarding data
                     localStorage.removeItem(localStorageStrings.vendorOnboardinPersonalDetailsstring);
                     localStorage.removeItem(localStorageStrings.vendorOnboardingEmailVerificationToken);
@@ -201,7 +128,7 @@ export function useVendorOnboardingActions() {
                 },
                 onError: (err: unknown) => {
                     if (!options?.silent)
-                        toast.error("Failed to link vendor account", {
+                        toast.error("Failed to activate vendor account", {
                             description:
                                 err instanceof Error ? err.message : "Something went wrong",
                         });
@@ -215,8 +142,7 @@ export function useVendorOnboardingActions() {
     return {
         requestEmailVerification,
         verifyEmailOtp,
-        createVendorAccount,
-        setPasswordAndCompleteVendorSignup,
-        linkExistingUserAndCreateVendor,
+        setPasswordAndSignUp,
+        finalizeVendorOnboarding,
     };
 }

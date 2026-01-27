@@ -18,6 +18,7 @@ import {
     sendAdminNewVendorNotification
 } from '@/lib/email';
 import { createPaystackRecipient, getPaystackBanks } from "@/lib/paystack";
+import { verifyVerificationToken } from '@/modules/auth-phone/server/procedures';
 
 const generateUniqueSlug = async (prisma: any, name: string, vendorId: string): Promise<string> => {
     let slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
@@ -44,6 +45,22 @@ const generateUniqueSlug = async (prisma: any, name: string, vendorId: string): 
 };
 
 export const vendorRouter = createTRPCRouter({
+    // Get non-sensitive platform settings
+    getPublicPlatformSettings: publicProcedure
+        .query(async ({ ctx }) => {
+            const keys = ["BASE_DELIVERY_FEE", "SERVICE_FEE"];
+            const settings = await ctx.prisma.platformSetting.findMany({
+                where: { key: { in: keys } }
+            });
+
+            const resultMap: Record<string, any> = {};
+            settings.forEach(s => {
+                resultMap[s.key] = s.value;
+            });
+
+            return resultMap;
+        }),
+
     // Public listings with optional search / pagination
     list: publicProcedure
         .input(z.object({
@@ -732,7 +749,7 @@ export const vendorRouter = createTRPCRouter({
                 city: z.string().optional(),
                 country: z.string().optional(),
                 postalCode: z.string().optional(),
-                coverImage: z.string().url().optional(),
+                coverImage: z.string().url().or(z.literal('')).optional().nullable(),
                 lat: z.number().optional(),
                 lng: z.number().optional(),
                 bankName: z.string().optional(),
@@ -1231,7 +1248,7 @@ export const vendorRouter = createTRPCRouter({
                 price: z.number(),
                 currency: z.string().optional().default("NGN"),
                 images: z.array(z.string()).optional(),
-                categories: z.array(z.string()).min(1),
+                categories: z.array(z.string()).optional().default([]),
                 isActive: z.boolean().optional().default(true),
                 inStock: z.boolean().optional().default(true),
             })
@@ -1253,10 +1270,6 @@ export const vendorRouter = createTRPCRouter({
                 where: { id: { in: input.categories } },
                 select: { id: true },
             });
-
-            if (existingCategories.length !== input.categories.length) {
-                throw new Error("One or more categories are invalid");
-            }
 
             const slug = await generateUniqueSlug(ctx.prisma, input.name, input.vendorId);
 
@@ -1491,13 +1504,24 @@ export const vendorRouter = createTRPCRouter({
             firstName: z.string(),
             lastName: z.string(),
             businessName: z.string(),
-            businessType: z.string(),
+            businessDescription: z.string(),
             verificationToken: z.string(), // Email verification token
             address: z.string().optional(), // Business address
             areaId: z.string().optional(), // Area ID for delivery zone
         }))
         .mutation(async ({ ctx, input }) => {
-            const { userId, email, phone, firstName, lastName, businessName, businessType, address, areaId } = input;
+            const { userId, email, phone, firstName, lastName, businessName, businessDescription, address, areaId, verificationToken } = input;
+
+            // Verify email token
+            const payload = verifyVerificationToken(verificationToken);
+            if (!payload) {
+                throw new TRPCError({ code: "BAD_REQUEST", message: "INVALID_VERIFICATION_TOKEN" });
+            }
+
+            // In Step 48 of phoneAuth.verifyEmailOtp, payload.phone was set to email
+            if (payload.phone !== email.toLowerCase().trim()) {
+                throw new TRPCError({ code: "BAD_REQUEST", message: "EMAIL_MISMATCH" });
+            }
 
             // Use transaction to ensure atomicity
             const result = await ctx.prisma.$transaction(async (tx) => {
@@ -1591,7 +1615,7 @@ export const vendorRouter = createTRPCRouter({
                         ownerId: user.id,
                         name: businessName,
                         slug,
-                        description: `${businessType} vendor`,
+                        description: businessDescription,
                         email: email.toLowerCase().trim(),
                         phone,
                         areaId: areaId || undefined,

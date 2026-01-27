@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useVendorOnboardingActions } from '@/api-hooks/useVendorOnboardingActions';
 import { PAGES_DATA } from '@/data/pagesData';
+import { toast } from 'sonner';
 
 interface IFormData {
 	password: string;
@@ -30,48 +31,42 @@ export default function VendorOnboardingCreatePasswordPage() {
 	const [form, setForm] = useState<IFormData>(initialFormData);
 	const [touched, setTouched] = useState<IFormTouchedData>({});
 	const [personalDetails, setPersonalDetails] = useState<any>(null);
-	const [verificationToken, setVerificationToken] = useState<string | null>(
-		null
-	);
 
-	const { setPasswordAndCompleteVendorSignup } = useVendorOnboardingActions();
+	const { setPasswordAndSignUp } = useVendorOnboardingActions();
 
-	const { mutate: createAccountMutate, isPending } =
-		setPasswordAndCompleteVendorSignup({
-			onSuccess: () => {
-				// Navigate to vendor terms
-				router.push(PAGES_DATA.vendor_onboarding_terms_page);
-			},
-			silent: false,
-			password: form.password,
-			email: personalDetails?.email || '',
-			firstName: personalDetails?.firstName || '',
-			lastName: personalDetails?.lastName || '',
-			phone: personalDetails?.phone || '',
-			businessName: personalDetails?.businessName || '',
-			businessType: personalDetails?.businessType || '',
-			verificationToken: verificationToken || '',
-		});
+	const { mutate: createAccountMutate, isPending } = setPasswordAndSignUp({
+		onSuccess: () => {
+			// Navigate to vendor terms
+			router.push(PAGES_DATA.vendor_onboarding_terms_page);
+		},
+		silent: false,
+		password: form.password,
+		email: personalDetails?.email || '',
+		firstName: personalDetails?.firstName || '',
+		lastName: personalDetails?.lastName || '',
+	});
 
-	// Load personal details and verification token from localStorage
+	// Load personal details from localStorage
 	useEffect(() => {
 		const detailsRaw = localStorage.getItem(
-			localStorageStrings.vendorOnboardinPersonalDetailsstring
-		);
-		const tokenRaw = localStorage.getItem(
-			localStorageStrings.vendorOnboardingEmailVerificationToken
+			localStorageStrings.vendorOnboardinPersonalDetailsstring,
 		);
 
-		if (!detailsRaw || !tokenRaw) {
+		if (!detailsRaw) {
 			// Redirect back if missing data
+			toast.error(
+				'Something went wrong while onboarding please start again',
+			);
 			router.push(PAGES_DATA.vendor_onboarding_personal_details_page);
 			return;
 		}
 
 		try {
 			setPersonalDetails(JSON.parse(detailsRaw));
-			setVerificationToken(tokenRaw);
 		} catch (e) {
+			toast.error(
+				'Something went wrong while onboarding please start again',
+			);
 			console.error('Failed to load onboarding data:', e);
 			router.push(PAGES_DATA.vendor_onboarding_personal_details_page);
 		}
@@ -107,7 +102,7 @@ export default function VendorOnboardingCreatePasswordPage() {
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 
-		if (!isFormValid || !personalDetails || !verificationToken) return;
+		if (!isFormValid || !personalDetails) return;
 		createAccountMutate();
 	};
 

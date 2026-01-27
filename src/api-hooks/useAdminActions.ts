@@ -1,7 +1,7 @@
 "use client";
 
 import { useTRPC } from "@/trpc/client";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { UseAPICallerOptions } from "./api-hook-types";
 
@@ -147,6 +147,171 @@ export function useAdminActions() {
                     },
                     onError: (err: unknown) => {
                         if (!options?.silent) toast.error("Failed to assign vendor role", { description: err instanceof Error ? err.message : String(err) });
+                        options?.onError?.(err);
+                    },
+                    retry: false,
+                })
+            ),
+
+        // ========== USER MANAGEMENT ==========
+
+        // List users with infinite scroll
+        useInfiniteListUsers: (input: { limit?: number; q?: string } = {}) =>
+            useInfiniteQuery(
+                trpc.admin.listUsersInfinite.infiniteQueryOptions(
+                    { ...input },
+                    {
+                        getNextPageParam: (lastPage: any) => lastPage.nextCursor,
+                    }
+                )
+            ),
+
+        // Get user details
+        useGetUserDetails: (input: { userId: string }) =>
+            useQuery(trpc.admin.getUserDetails.queryOptions(input, { enabled: !!input.userId })),
+
+        // Update user
+        updateUser: (options?: UseAPICallerOptions) =>
+            useMutation(
+                trpc.admin.updateUser.mutationOptions({
+                    onSuccess: (data) => {
+                        if (!options?.silent) toast.success("User updated successfully");
+                        options?.onSuccess?.(data);
+                    },
+                    onError: (err: unknown) => {
+                        if (!options?.silent) toast.error("Failed to update user", { description: err instanceof Error ? err.message : String(err) });
+                        options?.onError?.(err);
+                    },
+                    retry: false,
+                })
+            ),
+
+        // Deactivate user
+        deactivateUser: (options?: UseAPICallerOptions) =>
+            useMutation(
+                trpc.admin.deactivateUser.mutationOptions({
+                    onSuccess: (data) => {
+                        if (!options?.silent) toast.success("User deactivated");
+                        options?.onSuccess?.(data);
+                    },
+                    onError: (err: unknown) => {
+                        if (!options?.silent) toast.error("Failed to deactivate user", { description: err instanceof Error ? err.message : String(err) });
+                        options?.onError?.(err);
+                    },
+                    retry: false,
+                })
+            ),
+
+        // Assign role
+        assignRole: (options?: UseAPICallerOptions) =>
+            useMutation(
+                trpc.admin.assignRole.mutationOptions({
+                    onSuccess: (data) => {
+                        if (!options?.silent) toast.success("Role assigned");
+                        options?.onSuccess?.(data);
+                    },
+                    onError: (err: unknown) => {
+                        if (!options?.silent) toast.error("Failed to assign role", { description: err instanceof Error ? err.message : String(err) });
+                        options?.onError?.(err);
+                    },
+                    retry: false,
+                })
+            ),
+
+        // Remove role
+        removeRole: (options?: UseAPICallerOptions) =>
+            useMutation(
+                trpc.admin.removeRole.mutationOptions({
+                    onSuccess: (data) => {
+                        if (!options?.silent) toast.success("Role removed");
+                        options?.onSuccess?.(data);
+                    },
+                    onError: (err: unknown) => {
+                        if (!options?.silent) toast.error("Failed to remove role", { description: err instanceof Error ? err.message : String(err) });
+                        options?.onError?.(err);
+                    },
+                    retry: false,
+                })
+            ),
+
+        // Vendors
+        useInfiniteListVendors: (input: { limit?: number; q?: string } = {}) =>
+            useInfiniteQuery(
+                trpc.admin.listVendorsInfinite.infiniteQueryOptions(
+                    { ...input },
+                    {
+                        getNextPageParam: (lastPage: any) => lastPage.nextCursor,
+                    }
+                )
+            ),
+
+        updateVendorByAdmin: (options?: UseAPICallerOptions) =>
+            useMutation(
+                trpc.admin.updateVendorByAdmin.mutationOptions({
+                    onSuccess: (data) => {
+                        if (!options?.silent) toast.success("Vendor updated successfully");
+                        options?.onSuccess?.(data);
+                    },
+                    onError: (err: unknown) => {
+                        if (!options?.silent) toast.error("Failed to update vendor", { description: err instanceof Error ? err.message : String(err) });
+                        options?.onError?.(err);
+                    },
+                    retry: false,
+                })
+            ),
+
+        // Menu Management
+        useListVendorCategories: (input: { vendorId: string }) =>
+            useQuery(trpc.admin.listVendorCategories.queryOptions(input, { enabled: !!input.vendorId })),
+
+        useInfiniteListVendorProducts: (input: { vendorId: string; limit?: number } = { vendorId: "" }) =>
+            useInfiniteQuery(
+                trpc.admin.listVendorProducts.infiniteQueryOptions(
+                    { ...input },
+                    {
+                        enabled: !!input.vendorId,
+                        getNextPageParam: (lastPage: any) => lastPage.nextCursor,
+                    }
+                )
+            ),
+
+        updateProductItemByAdmin: (options?: UseAPICallerOptions) =>
+            useMutation(
+                trpc.admin.updateProductItemByAdmin.mutationOptions({
+                    onSuccess: (data) => {
+                        if (!options?.silent) toast.success("Product item updated");
+                        options?.onSuccess?.(data);
+                    },
+                    onError: (err: unknown) => {
+                        if (!options?.silent) toast.error("Failed to update product item", { description: err instanceof Error ? err.message : String(err) });
+                        options?.onError?.(err);
+                    },
+                    retry: false,
+                })
+            ),
+
+        toggleProductItemCategory: (options?: UseAPICallerOptions) =>
+            useMutation(
+                trpc.admin.toggleProductItemCategory.mutationOptions({
+                    onSuccess: (data) => {
+                        options?.onSuccess?.(data);
+                    },
+                    onError: (err: unknown) => {
+                        if (!options?.silent) toast.error("Failed to update category", { description: err instanceof Error ? err.message : String(err) });
+                        options?.onError?.(err);
+                    },
+                    retry: false,
+                })
+            ),
+
+        toggleVendorCategory: (options?: UseAPICallerOptions) =>
+            useMutation(
+                trpc.admin.toggleVendorCategory.mutationOptions({
+                    onSuccess: (data) => {
+                        options?.onSuccess?.(data);
+                    },
+                    onError: (err: unknown) => {
+                        if (!options?.silent) toast.error("Failed to update vendor category", { description: err instanceof Error ? err.message : String(err) });
                         options?.onError?.(err);
                     },
                     retry: false,

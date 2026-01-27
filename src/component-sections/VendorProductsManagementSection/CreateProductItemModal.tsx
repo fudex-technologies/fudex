@@ -23,9 +23,11 @@ import { toast } from 'sonner';
 function CreateProductItemModal({
 	products,
 	onSuccess,
+	vendorId,
 }: {
 	products: Array<{ id: string; name: string }>;
 	onSuccess: () => void;
+	vendorId?: string;
 }) {
 	const [open, setOpen] = useState(false);
 	const [createdProductItemId, setCreatedProductItemId] = useState<
@@ -150,13 +152,12 @@ function CreateProductItemModal({
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
-		console.log(formData);
-
 		if (createdProductItemId) {
 			return;
 		}
 
-		if (!vendor) {
+		const targetVendorId = vendorId || vendor?.id;
+		if (!targetVendorId) {
 			toast.error('Vendor not found');
 			return;
 		}
@@ -166,7 +167,7 @@ function CreateProductItemModal({
 			return;
 		}
 		createProductMutate.mutate({
-			vendorId: vendor.id,
+			vendorId: targetVendorId,
 			productId: formData.productId || undefined,
 			name: formData.name,
 			categories: [formData.category],
@@ -316,6 +317,7 @@ function CreateProductItemModal({
 									}))
 								}
 								className='w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm'>
+								<option value=''>Select a category</option>
 								{categories.map((c) => (
 									<option key={c.id} value={c.id}>
 										{c.name}

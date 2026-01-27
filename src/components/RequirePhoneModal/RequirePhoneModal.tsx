@@ -20,6 +20,8 @@ import {
 import { ExtendedUser } from '@/lib/auth';
 import { validatePhoneNumberRegex } from '@/lib/commonFunctions';
 import { ImageWithFallback } from '../ui/ImageWithFallback';
+import { useTRPC } from '@/trpc/client';
+import { useQuery } from '@tanstack/react-query';
 
 interface IFormData {
 	phone: string;
@@ -33,11 +35,49 @@ const initialFormData = {
 
 export default function RequirePhoneModal() {
 	const { data: session } = useSession();
+	const trpc = useTRPC();
 	const router = useRouter();
 	const [open, setOpen] = useState(false);
 	const [form, setForm] = useState<IFormData>(initialFormData);
 	const [touched, setTouched] = useState<IFormTouchedData>({});
-	const pathname = usePathname()
+	const [debouncedPhone, setDebouncedPhone] = useState('');
+	const [availabilityError, setAvailabilityError] = useState<string | null>(
+		null,
+	);
+	const pathname = usePathname();
+
+	// Debounce phone input
+	useEffect(() => {
+		const timer = setTimeout(() => {
+			setDebouncedPhone(form.phone);
+		}, 800);
+
+		return () => clearTimeout(timer);
+	}, [form.phone]);
+
+	// Check phone availability
+	const { data: phoneCheckData, isLoading: isCheckingPhone } = useQuery(
+		trpc.phoneAuth.checkPhoneInUse.queryOptions(
+			{ phone: debouncedPhone },
+			{
+				enabled:
+					!!debouncedPhone &&
+					validatePhoneNumberRegex(debouncedPhone) &&
+					open,
+				retry: false,
+			},
+		),
+	);
+
+	useEffect(() => {
+		if (phoneCheckData?.inUse) {
+			setAvailabilityError(
+				'This phone number is already linked to another account.',
+			);
+		} else {
+			setAvailabilityError(null);
+		}
+	}, [phoneCheckData]);
 
 	useEffect(() => {
 		if (
@@ -47,7 +87,7 @@ export default function RequirePhoneModal() {
 			!(session.user as ExtendedUser)?.phone
 		) {
 			const lastShownString = localStorage.getItem(
-				localStorageStrings.requirePhoneModalLastShown
+				localStorageStrings.requirePhoneModalLastShown,
 			);
 			if (lastShownString) {
 				const lastShown = new Date(lastShownString).getTime();
@@ -68,7 +108,7 @@ export default function RequirePhoneModal() {
 		if (open) {
 			localStorage.setItem(
 				localStorageStrings.requirePhoneModalLastShown,
-				new Date().toISOString()
+				new Date().toISOString(),
 			);
 		}
 	}, [open]);
@@ -91,13 +131,14 @@ export default function RequirePhoneModal() {
 		return newErrors;
 	};
 	const errorsNow = validate();
-	const isFormValid = Object.keys(errorsNow).length === 0;
+	const isFormValid =
+		Object.keys(errorsNow).length === 0 && !availabilityError;
 
 	const handleSubmit = () => {
 		setTouched({
 			phone: true,
 		});
-		if (!isFormValid) return;
+		if (!isFormValid || isCheckingPhone) return;
 
 		updateProfileMutate({ phone: form.phone });
 	};
@@ -133,12 +174,20 @@ export default function RequirePhoneModal() {
 								className='w-5 h-5'
 							/>
 						}
-						error={touched.phone && errorsNow.phone}
+						error={
+							touched.phone &&
+							(errorsNow.phone || availabilityError)
+						}
+						hint={
+							isCheckingPhone
+								? 'Checking availability...'
+								: availabilityError || undefined
+						}
 						required
 					/>
 				</div>
 				<DialogFooter>
-					<DialogClose>
+					<DialogClose asChild>
 						<Button variant='ghost' onClick={() => setOpen(false)}>
 							Cancel
 						</Button>
@@ -146,7 +195,7 @@ export default function RequirePhoneModal() {
 					<Button
 						variant='game'
 						onClick={handleSubmit}
-						disabled={isPending || !isFormValid}>
+						disabled={isPending || !isFormValid || isCheckingPhone}>
 						{isPending ? 'Sending...' : 'Send code'}
 					</Button>
 				</DialogFooter>

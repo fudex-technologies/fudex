@@ -7,19 +7,63 @@ import VendorOnboardingFormsWrapper from '@/components/wrapers/VendorOnboardingF
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { PAGES_DATA } from '@/data/pagesData';
+import { useVendorOnboardingActions } from '@/api-hooks/useVendorOnboardingActions';
+import { localStorageStrings } from '@/constants/localStorageStrings';
+import { normalizePhoneNumber } from '@/lib/commonFunctions';
+import { toast } from 'sonner';
 
 export default function VendorOnboardingVendorTermsPage() {
 	const router = useRouter();
 	const [accepted, setAccepted] = useState(false);
 
+	const { finalizeVendorOnboarding } = useVendorOnboardingActions();
+
+	const { mutate: finalizeMutate, isPending } = finalizeVendorOnboarding({
+		onSuccess: () => {
+			router.push(PAGES_DATA.vendor_onboarding_progress_page);
+		},
+	});
+
 	const handleAgree = () => {
 		if (!accepted) return;
 
-		// Clear localStorage onboarding data
-		// Note: We're keeping the token for now in case it's needed
+		// Load all data from localStorage
+		const detailsRaw = localStorage.getItem(
+			localStorageStrings.vendorOnboardinPersonalDetailsstring,
+		);
+		const locationRaw = localStorage.getItem(
+			localStorageStrings.vendorOnboardingLocationData,
+		);
+		const tokenRaw = localStorage.getItem(
+			localStorageStrings.vendorOnboardingEmailVerificationToken,
+		);
 
-		// Navigate to onboarding progress page
-		router.push('/vendor-onboarding/progress');
+		if (!detailsRaw || !locationRaw || !tokenRaw) {
+			toast.error('Missing onboarding data. Please start again.');
+			router.push(PAGES_DATA.vendor_onboarding_personal_details_page);
+			return;
+		}
+
+		try {
+			const details = JSON.parse(detailsRaw);
+			const location = JSON.parse(locationRaw);
+
+			finalizeMutate({
+				email: details.email,
+				phone: normalizePhoneNumber(details.phone),
+				firstName: details.firstName,
+				lastName: details.lastName,
+				businessName: details.businessName,
+				businessDescription: details.businessDescription || '',
+				verificationToken: tokenRaw,
+				address: location.businessAddress,
+				areaId: location.areaId,
+			});
+		} catch (e) {
+			console.error('Finalization error:', e);
+			toast.error('Failed to process data. Please start again.');
+			router.push(PAGES_DATA.vendor_onboarding_personal_details_page);
+		}
 	};
 
 	return (
@@ -43,9 +87,9 @@ export default function VendorOnboardingVendorTermsPage() {
 				<div className='w-full flex items-center justify-end'>
 					<Button
 						variant={'game'}
-						disabled={!accepted}
+						disabled={!accepted || isPending}
 						onClick={handleAgree}>
-						AGREE & CONTINUE
+						{isPending ? 'AGREEING...' : 'AGREE & CONTINUE'}
 					</Button>
 				</div>
 			</div>

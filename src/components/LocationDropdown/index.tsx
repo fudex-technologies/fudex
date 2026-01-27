@@ -23,6 +23,8 @@ const LocationDropdown = ({ className }: { className?: ClassNameValue }) => {
 	const { mutate } = updateAddress({
 		silent: true,
 	});
+	console.log(addresses);
+
 	const defaultAddress = addresses?.find((address) => address.isDefault);
 	const router = useRouter();
 	return (
@@ -53,7 +55,7 @@ const LocationDropdown = ({ className }: { className?: ClassNameValue }) => {
 				}}
 				className={cn(
 					'min-w-[180px] max-w-sm w-full border-0 shadow-none p-0',
-					className
+					className,
 				)}
 				disabled={!session || addressesLoading}>
 				<div className='flex items-center justify-start gap-2'>
@@ -65,17 +67,15 @@ const LocationDropdown = ({ className }: { className?: ClassNameValue }) => {
 					/>
 					{!session && <SelectValue placeholder='Explore Mode' />}
 					{session && addresses?.length === 0 && (
-						<SelectValue
-							placeholder='Add Address'
-						/>
+						<SelectValue placeholder='Add Address' />
 					)}
 					{session && defaultAddress && (
 						<SelectValue
 							placeholder={shortenText(
-								`${defaultAddress?.label?.toUpperCase()} - ${
+								`${defaultAddress?.label ? defaultAddress?.label?.toUpperCase() + ' - ' : ''}${
 									defaultAddress.line1
 								}`,
-								30
+								30,
 							)}
 						/>
 					)}
@@ -85,10 +85,10 @@ const LocationDropdown = ({ className }: { className?: ClassNameValue }) => {
 						addresses.length > 0 && (
 							<SelectValue
 								placeholder={shortenText(
-									`${addresses?.[0]?.label?.toUpperCase()} - ${
+									`${addresses?.[0]?.label ? addresses?.[0]?.label?.toUpperCase() + ' - ' : ''}${
 										addresses?.[0]?.line1
 									}`,
-									30
+									30,
 								)}
 							/>
 						)}
@@ -104,7 +104,7 @@ const LocationDropdown = ({ className }: { className?: ClassNameValue }) => {
 										`${address?.label?.toUpperCase()} - ${
 											address.line1
 										} `,
-										55
+										55,
 									)}
 								</SelectItem>
 							);

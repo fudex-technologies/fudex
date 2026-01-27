@@ -23,8 +23,15 @@ const VendorDetailsSection = ({
 	vendorId: string;
 	showDetails?: boolean;
 }) => {
-	const { useGetVendorById } = useVendorProductActions();
-	const { data: vendor, isLoading } = useGetVendorById({ id: vendorId });
+	const { useGetVendorById, usePublicPlatformSettings } =
+		useVendorProductActions();
+	const { data: vendor, isLoading: vendorLoading } = useGetVendorById({
+		id: vendorId,
+	});
+	const { data: platformSettings, isLoading: settingsLoading } =
+		usePublicPlatformSettings();
+
+	const isLoading = vendorLoading || settingsLoading;
 
 	if (isLoading) {
 		return (
@@ -64,7 +71,8 @@ const VendorDetailsSection = ({
 
 	const rating = vendor.reviewsAverage || 0;
 	const reviewCount = vendor.reviewsCount || 0;
-	const deliveryPrice = 600; // Default delivery price, can be calculated from area later
+	const deliveryPrice =
+		((platformSettings as any)?.BASE_DELIVERY_FEE as number) ?? 600;
 
 	const isOpen = isVendorOpen(
 		vendor?.openingHours,

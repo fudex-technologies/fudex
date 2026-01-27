@@ -8,12 +8,14 @@ import {
 } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import InputField from '@/components/InputComponent';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useProfileActions } from '@/api-hooks/useProfileActions';
 import { validatePhoneNumberRegex } from '@/lib/commonFunctions';
 import { useRouter } from 'next/navigation';
 import { PAGES_DATA } from '@/data/pagesData';
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
+import { useTRPC } from '@/trpc/client';
+import { useQuery } from '@tanstack/react-query';
 
 interface AddPhoneNumberDrawerProps {
 	isOpen: boolean;
@@ -26,10 +28,48 @@ export default function AddPhoneNumberDrawer({
 	onClose,
 	redirectUrl,
 }: AddPhoneNumberDrawerProps) {
+	const trpc = useTRPC();
 	const [phone, setPhone] = useState('');
 	const [touched, setTouched] = useState(false);
+	const [debouncedPhone, setDebouncedPhone] = useState('');
+	const [availabilityError, setAvailabilityError] = useState<string | null>(
+		null,
+	);
 	const { updateProfile } = useProfileActions();
 	const router = useRouter();
+
+	// Debounce phone input
+	useEffect(() => {
+		const timer = setTimeout(() => {
+			setDebouncedPhone(phone);
+		}, 800);
+
+		return () => clearTimeout(timer);
+	}, [phone]);
+
+	// Check phone availability
+	const { data: phoneCheckData, isLoading: isCheckingPhone } = useQuery(
+		trpc.phoneAuth.checkPhoneInUse.queryOptions(
+			{ phone: debouncedPhone },
+			{
+				enabled:
+					!!debouncedPhone &&
+					validatePhoneNumberRegex(debouncedPhone) &&
+					isOpen,
+				retry: false,
+			},
+		),
+	);
+
+	useEffect(() => {
+		if (phoneCheckData?.inUse) {
+			setAvailabilityError(
+				'This phone number is already linked to another account.',
+			);
+		} else {
+			setAvailabilityError(null);
+		}
+	}, [phoneCheckData]);
 
 	const { mutate, isPending } = updateProfile({
 		onSuccess: () => {
@@ -37,7 +77,7 @@ export default function AddPhoneNumberDrawer({
 			router.push(
 				`${
 					PAGES_DATA.profile_verify_phone_page
-				}?redirect=${encodeURIComponent(redirectUrl)}`
+				}?redirect=${encodeURIComponent(redirectUrl)}`,
 			);
 		},
 	});
@@ -46,7 +86,7 @@ export default function AddPhoneNumberDrawer({
 		if (!phone) return 'Phone number is required';
 		if (!validatePhoneNumberRegex(phone))
 			return 'Invalid phone number format';
-		return null;
+		return availabilityError;
 	};
 
 	const error = validate();
@@ -54,7 +94,7 @@ export default function AddPhoneNumberDrawer({
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
 		setTouched(true);
-		if (error) return;
+		if (error || isCheckingPhone) return;
 		mutate({ phone });
 	};
 
@@ -77,14 +117,19 @@ export default function AddPhoneNumberDrawer({
 								className='w-5 h-5'
 							/>
 						}
-						error={(touched as any) && (error as any)}
-						hint='Make sure your phone number is correct and accessible by you'
+						error={touched && ((error || availabilityError) as any)}
+						hint={
+							isCheckingPhone
+								? 'Checking availability...'
+								: availabilityError ||
+									'Make sure your phone number is correct and accessible by you'
+						}
 						required
 					/>
 					<Button
 						type='submit'
 						className='w-full'
-						disabled={isPending || !!error}>
+						disabled={isPending || !!error || isCheckingPhone}>
 						{isPending ? 'Saving...' : 'Save and Verify'}
 					</Button>
 				</form>
