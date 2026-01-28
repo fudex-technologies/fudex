@@ -1588,8 +1588,9 @@ export const vendorRouter = createTRPCRouter({
                 where: { id: input.id },
                 include: { vendor: true }
             });
+            const isSuper = await ctx.prisma.userRole.findFirst({ where: { userId, role: "SUPER_ADMIN" } });
             if (!item) throw new Error("Product item not found");
-            if (item.vendor.ownerId !== userId) {
+            if (item.vendor.ownerId !== userId && !isSuper) {
                 throw new Error("Unauthorized: You don't own this product item");
             }
 
@@ -1608,8 +1609,9 @@ export const vendorRouter = createTRPCRouter({
                 where: { id: input.id },
                 include: { vendor: true }
             });
+            const isSuper = await ctx.prisma.userRole.findFirst({ where: { userId, role: "SUPER_ADMIN" } });
             if (!product) throw new Error("Product not found");
-            if (product.vendor.ownerId !== userId) {
+            if (product.vendor.ownerId !== userId && !isSuper) {
                 throw new Error("Unauthorized: You don't own this product");
             }
 
