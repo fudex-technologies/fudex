@@ -84,7 +84,7 @@ const ProductListItem = ({ productItem }: { productItem: ProductItemData }) => {
 				<div className='flex flex-col'>
 					<p className='font-medium'>
 						{shortenText(
-							`${productItem?.product?.name} (${productItem?.name})`,
+							`${productItem?.product?.name}`,
 							30,
 						)}
 					</p>

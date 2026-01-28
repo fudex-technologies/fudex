@@ -29,6 +29,9 @@ export function useVendorProductActions() {
         addReview,
 
         // products
+        useListProducts: (input: { vendorId: string; take?: number }) => {
+            return useQuery(trpc.vendors.listProducts.queryOptions(input));
+        },
         useListProductItems: (input: { vendorId: string; take?: number }) =>
             useQuery(trpc.vendors.listProductItems.queryOptions(input)),
         useGetProductItemById: (input: { id: string }) =>
@@ -71,6 +74,7 @@ export function useVendorProductActions() {
                         limit: input?.limit ?? 20,
                         q: input?.q,
                         ratingFilter: input?.ratingFilter,
+                        openedSort: true
                     },
                     {
                         getNextPageParam: (lastPage) => lastPage.nextCursor,

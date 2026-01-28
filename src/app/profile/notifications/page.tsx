@@ -19,6 +19,9 @@ export default function NotificationsPage() {
 	const isEnabled = permission === 'granted' && !!subscription;
 
 	const handleToggle = (checked: boolean) => {
+		console.log(permission);
+		console.log(subscription);
+		
 		if (checked) {
 			subscribe();
 		} else {
