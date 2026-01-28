@@ -34,10 +34,11 @@ export default function NotificationsPage() {
 			</div>
 
 			<div className='py-10 space-y-5 max-w-lg w-full'>
-				{!isSupported ? (
+				{!isLoading && !isSupported ? (
 					<div className='p-5 border rounded-md text-red-500 bg-red-50'>
 						<p>
-							Web notifications are not supported by your browser.
+							Web notifications are not supported by your browser,
+							please try a different one.
 						</p>
 					</div>
 				) : (
@@ -65,7 +66,7 @@ export default function NotificationsPage() {
 								/>
 							)}
 						</div>
-						{permission === 'denied' && (
+						{ permission === 'denied' && (
 							<p className='text-xs text-red-500 pt-2'>
 								Notifications are permanently blocked in browser
 								settings. Please reset permissions to enable.

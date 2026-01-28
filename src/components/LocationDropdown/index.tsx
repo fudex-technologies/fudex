@@ -23,7 +23,6 @@ const LocationDropdown = ({ className }: { className?: ClassNameValue }) => {
 	const { mutate } = updateAddress({
 		silent: true,
 	});
-	console.log(addresses);
 
 	const defaultAddress = addresses?.find((address) => address.isDefault);
 	const router = useRouter();
