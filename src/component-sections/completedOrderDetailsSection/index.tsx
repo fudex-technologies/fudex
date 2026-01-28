@@ -14,8 +14,6 @@ const CompletedOrderDetailsSection = ({ orderId }: { orderId: string }) => {
 	const { useGetOrder } = useOrderingActions();
 	const { data: order, isLoading } = useGetOrder({ id: orderId });
 
-	console.log(order);
-
 	if (isLoading) {
 		return (
 			<div className='w-full max-w-lg py-10 space-y-5'>

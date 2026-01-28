@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useNotificationActions } from '@/api-hooks/useNotificationActions';
+import { toast } from "sonner";
 
 function urlBase64ToUint8Array(base64String: string) {
     const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -41,7 +42,10 @@ export function usePushNotifications() {
     }, []);
 
     const subscribe = async () => {
-        if (!isSupported) return;
+        if (!isSupported) {
+            toast.error('Push notifications are not supported in this browser.');
+            return;
+        };
 
         try {
             const result = await Notification.requestPermission();
@@ -54,6 +58,7 @@ export function usePushNotifications() {
                 const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
                 if (!vapidPublicKey) {
                     console.error('VAPID public key not found');
+                    toast.error("Configuration Error: VAPID Public Key not found");
                     return;
                 }
 
