@@ -103,36 +103,134 @@ export const vendorRouter = createTRPCRouter({
         .input(z.object({
             q: z.string().optional(),
             ratingFilter: z.string().optional(),
+            openedSort: z.boolean().optional(),
             limit: z.number().min(1).max(100).default(20),
-            cursor: z.number().default(0), // skip/offset
+            cursor: z.number().default(0),
         }))
         .query(async ({ ctx, input }) => {
             const limit = input.limit;
             const skip = input.cursor;
 
+            if (input.openedSort) {
+                // Get current day and time for opening hours check
+                const now = new Date();
+                const dayNames = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+                const currentDay = dayNames[now.getDay()];
+                const currentTime = now.toTimeString().slice(0, 5); // HH:MM format
+
+                // Build WHERE conditions for raw SQL
+                const searchCondition = input.q
+                    ? `AND (v.name ILIKE $1 OR v.description ILIKE $1)`
+                    : '';
+
+                const ratingCondition = input.ratingFilter
+                    ? `AND v."reviewsAverage" >= ${input.ratingFilter === "2.0+" ? 2 :
+                        input.ratingFilter === "3.5+" ? 3.5 :
+                            input.ratingFilter === "4.0+" ? 4 :
+                                input.ratingFilter === "4.5+" ? 4.5 : 0
+                    }`
+                    : '';
+
+                // Prepare search parameter
+                const searchParam = input.q ? `%${input.q}%` : null;
+
+                // Raw SQL query with open/closed sorting
+                const query = `
+                    SELECT 
+                        v.*,
+                        CASE 
+                            WHEN v."availabilityStatus" = 'OPEN' THEN 1
+                            WHEN v."availabilityStatus" = 'CLOSED' THEN 0
+                            WHEN v."availabilityStatus" = 'AUTO' THEN
+                                CASE 
+                                    WHEN EXISTS (
+                                        SELECT 1 
+                                        FROM "VendorOpeningHour" oh
+                                        WHERE oh."vendorId" = v.id
+                                        AND oh.day = $${searchParam ? 2 : 1}
+                                        AND oh."isClosed" = false
+                                        AND oh."openTime" IS NOT NULL
+                                        AND oh."closeTime" IS NOT NULL
+                                        AND oh."openTime" <= $${searchParam ? 3 : 2}
+                                        AND oh."closeTime" >= $${searchParam ? 3 : 2}
+                                    ) THEN 1
+                                    ELSE 0
+                                END
+                            ELSE 0
+                        END as is_open
+                    FROM "Vendor" v
+                    WHERE v."approvalStatus" = 'APPROVED'
+                    ${searchCondition}
+                    ${ratingCondition}
+                    ORDER BY is_open DESC, v."createdAt" DESC
+                    LIMIT $${searchParam ? 4 : 3}
+                    OFFSET $${searchParam ? 5 : 4}
+                `;
+
+                // Execute raw query with parameters
+                const params = searchParam
+                    ? [searchParam, currentDay, currentTime, limit + 1, skip]
+                    : [currentDay, currentTime, limit + 1, skip];
+
+                const items: any[] = await ctx.prisma.$queryRawUnsafe(query, ...params);
+
+                // Fetch opening hours for all vendors in the result
+                if (items.length > 0) {
+                    const vendorIds = items.map(v => v.id);
+                    const openingHours = await ctx.prisma.vendorOpeningHour.findMany({
+                        where: { vendorId: { in: vendorIds } }
+                    });
+
+                    // Attach opening hours to each vendor
+                    items.forEach(vendor => {
+                        vendor.openingHours = openingHours.filter(oh => oh.vendorId === vendor.id);
+
+                        // Convert numeric fields back to proper types (Prisma queryRaw returns Decimal as string)
+                        vendor.reviewsAverage = parseFloat(vendor.reviewsAverage) || 0;
+                        vendor.reviewsCount = parseInt(vendor.reviewsCount) || 0;
+                        vendor.deliveryFee = vendor.deliveryFee ? parseFloat(vendor.deliveryFee) : null;
+
+                        // Parse JSON fields if needed
+                        // vendor.someJsonField = vendor.someJsonField ? JSON.parse(vendor.someJsonField) : null;
+                    });
+                }
+
+                let nextCursor: number | undefined = undefined;
+                if (items.length > limit) {
+                    items.pop();
+                    nextCursor = skip + limit;
+                }
+
+                return {
+                    items,
+                    nextCursor,
+                };
+            }
+
             const where: any = input.q ? {
                 OR: [
-                    {
-                        name: { contains: input.q, mode: "insensitive" }
-                    },
+                    { name: { contains: input.q, mode: "insensitive" } },
                     { description: { contains: input.q, mode: "insensitive" } }
                 ],
                 AND: {
-                    approvalStatus: 'APPROVED' // Only show approved vendors
+                    approvalStatus: 'APPROVED'
                 }
             } : {
-                approvalStatus: 'APPROVED' // Only show approved vendors
-            };// Only show approved vendors
+                approvalStatus: 'APPROVED'
+            };
 
             if (input?.ratingFilter) {
                 where.reviewsAverage = {
-                    gte: input.ratingFilter === "2.0+" ? 2 : input.ratingFilter === "3.5+" ? 3.5 : input.ratingFilter === "4.0+" ? 4 : input.ratingFilter === "4.5+" ? 4.5 : 0
+                    gte: input.ratingFilter === "2.0+" ? 2 :
+                        input.ratingFilter === "3.5+" ? 3.5 :
+                            input.ratingFilter === "4.0+" ? 4 :
+                                input.ratingFilter === "4.5+" ? 4.5 : 0
                 }
             }
 
             const items = await ctx.prisma.vendor.findMany({
                 where,
-                take: limit + 1, // fetch one more to check if there is a next page
+                take: limit + 1,
                 skip: skip,
                 orderBy: { createdAt: "desc" },
                 include: { openingHours: true }
@@ -140,7 +238,7 @@ export const vendorRouter = createTRPCRouter({
 
             let nextCursor: number | undefined = undefined;
             if (items.length > limit) {
-                items.pop(); // remove the extra item
+                items.pop();
                 nextCursor = skip + limit;
             }
 
@@ -335,6 +433,45 @@ export const vendorRouter = createTRPCRouter({
                 take: input.take,
                 orderBy: { name: "asc" }
             });
+        }),
+
+    listProducts: publicProcedure
+        .input(
+            z.object({
+                vendorId: z.string(),
+                take: z.number().optional().default(100),
+            })
+        )
+        .query(async ({ ctx, input }) => {
+            const products = await ctx.prisma.product.findMany({
+                where: {
+                    vendorId: input.vendorId,
+                },
+                take: input.take,
+                orderBy: {
+                    createdAt: 'desc',
+                },
+                include: {
+                    items: {
+                        where: {
+                            isActive: true, // Only include active items
+                        },
+                        include: {
+                            categories: {
+                                include: {
+                                    category: true,
+                                },
+                            },
+                        },
+                        orderBy: {
+                            createdAt: 'asc', // First item will be the oldest/primary one
+                        },
+                    },
+                },
+            });
+
+            // Filter out products that have no items
+            return products.filter((product) => product.items.length > 0);
         }),
 
     // Product item listing for a vendor

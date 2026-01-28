@@ -39,7 +39,7 @@ const CategorySelectionCard = ({
 		<div
 			onClick={handleCatClick}
 			className={cn(
-				'bg-muted text-muted-foreground flex flex-col gap-2 w-[100px] p-3 rounded-lg shadow-sm border cursor-pointer',
+				'bg-muted text-muted-foreground flex flex-col gap-2 w-[100px] p-3 rounded-lg shadow-sm border cursor-pointer overflow-hidden',
 				isActive &&
 				'bg-secondary text-secondary-foreground transition-colors ease-linear border-0'
 			)}>
