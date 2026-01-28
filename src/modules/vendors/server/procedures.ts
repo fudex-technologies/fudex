@@ -9,8 +9,8 @@ import {
 } from '@/trpc/init';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
-import { DayOfWeek, OrderStatus, Prisma, VendorAvailabilityStatus } from '@prisma/client';
-import { auth } from '@/lib/auth';
+import { v4 as uuidv4 } from 'uuid';
+import { DayOfWeek, OrderStatus, VendorAvailabilityStatus } from '@prisma/client';
 import {
     sendVendorApprovalEmail,
     sendVendorDeclineEmail,
@@ -21,26 +21,13 @@ import { createPaystackRecipient, getPaystackBanks } from "@/lib/paystack";
 import { verifyVerificationToken } from '@/modules/auth-phone/server/procedures';
 
 const generateUniqueSlug = async (prisma: any, name: string, vendorId: string): Promise<string> => {
-    let slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-    let isUnique = false;
-    let counter = 1;
-    let baseSlug = slug;
+    const baseSlug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    let slug = `${baseSlug}-${uuidv4().slice(0, 8)}`;
 
-    while (!isUnique) {
-        const existing = await prisma.productItem.findFirst({
-            where: {
-                slug: slug,
-                vendorId: vendorId,
-            }
-        });
-
-        if (!existing) {
-            isUnique = true;
-        } else {
-            slug = `${baseSlug}-${counter}`;
-            counter++;
-        }
+    while (await prisma.productItem.findFirst({ where: { slug } })) {
+        slug = `${baseSlug}-${uuidv4().slice(0, 8)}`;
     }
+
     return slug;
 };
 
@@ -1445,7 +1432,6 @@ export const vendorRouter = createTRPCRouter({
             items: z.array(
                 z.object({
                     name: z.string(),
-                    slug: z.string(),
                     description: z.string().optional(),
                     price: z.number(),
                     currency: z.string().optional().default("NGN"),
@@ -1472,13 +1458,26 @@ export const vendorRouter = createTRPCRouter({
                     data: {
                         vendorId: input.vendorId,
                         name: input.product.name,
-                        // slug: input.product.slug, 
                         description: input.product.description
                     }
                 });
+                const slug = await generateUniqueSlug(ctx.prisma, input.product.name, input.vendorId);
 
                 for (const it of input.items) {
-                    await prisma.productItem.create({ data: { vendorId: input.vendorId, productId: createdProduct.id, name: it.name, slug: it.slug, description: it.description, price: it.price, currency: it.currency, images: it.images, isActive: it.isActive, inStock: it.inStock } });
+                    await prisma.productItem.create({
+                        data: {
+                            vendorId: input.vendorId,
+                            productId: createdProduct.id,
+                            name: it.name,
+                            slug,
+                            description: it.description,
+                            price: it.price,
+                            currency: it.currency,
+                            images: it.images,
+                            isActive: it.isActive,
+                            inStock: it.inStock
+                        }
+                    });
                 }
 
                 return prisma.product.findUnique({ where: { id: createdProduct.id }, include: { items: true } });
