@@ -96,6 +96,17 @@ function CreateProductItemModal({
 				images: data.images,
 				isActive: data.isActive,
 				inStock: data.inStock,
+				pricingType: data.pricingType,
+				unitName: data.unitName || '',
+				minQuantity: data.minQuantity
+					? String(data.minQuantity)
+					: '1',
+				maxQuantity: data.maxQuantity
+					? String(data.maxQuantity)
+					: '',
+				quantityStep: data.quantityStep
+					? String(data.quantityStep)
+					: '1',
 			});
 		},
 	});
