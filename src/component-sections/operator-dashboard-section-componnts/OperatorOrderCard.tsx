@@ -184,46 +184,86 @@ export default function OperatorOrderCard({
 							ORDER ITEMS ({itemCount})
 						</Label>
 						<div className='mt-2 space-y-2 max-h-[150px] overflow-y-auto pr-2 custom-scrollbar'>
-							{order.items.map((item: any) => (
-								<div
-									key={item.id}
-									className='text-sm bg-muted/30 p-2 rounded-lg'>
-									<div className='flex justify-between items-start'>
-										<span className='font-medium'>
-											{item.quantity}x{' '}
-											{item.productItem?.name}
-										</span>
-										<span className='text-xs font-semibold'>
-											{formatCurency(item.totalPrice)}
-										</span>
-									</div>
-									{item.addons?.length > 0 && (
-										<div className='pl-4 mt-1 space-y-0.5'>
-											{item.addons.map((addon: any) => (
-												<div
-													key={addon.id}
-													className='text-[11px] text-muted-foreground flex justify-between'>
-													<span>
-														+{' '}
-														{
-															addon
-																.addonProductItem
-																?.name
-														}
-													</span>
-													<span>
-														{formatCurency(
-															addon.unitPrice *
+							{order.items.map((item: any) => {
+								const productItem = item.productItem;
+								const productName = productItem?.name;
+								const isPerUnit = productItem?.pricingType === 'PER_UNIT';
+								const unitName = productItem?.unitName;
+								const parentProduct = item.productItem.product
+
+								console.log(item);
+
+
+								return (
+									<div
+										key={item.id}
+										className='text-sm bg-muted/30 p-2 rounded-lg'>
+										<div className='flex justify-between items-start'>
+											<div className='flex-1'>
+												<p>Main: {parentProduct.name}</p>
+												<span className='font-medium'>
+													{productName}
+													{isPerUnit && unitName && (
+														<span className='text-xs text-muted-foreground ml-1 font-normal'>
+															({item.quantity} {unitName}
+															{item.quantity !== 1 ? 's' : ''})
+														</span>
+													)}
+													{!isPerUnit && (
+														<span className='text-xs text-muted-foreground ml-1 font-normal'>
+															x{item.quantity}
+														</span>
+													)}
+												</span>
+												{isPerUnit && unitName && (
+													<p className='text-[10px] text-muted-foreground mt-0.5'>
+														{formatCurency(productItem?.price || 0)} per {unitName}
+													</p>
+												)}
+											</div>
+											<span className='text-xs font-semibold ml-2'>
+												{formatCurency(item.totalPrice)}
+											</span>
+										</div>
+										{item.addons?.length > 0 && (
+											<div className='pl-4 mt-1 space-y-0.5'>
+												{item.addons.map((addon: any) => (
+													<div
+														key={addon.id}
+														className='text-[11px] text-muted-foreground flex justify-between'>
+														<span>
+															({addon.addonProductItem.product.name})
+															+{' '}
+															{
+																addon
+																	.addonProductItem
+																	?.name
+															}
+															{isPerUnit && (
+																<span className='ml-1'>
+																	x{addon.quantity} per {unitName}
+																</span>
+															)}
+															{!isPerUnit && (
+																<span className='ml-1'>
+																	x{addon.quantity}
+																</span>
+															)}
+														</span>
+														<span>
+															{formatCurency(
+																addon.unitPrice *
 																addon.quantity *
 																item.quantity
-														)}
-													</span>
-												</div>
-											))}
-										</div>
-									)}
-								</div>
-							))}
+															)}
+														</span>
+													</div>
+												))}
+											</div>
+										)}
+									</div>
+								);
+							})}
 						</div>
 					</div>
 
@@ -295,7 +335,7 @@ export default function OperatorOrderCard({
 							</SelectTrigger>
 							<SelectContent>
 								{riders?.length > 0 &&
-								riders.filter((r) => r.isActive).length > 0 ? (
+									riders.filter((r) => r.isActive).length > 0 ? (
 									riders
 										.filter((r) => r.isActive)
 										.map((rider) => (

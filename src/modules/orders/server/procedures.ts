@@ -149,6 +149,7 @@ export const orderRouter = createTRPCRouter({
             for (const it of input.items) {
                 const mainPi = piMap[it.productItemId];
                 const unit = mainPi.price;
+                // Main item: price * quantity (works for both FIXED and PER_UNIT)
                 let totalPrice = unit * it.quantity;
 
                 const addonsToCreate: any[] = [];
@@ -156,10 +157,14 @@ export const orderRouter = createTRPCRouter({
                     for (const a of it.addons) {
                         const addonPi = piMap[a.addonProductItemId];
                         const addonUnit = addonPi.price;
-                        // Multiply addon quantity by main item quantity
-                        const addonTotal = addonUnit * a.quantity * it.quantity;
+                        // Addons are per pack, not per unit of the main item
+                        const addonTotal = addonUnit * a.quantity;
                         totalPrice += addonTotal;
-                        addonsToCreate.push({ addonProductItemId: a.addonProductItemId, quantity: a.quantity, unitPrice: addonUnit });
+                        addonsToCreate.push({
+                            addonProductItemId: a.addonProductItemId,
+                            quantity: a.quantity,
+                            unitPrice: addonUnit
+                        });
                     }
                 }
 
@@ -176,57 +181,57 @@ export const orderRouter = createTRPCRouter({
                 });
             }
 
-            // Calculate total amount including delivery and service fees
-            const totalAmount = orderSubTotal + deliveryFee + serviceFee;
+                // Calculate total amount including delivery and service fees
+                const totalAmount = orderSubTotal + deliveryFee + serviceFee;
 
-            // Persist order + items + addons in a single transaction
-            const created = await ctx.prisma.$transaction(async (prisma) => {
-                const order = await prisma.order.create({
-                    data: {
-                        userId,
-                        vendorId: vendorId ?? undefined,
-                        addressId: input.addressId,
-                        totalAmount,
-                        deliveryFee,
-                        serviceFee,
-                        currency: "NGN",
-                        notes: input.notes,
-                        productAmount: orderSubTotal
-                    },
-                });
-
-                // create order items and related addons
-                for (const oi of orderItemsCreate) {
-                    const createdItem = await prisma.orderItem.create({
+                // Persist order + items + addons in a single transaction
+                const created = await ctx.prisma.$transaction(async (prisma) => {
+                    const order = await prisma.order.create({
                         data: {
-                            orderId: order.id,
-                            productItemId: oi.productItemId,
-                            quantity: oi.quantity,
-                            unitPrice: oi.unitPrice,
-                            totalPrice: oi.totalPrice,
-                            groupKey: oi.groupKey,
+                            userId,
+                            vendorId: vendorId ?? undefined,
+                            addressId: input.addressId,
+                            totalAmount,
+                            deliveryFee,
+                            serviceFee,
+                            currency: "NGN",
+                            notes: input.notes,
+                            productAmount: orderSubTotal
                         },
                     });
 
-                    // create addons if any
-                    for (const a of oi._addons || []) {
-                        await prisma.orderItemAddon.create({
+                    // create order items and related addons
+                    for (const oi of orderItemsCreate) {
+                        const createdItem = await prisma.orderItem.create({
                             data: {
-                                orderItemId: createdItem.id,
-                                addonProductItemId: a.addonProductItemId,
-                                quantity: a.quantity,
-                                unitPrice: a.unitPrice,
+                                orderId: order.id,
+                                productItemId: oi.productItemId,
+                                quantity: oi.quantity,
+                                unitPrice: oi.unitPrice,
+                                totalPrice: oi.totalPrice,
+                                groupKey: oi.groupKey,
                             },
                         });
+
+                        // create addons if any
+                        for (const a of oi._addons || []) {
+                            await prisma.orderItemAddon.create({
+                                data: {
+                                    orderItemId: createdItem.id,
+                                    addonProductItemId: a.addonProductItemId,
+                                    quantity: a.quantity,
+                                    unitPrice: a.unitPrice,
+                                },
+                            });
+                        }
                     }
-                }
 
-                // return full order with items and addons
-                return prisma.order.findUnique({ where: { id: order.id }, include: { items: { include: { productItem: true, addons: { include: { addonProductItem: true } } } }, payment: true } });
-            });
+                    // return full order with items and addons
+                    return prisma.order.findUnique({ where: { id: order.id }, include: { items: { include: { productItem: true, addons: { include: { addonProductItem: true } } } }, payment: true } });
+                });
 
-            return created;
-        }),
+                return created;
+            }),
 
     // List orders for current user
     listMyOrders: protectedProcedure

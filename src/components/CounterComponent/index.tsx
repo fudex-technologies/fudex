@@ -11,6 +11,7 @@ interface Props {
 	countChangeEffect?: (newCount: number) => void;
 	max?: number;
 	min?: number;
+	step?: number; // Increment/decrement by this amount
 	disabledAdd?: boolean;
 	disabledSubtract?: boolean;
 }
@@ -24,53 +25,70 @@ const CounterComponent = ({
 	disabledSubtract,
 	max,
 	min,
+	step = 1,
 }: Props) => {
 	const increaseCount = () => {
+		const newValue = Math.min(
+			max !== undefined ? max : Infinity,
+			count + step
+		);
+		if (newValue === count) return;
+
 		if (setCount) {
 			const maybePromise = setCount((prev) =>
 				disabledAdd
 					? prev
 					: max && prev >= max
 					? prev
-					: min && prev <= min
-					? prev
-					: prev + 1
+					: min && prev < min
+					? Math.max(min, Math.ceil(min / step) * step)
+					: newValue
 			);
 			Promise.resolve(maybePromise)
 				.then(() => {
-					if (disabledAdd || (max && count >= max)) return;
-					countChangeEffect && countChangeEffect(count);
+					if (disabledAdd || (max && newValue >= max)) return;
+					countChangeEffect && countChangeEffect(newValue);
 				})
 				.catch(() => {
-					if (disabledAdd || (max && count >= max)) return;
-					countChangeEffect && countChangeEffect(count);
+					if (disabledAdd || (max && newValue >= max)) return;
+					countChangeEffect && countChangeEffect(newValue);
 				});
 			return;
 		} else {
-			if (disabledAdd || (max && count >= max)) return;
-			countChangeEffect && countChangeEffect(count + 1);
+			if (disabledAdd || (max && newValue >= max)) return;
+			countChangeEffect && countChangeEffect(newValue);
 			return;
 		}
 	};
 
 	const decreaseCount = () => {
+		const newValue = Math.max(
+			min !== undefined ? min : 0,
+			count - step
+		);
+		if (newValue === count) return;
+
 		if (setCount) {
 			const maybePromise = setCount((prev) =>
-				min && prev <= min ? prev : max && prev >= max ? prev : prev - 1
+				min && prev <= min
+					? prev
+					: max && prev >= max
+					? prev
+					: newValue
 			);
 			Promise.resolve(maybePromise)
 				.then(() => {
-					if (disabledSubtract || (min && count <= min)) return;
-					countChangeEffect && countChangeEffect(count);
+					if (disabledSubtract || (min && newValue <= min)) return;
+					countChangeEffect && countChangeEffect(newValue);
 				})
 				.catch(() => {
-					if (disabledSubtract || (min && count <= min)) return;
-					countChangeEffect && countChangeEffect(count);
+					if (disabledSubtract || (min && newValue <= min)) return;
+					countChangeEffect && countChangeEffect(newValue);
 				});
 			return;
 		} else {
-			if (disabledSubtract || (min && count <= min)) return;
-			countChangeEffect && countChangeEffect(count - 1);
+			if (disabledSubtract || (min && newValue <= min)) return;
+			countChangeEffect && countChangeEffect(newValue);
 			return;
 		}
 	};

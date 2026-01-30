@@ -3,6 +3,8 @@ import { formatCurency } from '@/lib/commonFunctions';
 interface IOrderItemDetails {
 	main: string;
 	quantity: number;
+	unitName?: string | null;
+	pricingType?: 'FIXED' | 'PER_UNIT';
 	additions?: {
 		name: string;
 		quantity?: string;
@@ -28,8 +30,23 @@ const OrderInfoItem = ({
 				<div className=''>
 					<div className='flex gap-1 items-center'>
 						<span className='w-2 h-2 rounded-full bg-foreground' />{' '}
-						<p className='text-lg'>{orderDetails.main} </p>
+						<p className='text-lg'>
+							{orderDetails.main}
+							{orderDetails.pricingType === 'PER_UNIT' &&
+								orderDetails.unitName && (
+									<span className='text-sm text-foreground/50 ml-1'>
+										({orderDetails.quantity} {orderDetails.unitName}
+										{orderDetails.quantity !== 1 ? 's' : ''})
+									</span>
+								)}
+						</p>
 					</div>
+					{orderDetails.pricingType === 'PER_UNIT' &&
+						orderDetails.unitName && (
+							<p className='text-xs text-foreground/50 pl-3 mt-1'>
+								Per {orderDetails.unitName}
+							</p>
+						)}
 					{orderDetails.additions &&
 						orderDetails.additions.length > 0 && (
 							<div className='flex flex-col gap-1 pl-3'>
