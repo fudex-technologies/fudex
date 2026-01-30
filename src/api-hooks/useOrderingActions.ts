@@ -112,7 +112,7 @@ export function useOrderingActions() {
 
         useListOngoingOrders: (input?: { take?: number; skip?: number, status?: OrderStatus }) =>
             useQuery(trpc.orders.listMyOrders.queryOptions({
-                ...input, status: ["PREPARING", "PAID", "ASSIGNED", "ACCEPTED", "READY", "OUT_FOR_DELIVERY"]
+                ...input, status: ["PENDING", "PREPARING", "PAID", "ASSIGNED", "ACCEPTED", "READY", "OUT_FOR_DELIVERY"]
             })),
 
         useListDeliveredOrders: (input?: { take?: number; skip?: number, status?: OrderStatus }) =>

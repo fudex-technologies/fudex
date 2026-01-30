@@ -5,7 +5,7 @@ import {
 	initializePaystackTransaction,
 	verifyPaystackTransaction,
 } from "@/lib/paystack";
-import { sendVendorNewOrderEmail } from "@/lib/email";
+import { sendOperatorNewOrderEmail, sendVendorNewOrderEmail } from "@/lib/email";
 import { NotificationService } from "@/modules/notifications/server/service";
 import { PAGES_DATA } from "@/data/pagesData";
 
@@ -282,6 +282,45 @@ export const paymentRouter = createTRPCRouter({
 						body: `Order #${orderId.slice(0, 8)} has been paid and is ready for processing.`,
 						url: PAGES_DATA.operator_dashboard_orders_page // Correct page for operators
 					}).catch(console.error);
+
+					// 4. Notify Operators (Email)
+					const operators = await ctx.prisma.user.findMany({
+						where: {
+							roles: {
+								some: {
+									role: "OPERATOR"
+								}
+							}
+						},
+						select: { email: true }
+					});
+					const operatorEmails = operators.map(op => op.email).filter((email): email is string => !!email);
+
+					if (operatorEmails.length > 0) {
+						const customer = await ctx.prisma.user.findUnique({
+							where: { id: payment.userId }
+						});
+						const customerAddress = await ctx.prisma.address.findUnique(
+							{ where: { id: payment.order.addressId! } }
+						);
+						const vendor = await ctx.prisma.vendor.findUnique(
+							{ where: { id: vendorId }, include: { addresses: true } }
+						);
+
+						if (customer && customerAddress && vendor) {
+							sendOperatorNewOrderEmail(
+								operatorEmails,
+								vendor.name,
+								`${vendor.addresses?.[0]?.line1}, ${vendor.addresses?.[0]?.city}, ${vendor.addresses?.[0]?.state}`,
+								`${customer.firstName} ${customer.lastName}`,
+								`${customerAddress.line1}, ${customerAddress.city}, ${customerAddress.state}`,
+								orderId,
+								payment.amount,
+								payment.currency,
+								'orders@fudex.ng'
+							).catch(console.error);
+						}
+					}
 				}
 			}
 
