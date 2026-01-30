@@ -43,8 +43,6 @@ export default function VendorRequestDetailsPage({
 	const queryClient = useQueryClient();
 	const [declineReason, setDeclineReason] = useState('');
 	const [isDeclineModalOpen, setIsDeclineModalOpen] = useState(false);
-	console.log(vendorId);
-
 	const { data: vendor, isLoading } = useQuery(
 		trpc.vendors.getVendorApprovalDetails.queryOptions(
 			{ vendorId },

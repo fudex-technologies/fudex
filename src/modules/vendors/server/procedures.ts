@@ -9,8 +9,8 @@ import {
 } from '@/trpc/init';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
-import { DayOfWeek, OrderStatus, Prisma, VendorAvailabilityStatus } from '@prisma/client';
-import { auth } from '@/lib/auth';
+import { v4 as uuidv4 } from 'uuid';
+import { DayOfWeek, OrderStatus, VendorAvailabilityStatus } from '@prisma/client';
 import {
     sendVendorApprovalEmail,
     sendVendorDeclineEmail,
@@ -21,26 +21,13 @@ import { createPaystackRecipient, getPaystackBanks } from "@/lib/paystack";
 import { verifyVerificationToken } from '@/modules/auth-phone/server/procedures';
 
 const generateUniqueSlug = async (prisma: any, name: string, vendorId: string): Promise<string> => {
-    let slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-    let isUnique = false;
-    let counter = 1;
-    let baseSlug = slug;
+    const baseSlug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    let slug = `${baseSlug}-${uuidv4().slice(0, 8)}`;
 
-    while (!isUnique) {
-        const existing = await prisma.productItem.findFirst({
-            where: {
-                slug: slug,
-                vendorId: vendorId,
-            }
-        });
-
-        if (!existing) {
-            isUnique = true;
-        } else {
-            slug = `${baseSlug}-${counter}`;
-            counter++;
-        }
+    while (await prisma.productItem.findFirst({ where: { slug } })) {
+        slug = `${baseSlug}-${uuidv4().slice(0, 8)}`;
     }
+
     return slug;
 };
 
@@ -103,36 +90,134 @@ export const vendorRouter = createTRPCRouter({
         .input(z.object({
             q: z.string().optional(),
             ratingFilter: z.string().optional(),
+            openedSort: z.boolean().optional(),
             limit: z.number().min(1).max(100).default(20),
-            cursor: z.number().default(0), // skip/offset
+            cursor: z.number().default(0),
         }))
         .query(async ({ ctx, input }) => {
             const limit = input.limit;
             const skip = input.cursor;
 
+            if (input.openedSort) {
+                // Get current day and time for opening hours check
+                const now = new Date();
+                const dayNames = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+                const currentDay = dayNames[now.getDay()];
+                const currentTime = now.toTimeString().slice(0, 5); // HH:MM format
+
+                // Build WHERE conditions for raw SQL
+                const searchCondition = input.q
+                    ? `AND (v.name ILIKE $1 OR v.description ILIKE $1)`
+                    : '';
+
+                const ratingCondition = input.ratingFilter
+                    ? `AND v."reviewsAverage" >= ${input.ratingFilter === "2.0+" ? 2 :
+                        input.ratingFilter === "3.5+" ? 3.5 :
+                            input.ratingFilter === "4.0+" ? 4 :
+                                input.ratingFilter === "4.5+" ? 4.5 : 0
+                    }`
+                    : '';
+
+                // Prepare search parameter
+                const searchParam = input.q ? `%${input.q}%` : null;
+
+                // Raw SQL query with open/closed sorting
+                const query = `
+                    SELECT 
+                        v.*,
+                        CASE 
+                            WHEN v."availabilityStatus" = 'OPEN' THEN 1
+                            WHEN v."availabilityStatus" = 'CLOSED' THEN 0
+                            WHEN v."availabilityStatus" = 'AUTO' THEN
+                                CASE 
+                                    WHEN EXISTS (
+                                        SELECT 1 
+                                        FROM "VendorOpeningHour" oh
+                                        WHERE oh."vendorId" = v.id
+                                        AND oh.day = $${searchParam ? 2 : 1}
+                                        AND oh."isClosed" = false
+                                        AND oh."openTime" IS NOT NULL
+                                        AND oh."closeTime" IS NOT NULL
+                                        AND oh."openTime" <= $${searchParam ? 3 : 2}
+                                        AND oh."closeTime" >= $${searchParam ? 3 : 2}
+                                    ) THEN 1
+                                    ELSE 0
+                                END
+                            ELSE 0
+                        END as is_open
+                    FROM "Vendor" v
+                    WHERE v."approvalStatus" = 'APPROVED'
+                    ${searchCondition}
+                    ${ratingCondition}
+                    ORDER BY is_open DESC, v."createdAt" DESC
+                    LIMIT $${searchParam ? 4 : 3}
+                    OFFSET $${searchParam ? 5 : 4}
+                `;
+
+                // Execute raw query with parameters
+                const params = searchParam
+                    ? [searchParam, currentDay, currentTime, limit + 1, skip]
+                    : [currentDay, currentTime, limit + 1, skip];
+
+                const items: any[] = await ctx.prisma.$queryRawUnsafe(query, ...params);
+
+                // Fetch opening hours for all vendors in the result
+                if (items.length > 0) {
+                    const vendorIds = items.map(v => v.id);
+                    const openingHours = await ctx.prisma.vendorOpeningHour.findMany({
+                        where: { vendorId: { in: vendorIds } }
+                    });
+
+                    // Attach opening hours to each vendor
+                    items.forEach(vendor => {
+                        vendor.openingHours = openingHours.filter(oh => oh.vendorId === vendor.id);
+
+                        // Convert numeric fields back to proper types (Prisma queryRaw returns Decimal as string)
+                        vendor.reviewsAverage = parseFloat(vendor.reviewsAverage) || 0;
+                        vendor.reviewsCount = parseInt(vendor.reviewsCount) || 0;
+                        vendor.deliveryFee = vendor.deliveryFee ? parseFloat(vendor.deliveryFee) : null;
+
+                        // Parse JSON fields if needed
+                        // vendor.someJsonField = vendor.someJsonField ? JSON.parse(vendor.someJsonField) : null;
+                    });
+                }
+
+                let nextCursor: number | undefined = undefined;
+                if (items.length > limit) {
+                    items.pop();
+                    nextCursor = skip + limit;
+                }
+
+                return {
+                    items,
+                    nextCursor,
+                };
+            }
+
             const where: any = input.q ? {
                 OR: [
-                    {
-                        name: { contains: input.q, mode: "insensitive" }
-                    },
+                    { name: { contains: input.q, mode: "insensitive" } },
                     { description: { contains: input.q, mode: "insensitive" } }
                 ],
                 AND: {
-                    approvalStatus: 'APPROVED' // Only show approved vendors
+                    approvalStatus: 'APPROVED'
                 }
             } : {
-                approvalStatus: 'APPROVED' // Only show approved vendors
-            };// Only show approved vendors
+                approvalStatus: 'APPROVED'
+            };
 
             if (input?.ratingFilter) {
                 where.reviewsAverage = {
-                    gte: input.ratingFilter === "2.0+" ? 2 : input.ratingFilter === "3.5+" ? 3.5 : input.ratingFilter === "4.0+" ? 4 : input.ratingFilter === "4.5+" ? 4.5 : 0
+                    gte: input.ratingFilter === "2.0+" ? 2 :
+                        input.ratingFilter === "3.5+" ? 3.5 :
+                            input.ratingFilter === "4.0+" ? 4 :
+                                input.ratingFilter === "4.5+" ? 4.5 : 0
                 }
             }
 
             const items = await ctx.prisma.vendor.findMany({
                 where,
-                take: limit + 1, // fetch one more to check if there is a next page
+                take: limit + 1,
                 skip: skip,
                 orderBy: { createdAt: "desc" },
                 include: { openingHours: true }
@@ -140,7 +225,7 @@ export const vendorRouter = createTRPCRouter({
 
             let nextCursor: number | undefined = undefined;
             if (items.length > limit) {
-                items.pop(); // remove the extra item
+                items.pop();
                 nextCursor = skip + limit;
             }
 
@@ -335,6 +420,45 @@ export const vendorRouter = createTRPCRouter({
                 take: input.take,
                 orderBy: { name: "asc" }
             });
+        }),
+
+    listProducts: publicProcedure
+        .input(
+            z.object({
+                vendorId: z.string(),
+                take: z.number().optional().default(100),
+            })
+        )
+        .query(async ({ ctx, input }) => {
+            const products = await ctx.prisma.product.findMany({
+                where: {
+                    vendorId: input.vendorId,
+                },
+                take: input.take,
+                orderBy: {
+                    createdAt: 'desc',
+                },
+                include: {
+                    items: {
+                        where: {
+                            isActive: true, // Only include active items
+                        },
+                        include: {
+                            categories: {
+                                include: {
+                                    category: true,
+                                },
+                            },
+                        },
+                        orderBy: {
+                            createdAt: 'asc', // First item will be the oldest/primary one
+                        },
+                    },
+                },
+            });
+
+            // Filter out products that have no items
+            return products.filter((product) => product.items.length > 0);
         }),
 
     // Product item listing for a vendor
@@ -1018,10 +1142,18 @@ export const vendorRouter = createTRPCRouter({
                     // address: true,
                     items: {
                         include: {
-                            productItem: true,
+                            productItem: {
+                                include: {
+                                    product: true
+                                }
+                            },
                             addons: {
                                 include: {
-                                    addonProductItem: true
+                                    addonProductItem: {
+                                        include: {
+                                            product: true
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1077,10 +1209,18 @@ export const vendorRouter = createTRPCRouter({
                     // address: true,
                     items: {
                         include: {
-                            productItem: true,
+                            productItem: {
+                                include :{
+                                    product: true
+                                }
+                            },
                             addons: {
                                 include: {
-                                    addonProductItem: true
+                                    addonProductItem: {
+                                        include: {
+                                            product: true
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1251,6 +1391,11 @@ export const vendorRouter = createTRPCRouter({
                 categories: z.array(z.string()).optional().default([]),
                 isActive: z.boolean().optional().default(true),
                 inStock: z.boolean().optional().default(true),
+                pricingType: z.enum(['FIXED', 'PER_UNIT']).optional().default('FIXED'),
+                unitName: z.string().optional().nullable(),
+                minQuantity: z.number().optional().default(1),
+                maxQuantity: z.number().optional().nullable(),
+                quantityStep: z.number().optional().default(1),
             })
         )
         .mutation(async ({ ctx, input }) => {
@@ -1308,7 +1453,6 @@ export const vendorRouter = createTRPCRouter({
             items: z.array(
                 z.object({
                     name: z.string(),
-                    slug: z.string(),
                     description: z.string().optional(),
                     price: z.number(),
                     currency: z.string().optional().default("NGN"),
@@ -1335,13 +1479,26 @@ export const vendorRouter = createTRPCRouter({
                     data: {
                         vendorId: input.vendorId,
                         name: input.product.name,
-                        // slug: input.product.slug, 
                         description: input.product.description
                     }
                 });
+                const slug = await generateUniqueSlug(ctx.prisma, input.product.name, input.vendorId);
 
                 for (const it of input.items) {
-                    await prisma.productItem.create({ data: { vendorId: input.vendorId, productId: createdProduct.id, name: it.name, slug: it.slug, description: it.description, price: it.price, currency: it.currency, images: it.images, isActive: it.isActive, inStock: it.inStock } });
+                    await prisma.productItem.create({
+                        data: {
+                            vendorId: input.vendorId,
+                            productId: createdProduct.id,
+                            name: it.name,
+                            slug,
+                            description: it.description,
+                            price: it.price,
+                            currency: it.currency,
+                            images: it.images,
+                            isActive: it.isActive,
+                            inStock: it.inStock
+                        }
+                    });
                 }
 
                 return prisma.product.findUnique({ where: { id: createdProduct.id }, include: { items: true } });
@@ -1359,6 +1516,11 @@ export const vendorRouter = createTRPCRouter({
                 images: z.array(z.string()).optional(),
                 isActive: z.boolean().optional(),
                 inStock: z.boolean().optional(),
+                pricingType: z.enum(['FIXED', 'PER_UNIT']).optional(),
+                unitName: z.string().optional().nullable(),
+                minQuantity: z.number().optional(),
+                maxQuantity: z.number().optional().nullable(),
+                quantityStep: z.number().optional(),
             })
         }))
         .mutation(async ({ ctx, input }) => {
@@ -1452,8 +1614,9 @@ export const vendorRouter = createTRPCRouter({
                 where: { id: input.id },
                 include: { vendor: true }
             });
+            const isSuper = await ctx.prisma.userRole.findFirst({ where: { userId, role: "SUPER_ADMIN" } });
             if (!item) throw new Error("Product item not found");
-            if (item.vendor.ownerId !== userId) {
+            if (item.vendor.ownerId !== userId && !isSuper) {
                 throw new Error("Unauthorized: You don't own this product item");
             }
 
@@ -1472,8 +1635,9 @@ export const vendorRouter = createTRPCRouter({
                 where: { id: input.id },
                 include: { vendor: true }
             });
+            const isSuper = await ctx.prisma.userRole.findFirst({ where: { userId, role: "SUPER_ADMIN" } });
             if (!product) throw new Error("Product not found");
-            if (product.vendor.ownerId !== userId) {
+            if (product.vendor.ownerId !== userId && !isSuper) {
                 throw new Error("Unauthorized: You don't own this product");
             }
 

@@ -14,8 +14,6 @@ const CompletedOrderDetailsSection = ({ orderId }: { orderId: string }) => {
 	const { useGetOrder } = useOrderingActions();
 	const { data: order, isLoading } = useGetOrder({ id: orderId });
 
-	console.log(order);
-
 	if (isLoading) {
 		return (
 			<div className='w-full max-w-lg py-10 space-y-5'>
@@ -143,8 +141,21 @@ const CompletedOrderDetailsSection = ({ orderId }: { orderId: string }) => {
 										<span className='w-2 h-2 rounded-full bg-foreground' />{' '}
 										<p className='text-lg capitalize'>
 											{item.productItem.name}
+											{item.productItem.pricingType === 'PER_UNIT' &&
+												item.productItem.unitName && (
+													<span className='text-sm text-foreground/50 ml-1 normal-case'>
+														({item.quantity} {item.productItem.unitName}
+														{item.quantity !== 1 ? 's' : ''})
+													</span>
+												)}
 										</p>
 									</div>
+									{item.productItem.pricingType === 'PER_UNIT' &&
+										item.productItem.unitName && (
+											<p className='text-xs text-foreground/50 pl-3 mt-1'>
+												Per {item.productItem.unitName}
+											</p>
+										)}
 									{item.addons && item.addons.length > 0 && (
 										<div className='flex flex-col gap-1 pl-3 mt-1'>
 											{item.addons.map((addon, idx) => {

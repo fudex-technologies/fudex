@@ -5,6 +5,9 @@ import {
 	initializePaystackTransaction,
 	verifyPaystackTransaction,
 } from "@/lib/paystack";
+import { sendVendorNewOrderEmail } from "@/lib/email";
+import { NotificationService } from "@/modules/notifications/server/service";
+import { PAGES_DATA } from "@/data/pagesData";
 
 export const paymentRouter = createTRPCRouter({
 	// Create a payment record for an order and initialize Paystack transaction
@@ -234,6 +237,52 @@ export const paymentRouter = createTRPCRouter({
 					where: { id: payment.orderId },
 					data: { status: "PAID" },
 				});
+
+				const vendorId = payment?.order?.vendorId
+				const orderId = payment?.orderId
+				// Notify Vendor
+				if (vendorId && orderId) {
+					const vendor = await ctx.prisma.vendor.findUnique({
+						where: { id: vendorId },
+						select: {
+							name: true,
+							owner: {
+								select: {
+									id: true,
+									email: true
+								}
+							}
+						}
+					});
+
+					if (vendor?.owner) {
+						// 1. Notify Vendor (Push)
+						NotificationService.sendToUser(vendor.owner.id, {
+							title: 'New Order Received! 🛍️',
+							body: `You have a new order (#${orderId.slice(0, 8)}) worth ${payment.order?.currency} ${payment.order?.productAmount.toFixed(2)}.`,
+							url: PAGES_DATA.vendor_dashboard_new_orders_page,
+						}).catch(console.error);
+
+						// 2. Notify Vendor (Email)
+						if (vendor.owner.email && payment.order) {
+							sendVendorNewOrderEmail(
+								vendor.owner.email,
+								vendor.name,
+								orderId,
+								payment.order.productAmount,
+								payment.order.currency,
+								'orders@fudex.ng'
+							).catch(console.error);
+						}
+					}
+
+					// 3. Notify Operators (Push)
+					NotificationService.sendToRole('OPERATOR', {
+						title: 'New Order Paid! 💰',
+						body: `Order #${orderId.slice(0, 8)} has been paid and is ready for processing.`,
+						url: PAGES_DATA.operator_dashboard_orders_page // Correct page for operators
+					}).catch(console.error);
+				}
 			}
 
 			return {

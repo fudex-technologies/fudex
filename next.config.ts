@@ -58,4 +58,7 @@ export default withPWA({
   register: true,
   reloadOnOnline: true, // ensures new versions activate quickly
   disable: process.env.NODE_ENV === "development", // disable SW in dev
+  workboxOptions: {
+    importScripts: ["/sw-push.js"],
+  },
 })(sentryConfig);

@@ -3,6 +3,11 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// Email Styles
+const BRAND_COLOR = '#00C16A'; // Primary Brand Green
+const BRAND_GRADIENT = 'linear-gradient(135deg, #00C16A 0%, #009B55 100%)';
+const BRAND_TEXT_COLOR = '#009B55';
+
 export async function sendPasswordResetEmail(email: string, otp: string, from: string) {
     try {
         const { data, error } = await resend.emails.send({
@@ -18,7 +23,7 @@ export async function sendPasswordResetEmail(email: string, otp: string, from: s
                     <title>Reset Your Password</title>
                 </head>
                 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                    <div style="background: ${BRAND_GRADIENT}; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
                         <h1 style="color: white; margin: 0; font-size: 28px;">Reset Your Password</h1>
                     </div>
                     
@@ -29,9 +34,9 @@ export async function sendPasswordResetEmail(email: string, otp: string, from: s
                             You requested to reset your password for your FUDEX account. Use the verification code below to continue:
                         </p>
                         
-                        <div style="background: white; border: 2px solid #667eea; border-radius: 8px; padding: 20px; text-align: center; margin: 30px 0;">
+                        <div style="background: white; border: 2px solid ${BRAND_COLOR}; border-radius: 8px; padding: 20px; text-align: center; margin: 30px 0;">
                             <p style="font-size: 14px; color: #666; margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: 1px;">Your Verification Code</p>
-                            <p style="font-size: 36px; font-weight: bold; color: #667eea; margin: 0; letter-spacing: 8px;">${otp}</p>
+                            <p style="font-size: 36px; font-weight: bold; color: ${BRAND_COLOR}; margin: 0; letter-spacing: 8px;">${otp}</p>
                         </div>
                         
                         <p style="font-size: 14px; color: #666; margin-bottom: 20px;">
@@ -80,7 +85,7 @@ export async function sendEmailVerification(email: string, otp: string, from: st
                     <title>Verify Your Email</title>
                 </head>
                 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                    <div style="background: ${BRAND_GRADIENT}; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
                         <h1 style="color: white; margin: 0; font-size: 28px;">Verify Your Email</h1>
                     </div>
                     
@@ -91,9 +96,9 @@ export async function sendEmailVerification(email: string, otp: string, from: st
                             To complete your registration, please verify your email address using the code below:
                         </p>
                         
-                        <div style="background: white; border: 2px solid #667eea; border-radius: 8px; padding: 20px; text-align: center; margin: 30px 0;">
+                        <div style="background: white; border: 2px solid ${BRAND_COLOR}; border-radius: 8px; padding: 20px; text-align: center; margin: 30px 0;">
                             <p style="font-size: 14px; color: #666; margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: 1px;">Your Verification Code</p>
-                            <p style="font-size: 36px; font-weight: bold; color: #667eea; margin: 0; letter-spacing: 8px;">${otp}</p>
+                            <p style="font-size: 36px; font-weight: bold; color: ${BRAND_COLOR}; margin: 0; letter-spacing: 8px;">${otp}</p>
                         </div>
                         
                         <p style="font-size: 14px; color: #666; margin-bottom: 20px;">
@@ -142,7 +147,7 @@ export async function sendVendorApprovalEmail(email: string, businessName: strin
                     <title>Vendor Approved</title>
                 </head>
                 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                    <div style="background: ${BRAND_GRADIENT}; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
                         <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Congratulations!</h1>
                     </div>
                     
@@ -153,8 +158,8 @@ export async function sendVendorApprovalEmail(email: string, businessName: strin
                             Your vendor account for <strong>${businessName}</strong> has been approved by our team. You're now live on FUDEX!
                         </p>
                         
-                        <div style="background: white; border-left: 4px solid #10b981; padding: 20px; margin: 30px 0; border-radius: 4px;">
-                            <p style="font-size: 16px; margin: 0; color: #059669;">
+                        <div style="background: white; border-left: 4px solid ${BRAND_COLOR}; padding: 20px; margin: 30px 0; border-radius: 4px;">
+                            <p style="font-size: 16px; margin: 0; color: ${BRAND_TEXT_COLOR};">
                                 <strong>What's next?</strong>
                             </p>
                             <ul style="margin: 10px 0 0 20px; padding: 0;">
@@ -165,7 +170,7 @@ export async function sendVendorApprovalEmail(email: string, businessName: strin
                         </div>
                         
                         <div style="text-align: center; margin: 30px 0;">
-                            <a href="${process.env.NEXT_PUBLIC_APP_URL}${PAGES_DATA.vendor_dashboard_page}" style="display: inline-block; background: #10b981; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Go to Dashboard</a>
+                            <a href="${process.env.NEXT_PUBLIC_APP_URL}${PAGES_DATA.vendor_dashboard_page}" style="display: inline-block; background: ${BRAND_COLOR}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Go to Dashboard</a>
                         </div>
                         
                         <p style="font-size: 14px; color: #666; margin-bottom: 20px;">
@@ -210,7 +215,7 @@ export async function sendVendorDeclineEmail(email: string, businessName: string
                     <title>Vendor Application Update</title>
                 </head>
                 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                    <div style="background: ${BRAND_GRADIENT}; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
                         <h1 style="color: white; margin: 0; font-size: 28px;">Application Update</h1>
                     </div>
                     
@@ -239,7 +244,7 @@ export async function sendVendorDeclineEmail(email: string, businessName: string
                         </p>
                         
                         <div style="text-align: center; margin: 30px 0;">
-                            <a href="${process.env.NEXT_PUBLIC_APP_URL}/vendor-onboarding/personal-details" style="display: inline-block; background: #f59e0b; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Resubmit Application</a>
+                            <a href="${process.env.NEXT_PUBLIC_APP_URL}/vendor-onboarding/personal-details" style="display: inline-block; background: ${BRAND_COLOR}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Resubmit Application</a>
                         </div>
                         
                         <p style="font-size: 14px; color: #666; margin-bottom: 20px;">
@@ -284,7 +289,7 @@ export async function sendVendorSubmissionConfirmation(email: string, businessNa
                     <title>Application Submitted</title>
                 </head>
                 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <div style="background: linear-gradient(135deg, #00C16A 0%, #009B55 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                    <div style="background: ${BRAND_GRADIENT}; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
                         <h1 style="color: white; margin: 0; font-size: 28px;">Application Received!</h1>
                     </div>
                     
@@ -295,9 +300,9 @@ export async function sendVendorSubmissionConfirmation(email: string, businessNa
                             We've received your vendor application for <strong>${businessName}</strong> and our team is now reviewing it.
                         </p>
                         
-                        <div style="background: white; border: 2px solid #00C16A; border-radius: 8px; padding: 20px; margin: 30px 0;">
+                        <div style="background: white; border: 2px solid ${BRAND_COLOR}; border-radius: 8px; padding: 20px; margin: 30px 0;">
                             <p style="font-size: 14px; color: #666; margin: 0 0 15px 0;">
-                                <strong style="color: #00C16A;">What happens next?</strong>
+                                <strong style="color: ${BRAND_TEXT_COLOR};">What happens next?</strong>
                             </p>
                             <ol style="margin: 0; padding-left: 20px; color: #666;">
                                 <li style="margin-bottom: 10px;">Our team will review your application and documentation</li>
@@ -311,7 +316,7 @@ export async function sendVendorSubmissionConfirmation(email: string, businessNa
                         </p>
                         
                         <div style="text-align: center; margin: 30px 0;">
-                            <a href="${process.env.NEXT_PUBLIC_APP_URL}${PAGES_DATA.vendor_dashboard_page}" style="display: inline-block; background: #00C16A; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Go to Dashboard</a>
+                            <a href="${process.env.NEXT_PUBLIC_APP_URL}${PAGES_DATA.vendor_dashboard_page}" style="display: inline-block; background: ${BRAND_COLOR}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Go to Dashboard</a>
                         </div>
                         
                         <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
@@ -352,14 +357,14 @@ export async function sendAdminNewVendorNotification(adminEmail: string, busines
                     <title>New Vendor Application</title>
                 </head>
                 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <div style="background: linear-gradient(135deg, #00C16A 0%, #009B55 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                    <div style="background: ${BRAND_GRADIENT}; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
                         <h1 style="color: white; margin: 0; font-size: 28px;">New Vendor Application</h1>
                     </div>
                     
                     <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
                         <p style="font-size: 16px; margin-bottom: 20px;">A new vendor application requires your review.</p>
                         
-                        <div style="background: white; border: 2px solid #00C16A; border-radius: 8px; padding: 20px; margin: 30px 0;">
+                        <div style="background: white; border: 2px solid ${BRAND_COLOR}; border-radius: 8px; padding: 20px; margin: 30px 0;">
                             <p style="font-size: 14px; color: #666; margin: 0 0 10px 0;">
                                 <strong>Business Name:</strong> ${businessName}
                             </p>
@@ -369,8 +374,77 @@ export async function sendAdminNewVendorNotification(adminEmail: string, busines
                         </div>
                         
                         <div style="text-align: center; margin: 30px 0;">
-                            <a href="${process.env.NEXT_PUBLIC_APP_URL}/admin/vendors/pending" style="display: inline-block; background: #00C16A; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Review Application</a>
+                            <a href="${process.env.NEXT_PUBLIC_APP_URL}/admin/vendors/pending" style="display: inline-block; background: ${BRAND_COLOR}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Review Application</a>
                         </div>
+                        
+                        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+                        
+                        <p style="font-size: 12px; color: #999; text-align: center;">
+                            © ${new Date().getFullYear()} FUDEX. All rights reserved.<br>
+                            This is an automated email, please do not reply.
+                        </p>
+                    </div>
+                </body>
+                </html>
+            `,
+        });
+
+        if (error) {
+            throw new Error(error.message);
+        }
+
+        return data;
+    } catch (error) {
+        console.error('Error sending email:', error);
+        throw error;
+    }
+}
+
+export async function sendVendorNewOrderEmail(email: string, businessName: string, orderId: string, amount: number, currency: string, from: string) {
+    try {
+        const { data, error } = await resend.emails.send({
+            from: `FUDEX <${from}>`,
+            to: [email],
+            subject: '🛍️ New Order Received!',
+            html: `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>New Order Received</title>
+                </head>
+                <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="background: ${BRAND_GRADIENT}; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                        <h1 style="color: white; margin: 0; font-size: 28px;">New Order! 🛍️</h1>
+                    </div>
+                    
+                    <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
+                        <p style="font-size: 16px; margin-bottom: 20px;">Hello <strong>${businessName}</strong>,</p>
+                        
+                        <p style="font-size: 16px; margin-bottom: 20px;">
+                            You have received a new order on FUDEX! The payment has been confirmed.
+                        </p>
+                        
+                        <div style="background: white; border-left: 4px solid ${BRAND_COLOR}; padding: 20px; margin: 30px 0; border-radius: 4px;">
+                            <p style="font-size: 16px; margin: 0 0 10px 0;">
+                                <strong>Order Details:</strong>
+                            </p>
+                            <p style="font-size: 14px; margin: 0 0 5px 0; color: #555;">
+                                Order ID: <strong>#${orderId.slice(0, 8)}</strong>
+                            </p>
+                            <p style="font-size: 14px; margin: 0; color: #555;">
+                                Amount: <strong>${currency} ${amount.toLocaleString()}</strong>
+                            </p>
+                        </div>
+                        
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="${process.env.NEXT_PUBLIC_APP_URL}${PAGES_DATA.vendor_dashboard_new_orders_page}" style="display: inline-block; background: ${BRAND_COLOR}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">View Order</a>
+                        </div>
+                        
+                        <p style="font-size: 14px; color: #666; margin-bottom: 20px;">
+                            Please verify the order details in your dashboard and start preparation.
+                        </p>
                         
                         <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
                         

@@ -34,6 +34,11 @@ export default function EditProductItemModal({
 		images: item.images || [],
 		isActive: item.isActive,
 		inStock: item.inStock,
+		pricingType: (item.pricingType || 'FIXED') as 'FIXED' | 'PER_UNIT',
+		unitName: item.unitName || '',
+		minQuantity: (item.minQuantity || 1).toString(),
+		maxQuantity: item.maxQuantity ? item.maxQuantity.toString() : '',
+		quantityStep: (item.quantityStep || 1).toString(),
 	});
 
 	const [isUploading, setIsUploading] = useState(false);
@@ -111,6 +116,19 @@ export default function EditProductItemModal({
 			return;
 		}
 
+		// Validate PER_UNIT fields
+		if (formData.pricingType === 'PER_UNIT' && !formData.unitName.trim()) {
+			toast.error('Unit name is required for per-unit pricing');
+			return;
+		}
+
+		const minQty = parseInt(formData.minQuantity) || 1;
+		const maxQty = formData.maxQuantity ? parseInt(formData.maxQuantity) : null;
+		if (maxQty !== null && maxQty <= minQty) {
+			toast.error('Maximum quantity must be greater than minimum quantity');
+			return;
+		}
+
 		updateDetailsMutation.mutate({
 			id: item.id,
 			data: {
@@ -122,6 +140,11 @@ export default function EditProductItemModal({
 				images: formData.images,
 				isActive: formData.isActive,
 				inStock: formData.inStock,
+				pricingType: formData.pricingType,
+				unitName: formData.pricingType === 'PER_UNIT' ? formData.unitName : null,
+				minQuantity: formData.pricingType === 'PER_UNIT' ? minQty : undefined,
+				maxQuantity: formData.pricingType === 'PER_UNIT' ? maxQty : null,
+				quantityStep: formData.pricingType === 'PER_UNIT' ? parseInt(formData.quantityStep) || 1 : undefined,
 			},
 		});
 	};
@@ -228,7 +251,31 @@ export default function EditProductItemModal({
 						/>
 					</div>
 					<div className='space-y-2'>
-						<Label htmlFor='edit-price'>Price (NGN) *</Label>
+						<Label htmlFor='edit-pricing-type'>Pricing Type *</Label>
+						<select
+							id='edit-pricing-type'
+							value={formData.pricingType}
+							onChange={(e) =>
+								setFormData((prev) => ({
+									...prev,
+									pricingType: e.target.value as 'FIXED' | 'PER_UNIT',
+								}))
+							}
+							className='w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm'>
+							<option value='FIXED'>Fixed Price (Traditional)</option>
+							<option value='PER_UNIT'>Per Unit (e.g., per scoop, wrap, piece)</option>
+						</select>
+					</div>
+
+					<div className='space-y-2'>
+						<Label htmlFor='edit-price'>
+							Price (NGN) *{' '}
+							{formData.pricingType === 'PER_UNIT' && (
+								<span className='text-xs text-foreground/50'>
+									(per unit)
+								</span>
+							)}
+						</Label>
 						<Input
 							id='edit-price'
 							type='number'
@@ -243,6 +290,90 @@ export default function EditProductItemModal({
 							required
 						/>
 					</div>
+
+					{formData.pricingType === 'PER_UNIT' && (
+						<>
+							<div className='space-y-2'>
+								<Label htmlFor='edit-unit-name'>
+									Unit Name * (e.g., scoop, wrap, piece, kg)
+								</Label>
+								<Input
+									id='edit-unit-name'
+									value={formData.unitName}
+									onChange={(e) =>
+										setFormData((prev) => ({
+											...prev,
+											unitName: e.target.value,
+										}))
+									}
+									required
+									placeholder='scoop'
+								/>
+							</div>
+
+							<div className='grid grid-cols-2 gap-4'>
+								<div className='space-y-2'>
+									<Label htmlFor='edit-min-quantity'>
+										Minimum Quantity *
+									</Label>
+									<Input
+										id='edit-min-quantity'
+										type='number'
+										min='1'
+										value={formData.minQuantity}
+										onChange={(e) =>
+											setFormData((prev) => ({
+												...prev,
+												minQuantity: e.target.value,
+											}))
+										}
+										required
+									/>
+								</div>
+
+								<div className='space-y-2'>
+									<Label htmlFor='edit-max-quantity'>
+										Maximum Quantity (Optional)
+									</Label>
+									<Input
+										id='edit-max-quantity'
+										type='number'
+										min='1'
+										value={formData.maxQuantity}
+										onChange={(e) =>
+											setFormData((prev) => ({
+												...prev,
+												maxQuantity: e.target.value,
+											}))
+										}
+										placeholder='No limit'
+									/>
+								</div>
+							</div>
+
+							<div className='space-y-2'>
+								<Label htmlFor='edit-quantity-step'>
+									Quantity Step (Optional)
+								</Label>
+								<Input
+									id='edit-quantity-step'
+									type='number'
+									min='1'
+									value={formData.quantityStep}
+									onChange={(e) =>
+										setFormData((prev) => ({
+											...prev,
+											quantityStep: e.target.value,
+										}))
+									}
+									placeholder='1'
+								/>
+								<p className='text-xs text-foreground/50'>
+									Customers can only order in multiples of this number
+								</p>
+							</div>
+						</>
+					)}
 					{categories.length > 0 && (
 						<div className='space-y-2'>
 							<Label htmlFor='item-category'>Category</Label>

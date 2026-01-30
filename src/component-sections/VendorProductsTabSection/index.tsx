@@ -8,31 +8,43 @@ import { useState, useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const VendorProductsTabSection = ({ vendorId }: { vendorId: string }) => {
-	const { useListProductItems } = useVendorProductActions();
-	const { data: productItems = [], isLoading } = useListProductItems({
+	const { useListProducts } = useVendorProductActions();
+	const { data: products = [], isLoading } = useListProducts({
 		vendorId,
 		take: 100,
 	});
 
-	// Organize product items by categories
+	// Organize products by categories
 	const { categoriesMap, allCategories } = useMemo(() => {
-		const map: Record<string, typeof productItems> = {};
+		const map: Record<string, typeof products> = {};
 		const categories: Array<{ id: string; name: string }> = [];
 
-		productItems.forEach((item) => {
-			if (item.categories && item.categories.length > 0) {
-				item.categories.forEach(({ category }) => {
-					if (!map[category.id]) {
-						map[category.id] = [];
-						categories.push({
-							id: category.id,
-							name: category.name,
-						});
-					}
-					map[category.id].push(item);
+		products.forEach((product) => {
+			// Check if any of the product items have categories
+			const productCategories = new Set<string>();
+
+			product.items?.forEach((item) => {
+				if (item.categories && item.categories.length > 0) {
+					item.categories.forEach(({ category }) => {
+						productCategories.add(category.id);
+						if (!map[category.id]) {
+							map[category.id] = [];
+							categories.push({
+								id: category.id,
+								name: category.name,
+							});
+						}
+					});
+				}
+			});
+
+			// Add product to all its categories
+			if (productCategories.size > 0) {
+				productCategories.forEach((categoryId) => {
+					map[categoryId].push(product);
 				});
 			} else {
-				// Items without categories go to "Uncategorized"
+				// Products without categories go to "Uncategorized"
 				if (!map['uncategorized']) {
 					map['uncategorized'] = [];
 					categories.push({
@@ -40,12 +52,12 @@ const VendorProductsTabSection = ({ vendorId }: { vendorId: string }) => {
 						name: 'Uncategorized',
 					});
 				}
-				map['uncategorized'].push(item);
+				map['uncategorized'].push(product);
 			}
 		});
 
 		return { categoriesMap: map, allCategories: categories };
-	}, [productItems]);
+	}, [products]);
 
 	// Create tabs: "All" first, then categories
 	const tabs = useMemo(() => {
@@ -58,13 +70,45 @@ const VendorProductsTabSection = ({ vendorId }: { vendorId: string }) => {
 
 	const [activeTab, setActiveTab] = useState('all');
 
-	// Get items for the active tab
-	const activeItems = useMemo(() => {
+	// Get products for the active tab
+	const activeProducts = useMemo(() => {
 		if (activeTab === 'all') {
-			return productItems;
+			return products;
 		}
 		return categoriesMap[activeTab] || [];
-	}, [activeTab, productItems, categoriesMap]);
+	}, [activeTab, products, categoriesMap]);
+
+	// Transform products into ProductListItem format
+	const displayItems = useMemo(() => {
+		return activeProducts.flatMap((product) => {
+			if (!product.items || product.items.length === 0) {
+				return [];
+			}
+
+			// Get the first product item to use for display
+			const firstItem = product.items[0];
+
+			return {
+				id: firstItem.id,
+				name: product.name, // Use product name
+				description: product.description, // Use product description
+				price: firstItem.price, // Use first item's price
+				images: firstItem.images, // Use first item's images
+				vendorId: firstItem.vendorId,
+				productId: product.id,
+				slug: firstItem.slug,
+				isActive: firstItem.isActive,
+				inStock: firstItem.inStock && product.inStock, // Both must be in stock
+				product: {
+					id: product.id,
+					name: product.name,
+					description: product.description,
+				},
+				// Store all items for potential expansion/variants
+				allItems: product.items,
+			};
+		});
+	}, [activeProducts]);
 
 	if (isLoading) {
 		return (
@@ -89,7 +133,7 @@ const VendorProductsTabSection = ({ vendorId }: { vendorId: string }) => {
 		);
 	}
 
-	if (productItems.length === 0) {
+	if (products.length === 0) {
 		return (
 			<div className='w-full mt-5'>
 				<p className='text-foreground/50 text-center py-8'>
@@ -109,9 +153,9 @@ const VendorProductsTabSection = ({ vendorId }: { vendorId: string }) => {
 					tabs={tabs}
 				/>
 			)}
-			{activeItems.length > 0 ? (
+			{displayItems.length > 0 ? (
 				<div className='w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3'>
-					{activeItems.map((item, index) => (
+					{displayItems.map((item, index) => (
 						<div key={`${item.id}-${index}`} className='w-full'>
 							<Separator
 								orientation={'horizontal'}
@@ -129,14 +173,7 @@ const VendorProductsTabSection = ({ vendorId }: { vendorId: string }) => {
 									slug: item.slug,
 									isActive: item.isActive,
 									inStock: item.inStock,
-									product: item.product
-										? {
-												id: item.product.id,
-												name: item.product.name,
-												description:
-													item.product.description,
-										  }
-										: null,
+									product: item.product,
 								}}
 							/>
 						</div>

@@ -123,19 +123,19 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 			const mainItem = productItemsMap.get(pack.productItemId);
 			if (!mainItem) continue;
 
-			// Main item price * quantity
+			// Main item price * quantity (works for both FIXED and PER_UNIT)
 			const packPrice = mainItem.price * pack.quantity;
 			total += packPrice;
 
-			// Add addon prices
+			// Add addon prices - DO NOT multiply by pack.quantity
 			if (pack.addons) {
 				for (const addon of pack.addons) {
 					const addonItem = productItemsMap.get(
 						addon.addonProductItemId,
 					);
 					if (addonItem) {
-						total +=
-							addonItem.price * addon.quantity * pack.quantity;
+						// Addons are per pack, not per unit of the main item
+						total += addonItem.price * addon.quantity;
 					}
 				}
 			}
@@ -298,11 +298,10 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 						checkout
 					</p>
 					<Link
-						href={`${
-							PAGES_DATA.login_page
-						}?redirect=${encodeURIComponent(
-							PAGES_DATA.checkout_page(vendorId),
-						)}`}
+						href={`${PAGES_DATA.login_page
+							}?redirect=${encodeURIComponent(
+								PAGES_DATA.checkout_page(vendorId),
+							)}`}
 						className={cn(
 							buttonVariants({
 								variant: 'game',
@@ -371,11 +370,10 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 								{selectedAddress ? (
 									<p className='text-left'>
 										{shortenText(
-											`${selectedAddress.line1}${
+											`${selectedAddress.line1}${selectedAddress.line2
+												? ', ' +
 												selectedAddress.line2
-													? ', ' +
-														selectedAddress.line2
-													: ''
+												: ''
 											}, ${selectedAddress.city}`,
 											40,
 										)}
@@ -425,8 +423,7 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 									onClick={() => {
 										if (prodileData?.phone) {
 											router.push(
-												`${
-													PAGES_DATA.profile_verify_phone_page
+												`${PAGES_DATA.profile_verify_phone_page
 												}?redirect=${encodeURIComponent(
 													PAGES_DATA.checkout_page(
 														vendorId,
@@ -541,7 +538,7 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 								<p className='font-semibold'>Total</p>
 								<p className='font-semibold'>
 									{isLoadingDeliveryFeeData ||
-									isLoadingServiceFee
+										isLoadingServiceFee
 										? 'Loading...'
 										: formatCurency(total)}
 								</p>
@@ -564,7 +561,7 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 								!vendorIsOpen
 							}>
 							{createOrderMutation.isPending ||
-							createPaymentMutation.isPending
+								createPaymentMutation.isPending
 								? 'Processing...'
 								: !vendorIsOpen
 									? 'Vendor is Closed'

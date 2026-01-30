@@ -10,7 +10,8 @@ export interface CartAddon {
 export interface CartPack {
 	id: string;
 	productItemId: string;
-	quantity: number;
+	quantity: number;  // For PER_UNIT: this is the unit quantity (e.g., 4 scoops)
+	numberOfPacks: number; // NEW: How many packs of this config (e.g., 2 packs of 4 scoops)
 	addons?: CartAddon[];
 	groupKey?: string;
 }
@@ -60,6 +61,7 @@ export const useCartStore = create<CartState>()(
 			addPack: (vendorId, pack) => {
 				const newPack: CartPack = {
 					...pack,
+					numberOfPacks: pack.numberOfPacks || 1,
 					id: `${Date.now()}-${Math.random()
 						.toString(36)
 						.slice(2)}`,

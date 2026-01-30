@@ -108,6 +108,8 @@ const OrderInfoDetailsSection = ({ orderId }: { orderId: string }) => {
 									orderDetails={{
 										main: mainName,
 										quantity: item.quantity,
+										unitName: item.productItem.unitName,
+										pricingType: item.productItem.pricingType,
 										additions: additions.length > 0 ? additions : undefined,
 										totalAmount: item.totalPrice,
 									}}

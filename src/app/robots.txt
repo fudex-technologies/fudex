@@ -1,0 +1,16 @@
+# robots.txt for FUDEX
+
+User-agent: *
+Allow: /
+
+# Disallow admin and API routes
+Disallow: /api/
+Disallow: /profile/admin-dashboard/
+Disallow: /profile/operator-dashboard/
+Disallow: /profile/vendor-dashboard/
+Disallow: /_next/
+
+# Allow specific API endpoints if they're public
+
+# Sitemap location
+Sitemap: https://fudex.ng/sitemap.xml

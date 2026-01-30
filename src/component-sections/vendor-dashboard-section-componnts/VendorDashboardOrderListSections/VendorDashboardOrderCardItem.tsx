@@ -33,6 +33,7 @@ const VendorDashboardOrderCardItem = ({
 	const handleUpdateStatus = (newStatus: OrderStatus) => {
 		updateStatusMutation.mutate({ id: order.id, status: newStatus });
 	};
+	
 
 	// Group items into packs based on groupKey
 	const packs = useMemo(() => {
@@ -42,9 +43,13 @@ const VendorDashboardOrderCardItem = ({
 				name: it.productItem?.name,
 				quantity: it.quantity,
 				price: it.unitPrice,
+				pricingType: it.productItem?.pricingType,
+				unitName: it.productItem?.unitName,
+				parentProduct: it.productItem?.product
 			},
 			addons: (it.addons || []).map((a: any) => ({
 				addonProductItemId: a.addonProductItemId,
+				parentProduct: a.addonProductItem.product,
 				quantity: a.quantity,
 				name: a.addonProductItem?.name,
 				price: a.unitPrice,

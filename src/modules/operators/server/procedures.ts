@@ -77,10 +77,18 @@ export const operatorRouter = createTRPCRouter({
                     },
                     items: {
                         include: {
-                            productItem: true,
+                            productItem: {
+                                include: {
+                                    product: true
+                                }
+                            },
                             addons: {
                                 include: {
-                                    addonProductItem: true
+                                    addonProductItem: {
+                                        include: {
+                                            product: true
+                                        }
+                                    }
                                 }
                             }
                         }

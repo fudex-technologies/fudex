@@ -133,7 +133,7 @@ const VendorDetailsSection = ({
 							<div className='w-10 h-10 rounded-full flex justify-center items-center  bg-secondary/10 text-secondary'>
 								<GrAlarm width={15} height={15} />
 							</div>
-							<p className=''>25 - 30mins</p>
+							<p className=''>5 - 10mins</p>
 						</div>
 						<div className='flex-1 flex flex-col items-center justify-center gap-2'>
 							<div className='w-10 h-10 rounded-full flex justify-center items-center  bg-secondary/10 text-secondary'>

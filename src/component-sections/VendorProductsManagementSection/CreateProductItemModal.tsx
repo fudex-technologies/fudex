@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { vercelBlobFolderStructure } from '@/data/vercelBlobFolders';
-import { Image as ImageIcon, Plus, Upload, X } from 'lucide-react';
+import { Plus, Upload, X } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -42,6 +42,11 @@ function CreateProductItemModal({
 		images: [] as string[],
 		isActive: true,
 		inStock: true,
+		pricingType: 'FIXED' as 'FIXED' | 'PER_UNIT',
+		unitName: '',
+		minQuantity: '1',
+		maxQuantity: '',
+		quantityStep: '1',
 	});
 	const [isUploading, setIsUploading] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -63,6 +68,11 @@ function CreateProductItemModal({
 				images: [],
 				isActive: true,
 				inStock: true,
+				pricingType: 'FIXED',
+				unitName: '',
+				minQuantity: '1',
+				maxQuantity: '',
+				quantityStep: '1',
 			});
 			setCreatedProductItemId(null);
 		}
@@ -166,6 +176,19 @@ function CreateProductItemModal({
 			toast.error('Please upload at least one image');
 			return;
 		}
+		// Validate PER_UNIT fields
+		if (formData.pricingType === 'PER_UNIT' && !formData.unitName.trim()) {
+			toast.error('Unit name is required for per-unit pricing');
+			return;
+		}
+
+		const minQty = parseInt(formData.minQuantity) || 1;
+		const maxQty = formData.maxQuantity ? parseInt(formData.maxQuantity) : null;
+		if (maxQty !== null && maxQty <= minQty) {
+			toast.error('Maximum quantity must be greater than minimum quantity');
+			return;
+		}
+
 		createProductMutate.mutate({
 			vendorId: targetVendorId,
 			productId: formData.productId || undefined,
@@ -176,6 +199,11 @@ function CreateProductItemModal({
 			images: formData.images,
 			isActive: formData.isActive,
 			inStock: formData.inStock,
+			pricingType: formData.pricingType,
+			unitName: formData.pricingType === 'PER_UNIT' ? formData.unitName : null,
+			minQuantity: formData.pricingType === 'PER_UNIT' ? minQty : undefined,
+			maxQuantity: formData.pricingType === 'PER_UNIT' ? maxQty : null,
+			quantityStep: formData.pricingType === 'PER_UNIT' ? parseInt(formData.quantityStep) || 1 : undefined,
 		});
 	};
 
@@ -344,7 +372,32 @@ function CreateProductItemModal({
 					</div>
 
 					<div className='space-y-2'>
-						<Label htmlFor='item-price'>Price (NGN) *</Label>
+						<Label htmlFor='item-pricing-type'>Pricing Type *</Label>
+						<select
+							id='item-pricing-type'
+							value={formData.pricingType}
+							disabled={isEditMode}
+							onChange={(e) =>
+								setFormData((prev) => ({
+									...prev,
+									pricingType: e.target.value as 'FIXED' | 'PER_UNIT',
+								}))
+							}
+							className='w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm'>
+							<option value='FIXED'>Fixed Price (Traditional)</option>
+							<option value='PER_UNIT'>Per Unit (e.g., per scoop, wrap, piece)</option>
+						</select>
+					</div>
+
+					<div className='space-y-2'>
+						<Label htmlFor='item-price'>
+							Price (NGN) *{' '}
+							{formData.pricingType === 'PER_UNIT' && (
+								<span className='text-xs text-foreground/50'>
+									(per unit)
+								</span>
+							)}
+						</Label>
 						<Input
 							id='item-price'
 							type='number'
@@ -361,6 +414,94 @@ function CreateProductItemModal({
 							placeholder='1500.00'
 						/>
 					</div>
+
+					{formData.pricingType === 'PER_UNIT' && (
+						<>
+							<div className='space-y-2'>
+								<Label htmlFor='item-unit-name'>
+									Unit Name * (e.g., scoop, wrap, piece, kg)
+								</Label>
+								<Input
+									id='item-unit-name'
+									value={formData.unitName}
+									disabled={isEditMode}
+									onChange={(e) =>
+										setFormData((prev) => ({
+											...prev,
+											unitName: e.target.value,
+										}))
+									}
+									required
+									placeholder='scoop'
+								/>
+							</div>
+
+							<div className='grid grid-cols-2 gap-4'>
+								<div className='space-y-2'>
+									<Label htmlFor='item-min-quantity'>
+										Minimum Quantity *
+									</Label>
+									<Input
+										id='item-min-quantity'
+										type='number'
+										min='1'
+										value={formData.minQuantity}
+										disabled={isEditMode}
+										onChange={(e) =>
+											setFormData((prev) => ({
+												...prev,
+												minQuantity: e.target.value,
+											}))
+										}
+										required
+									/>
+								</div>
+
+								<div className='space-y-2'>
+									<Label htmlFor='item-max-quantity'>
+										Maximum Quantity (Optional)
+									</Label>
+									<Input
+										id='item-max-quantity'
+										type='number'
+										min='1'
+										value={formData.maxQuantity}
+										disabled={isEditMode}
+										onChange={(e) =>
+											setFormData((prev) => ({
+												...prev,
+												maxQuantity: e.target.value,
+											}))
+										}
+										placeholder='No limit'
+									/>
+								</div>
+							</div>
+
+							<div className='space-y-2'>
+								<Label htmlFor='item-quantity-step'>
+									Quantity Step (Optional)
+								</Label>
+								<Input
+									id='item-quantity-step'
+									type='number'
+									min='1'
+									value={formData.quantityStep}
+									disabled={isEditMode}
+									onChange={(e) =>
+										setFormData((prev) => ({
+											...prev,
+											quantityStep: e.target.value,
+										}))
+									}
+									placeholder='1'
+								/>
+								<p className='text-xs text-foreground/50'>
+									Customers can only order in multiples of this number
+								</p>
+							</div>
+						</>
+					)}
 					<div className='space-y-2'>
 						<Label htmlFor='item-desc'>Description</Label>
 						<Textarea
