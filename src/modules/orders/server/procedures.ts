@@ -1,9 +1,10 @@
 import { createTRPCRouter, protectedProcedure, publicProcedure, adminProcedure, vendorProcedure } from "@/trpc/init";
-import { OrderStatus } from "@prisma/client";
+import { OrderStatus, UserRole } from "@prisma/client";
 import { z } from "zod";
 import { calculateDeliveryFee, getServiceFee } from "@/lib/deliveryFeeCalculator";
 import { NotificationService } from "@/modules/notifications/server/service";
 import { PAGES_DATA } from "@/data/pagesData";
+import { sendOperatorNewOrderEmail } from "@/lib/email";
 
 
 export const orderRouter = createTRPCRouter({
@@ -277,6 +278,11 @@ export const orderRouter = createTRPCRouter({
                         select: {
                             id: true,
                             name: true,
+                        }
+                    },
+                    payment:{
+                        select: {
+                            providerRef: true
                         }
                     }
                 }

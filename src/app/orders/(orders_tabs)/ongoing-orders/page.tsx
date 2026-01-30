@@ -23,9 +23,12 @@ export default function OngoingOrdersPage() {
 	// Map order status to component status
 	const getOrderStatus = (
 		status: OrderStatus
-	): 'pending' | 'preparing' | 'on-the-way' | 'delivered' => {
-		if (status === OrderStatus.PENDING || status === OrderStatus.PAID) {
+	): 'pending' | "paid" | 'preparing' | 'on-the-way' | 'delivered' => {
+		if (status === OrderStatus.PENDING ) {
 			return 'pending';
+		}
+		if (status === OrderStatus.PAID ) {
+			return 'paid';
 		}
 		if (
 			status === OrderStatus.ACCEPTED ||
@@ -121,6 +124,7 @@ export default function OngoingOrdersPage() {
 								vendorName={order.vendor?.name || 'Vendor'}
 								orderStatus={getOrderStatus(order.status)}
 								displayOrderId={displayOrderId}
+								paymentRef={order?.payment?.providerRef}
 							/>
 						);
 					})}
