@@ -5,8 +5,19 @@ import { Switch } from '@/components/ui/switch';
 import GoBackButton from '@/components/GoBackButton';
 import PageWrapper from '@/components/wrapers/PageWrapper';
 import { Loader2 } from 'lucide-react';
+import { useEffect } from 'react';
 
 export default function NotificationsPage() {
+	useEffect(() => {
+		console.log('VAPID Key check:', {
+			keyExists: !!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+			keyPreview: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.substring(
+				0,
+				20,
+			),
+		});
+	}, []);
+
 	const {
 		isSupported,
 		permission,
@@ -21,7 +32,7 @@ export default function NotificationsPage() {
 	const handleToggle = (checked: boolean) => {
 		console.log(permission);
 		console.log(subscription);
-		
+
 		if (checked) {
 			subscribe();
 		} else {
@@ -69,7 +80,7 @@ export default function NotificationsPage() {
 								/>
 							)}
 						</div>
-						{ permission === 'denied' && (
+						{permission === 'denied' && (
 							<p className='text-xs text-red-500 pt-2'>
 								Notifications are permanently blocked in browser
 								settings. Please reset permissions to enable.

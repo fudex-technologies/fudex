@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNotificationActions } from '@/api-hooks/useNotificationActions';
 import { toast } from "sonner";
 
@@ -9,10 +9,8 @@ function urlBase64ToUint8Array(base64String: string) {
     const base64 = (base64String + padding)
         .replace(/\-/g, '+')
         .replace(/_/g, '/');
-
     const rawData = window.atob(base64);
     const outputArray = new Uint8Array(rawData.length);
-
     for (let i = 0; i < rawData.length; ++i) {
         outputArray[i] = rawData.charCodeAt(i);
     }
@@ -23,85 +21,209 @@ export function usePushNotifications() {
     const [isSupported, setIsSupported] = useState(false);
     const [subscription, setSubscription] = useState<PushSubscription | null>(null);
     const [permission, setPermission] = useState<NotificationPermission>('default');
+    const [isInitializing, setIsInitializing] = useState(true);
 
     const { subscribeToPush, unsubscribeFromPush } = useNotificationActions();
     const subscribeMutation = subscribeToPush();
     const unsubscribeMutation = unsubscribeFromPush();
 
+    // Initialize - check support and get current subscription
     useEffect(() => {
-        if ('serviceWorker' in navigator && 'PushManager' in window) {
-            setIsSupported(true);
-            setPermission(Notification.permission);
+        const initialize = async () => {
+            console.log('[Push] Initializing...');
 
-            navigator.serviceWorker.ready.then((registration) => {
-                registration.pushManager.getSubscription().then((sub) => {
-                    setSubscription(sub);
-                });
-            });
-        }
-    }, []);
+            if (typeof window === 'undefined') {
+                console.log('[Push] Window undefined, skipping initialization');
+                setIsInitializing(false);
+                return;
+            }
 
-    const subscribe = async () => {
-        if (!isSupported) {
-            toast.error('Push notifications are not supported in this browser.');
-            return;
+            const supported = 'serviceWorker' in navigator && 'PushManager' in window;
+            console.log('[Push] Support check:', { supported });
+            setIsSupported(supported);
+
+            if (supported) {
+                const currentPermission = Notification.permission;
+                console.log('[Push] Current permission:', currentPermission);
+                setPermission(currentPermission);
+
+                try {
+                    console.log('[Push] Waiting for service worker...');
+                    const registration = await navigator.serviceWorker.ready;
+                    console.log('[Push] Service worker ready:', registration);
+
+                    const existingSub = await registration.pushManager.getSubscription();
+                    console.log('[Push] Existing subscription:', existingSub ? 'Found' : 'None');
+
+                    if (existingSub) {
+                        console.log('[Push] Subscription endpoint:', existingSub.endpoint);
+                    }
+
+                    setSubscription(existingSub);
+                } catch (error) {
+                    console.error('[Push] Error checking existing subscription:', error);
+                }
+            }
+
+            setIsInitializing(false);
+            console.log('[Push] Initialization complete');
         };
 
+        initialize();
+    }, []);
+
+    const subscribe = useCallback(async () => {
+        console.log('[Push] Subscribe called');
+
+        if (!isSupported) {
+            console.error('[Push] Not supported');
+            toast.error('Push notifications are not supported in this browser.');
+            return;
+        }
+
         try {
-            const result = await Notification.requestPermission();
-            setPermission(result);
+            // Step 1: Request permission
+            console.log('[Push] Requesting permission...');
+            const permissionResult = await Notification.requestPermission();
+            console.log('[Push] Permission result:', permissionResult);
+            setPermission(permissionResult);
 
-            if (result === 'granted') {
-                const registration = await navigator.serviceWorker.ready;
+            if (permissionResult !== 'granted') {
+                console.error('[Push] Permission denied');
+                toast.error('Notification permission denied');
+                return;
+            }
 
-                // Ensure we have the public key
-                const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-                if (!vapidPublicKey) {
-                    console.error('VAPID public key not found');
-                    toast.error("Configuration Error: VAPID Public Key not found");
-                    return;
-                }
+            // Step 2: Wait for service worker
+            console.log('[Push] Waiting for service worker...');
+            const registration = await navigator.serviceWorker.ready;
+            console.log('[Push] Service worker ready:', registration);
 
-                const sub = await registration.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
-                });
+            // Step 3: Check for existing subscription
+            let sub = await registration.pushManager.getSubscription();
+            console.log('[Push] Existing subscription check:', sub ? 'Found' : 'None');
 
-                setSubscription(sub);
-
-                // Send to backend
+            if (sub) {
+                console.log('[Push] Using existing subscription');
+                // Already subscribed, just update backend
                 const jsonSub = sub.toJSON();
+                console.log('[Push] Subscription JSON:', jsonSub);
+
                 if (jsonSub.endpoint && jsonSub.keys?.p256dh && jsonSub.keys?.auth) {
-                    await subscribeMutation.mutateAsync({
+                    console.log('[Push] Sending to backend...');
+                    try {
+                        const result = await subscribeMutation.mutateAsync({
+                            endpoint: jsonSub.endpoint,
+                            keys: {
+                                p256dh: jsonSub.keys.p256dh,
+                                auth: jsonSub.keys.auth,
+                            }
+                        });
+                        console.log('[Push] Backend response:', result);
+                    } catch (backendError) {
+                        console.error('[Push] Backend error:', backendError);
+                        toast.error('Failed to save subscription to server');
+                        return;
+                    }
+                }
+                setSubscription(sub);
+                return;
+            }
+
+            // Step 4: Get VAPID key
+            const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+            console.log('[Push] VAPID key available:', !!vapidPublicKey);
+            console.log('[Push] VAPID key (first 20 chars):', vapidPublicKey?.substring(0, 20));
+
+            if (!vapidPublicKey) {
+                console.error('[Push] VAPID public key not found in environment');
+                toast.error("Configuration Error: VAPID Public Key not found");
+                return;
+            }
+
+            // Step 5: Subscribe to push
+            console.log('[Push] Creating new subscription...');
+            try {
+                const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
+                console.log('[Push] Application server key created, length:', applicationServerKey.length);
+
+                sub = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: applicationServerKey,
+                });
+                console.log('[Push] Subscription created:', sub);
+            } catch (subscribeError) {
+                console.error('[Push] Subscribe error:', subscribeError);
+                toast.error('Failed to subscribe to push notifications');
+                return;
+            }
+
+            setSubscription(sub);
+
+            // Step 6: Send to backend
+            const jsonSub = sub.toJSON();
+            console.log('[Push] Subscription JSON:', jsonSub);
+
+            if (jsonSub.endpoint && jsonSub.keys?.p256dh && jsonSub.keys?.auth) {
+                console.log('[Push] Sending to backend...');
+                try {
+                    const result = await subscribeMutation.mutateAsync({
                         endpoint: jsonSub.endpoint,
                         keys: {
                             p256dh: jsonSub.keys.p256dh,
                             auth: jsonSub.keys.auth,
                         }
                     });
+                    console.log('[Push] Backend response:', result);
+                    toast.success('Notifications enabled successfully!');
+                } catch (backendError) {
+                    console.error('[Push] Backend error:', backendError);
+                    toast.error('Failed to save subscription to server');
+                    throw backendError;
                 }
+            } else {
+                console.error('[Push] Invalid subscription JSON:', jsonSub);
+                toast.error('Invalid subscription data');
             }
-        } catch (error) {
-            console.error('Failed to subscribe to push notifications:', error);
-        }
-    };
 
-    const unsubscribe = async () => {
-        if (!subscription) return;
+        } catch (error) {
+            console.error('[Push] Failed to subscribe to push notifications:', error);
+            toast.error('Failed to enable notifications');
+        }
+    }, [isSupported, subscribeMutation]);
+
+    const unsubscribe = useCallback(async () => {
+        console.log('[Push] Unsubscribe called');
+
+        if (!subscription) {
+            console.log('[Push] No subscription to unsubscribe');
+            return;
+        }
 
         try {
+            console.log('[Push] Unsubscribing from push...');
             await subscription.unsubscribe();
+            console.log('[Push] Unsubscribed from push manager');
 
-            // Cleanup backend
             if (subscription.endpoint) {
-                await unsubscribeMutation.mutateAsync({ endpoint: subscription.endpoint });
+                console.log('[Push] Removing from backend...');
+                try {
+                    await unsubscribeMutation.mutateAsync({
+                        endpoint: subscription.endpoint
+                    });
+                    console.log('[Push] Removed from backend');
+                } catch (backendError) {
+                    console.error('[Push] Backend removal error:', backendError);
+                }
             }
 
             setSubscription(null);
+            toast.success('Notifications disabled');
         } catch (error) {
-            console.error('Failed to unsubscribe:', error);
+            console.error('[Push] Failed to unsubscribe:', error);
+            toast.error('Failed to disable notifications');
         }
-    };
+    }, [subscription, unsubscribeMutation]);
 
     return {
         isSupported,
@@ -109,6 +231,6 @@ export function usePushNotifications() {
         subscription,
         subscribe,
         unsubscribe,
-        isLoading: subscribeMutation.isPending || unsubscribeMutation.isPending,
+        isLoading: isInitializing || subscribeMutation.isPending || unsubscribeMutation.isPending,
     };
 }
