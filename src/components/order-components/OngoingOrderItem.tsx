@@ -1,7 +1,7 @@
 'use client';
 
 import { Badge } from '../ui/badge';
-import { ChevronRight, Repeat } from 'lucide-react';
+import { Check, ChevronRight, Repeat } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { ImageWithFallback } from '../ui/ImageWithFallback';
 import { cn } from '@/lib/utils';
@@ -24,10 +24,17 @@ const OngoingOrderItem = ({
 	pickupTime,
 	pickupAddress,
 	displayOrderId,
+	paymentRef
 }: {
 	displayOrderId: string;
 	vendorName: string;
-	orderStatus: 'preparing' | 'on-the-way' | 'pending' | 'delivered';
+	orderStatus:
+		| 'preparing'
+		| 'on-the-way'
+		| 'pending'
+		| 'delivered'
+		| 'pending'
+		| 'paid';
 	itemCount: number;
 	estimatedTime: string;
 	orderId: string;
@@ -38,10 +45,23 @@ const OngoingOrderItem = ({
 	deliveryAddress?: string;
 	pickupTime?: string;
 	pickupAddress?: string;
+	paymentRef?: string;
 }) => {
 	// If orderId is short (8 chars), it's a display ID, otherwise use as-is
 	const linkOrderId = orderId.length === 8 ? orderId : orderId;
 	const [open, setOpen] = useState(false);
+
+	const verifyPayment = (e: React.MouseEvent<HTMLButtonElement>) => {
+		e.preventDefault();
+		e.stopPropagation();
+
+		const baseUrl =
+			typeof window !== 'undefined'
+				? window.location.origin
+				: process.env.NEXT_PUBLIC_BASE_URL || '';
+		const callbackUrl = `${baseUrl}/orders/${orderId}/payment-callback?reference=${paymentRef}`;
+		window.location.href = callbackUrl
+	};
 
 	return (
 		<Link
@@ -68,6 +88,8 @@ const OngoingOrderItem = ({
 						<Badge
 							className={cn(
 								'capitalize',
+								orderStatus === 'paid' &&
+									'text-success bg-success/10',
 								orderStatus === 'preparing' &&
 									'text-chart-4 bg-chart-4/10',
 								orderStatus === 'on-the-way' &&
@@ -100,14 +122,34 @@ const OngoingOrderItem = ({
 				</div>
 			</div>
 
+			{orderStatus === 'pending' && paymentRef && (
+				<>
+					<Separator
+						orientation='horizontal'
+						className='bg-foreground/50'
+					/>
+					{/* <ConfirmOrderDeliveryModal 
+						open={open} 
+						setOpen={setOpen}
+						orderId={orderId}
+					/> */}
+					<Button
+						onClick={verifyPayment}
+						variant={'outline'}
+						className='w-full border-primary text-primary py-5'>
+						<Check />
+						Please Verify Payment
+					</Button>
+				</>
+			)}
 			{orderStatus === 'on-the-way' && (
 				<>
 					<Separator
 						orientation='horizontal'
 						className='bg-foreground/50'
 					/>
-					<ConfirmOrderDeliveryModal 
-						open={open} 
+					<ConfirmOrderDeliveryModal
+						open={open}
 						setOpen={setOpen}
 						orderId={orderId}
 					/>
@@ -162,7 +204,7 @@ const OngoingOrderItem = ({
 						</div>
 					</div>
 
-					<Separator
+					{/* <Separator
 						orientation='horizontal'
 						className='bg-foreground/50'
 					/>
@@ -172,7 +214,7 @@ const OngoingOrderItem = ({
 						className='w-full border-primary text-primary py-5'>
 						<Repeat />
 						Repeat Order
-					</Button>
+					</Button> */}
 				</>
 			)}
 		</Link>

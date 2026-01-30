@@ -26,18 +26,15 @@ const ProductDetailsSelectionSection = ({
 	vendorId,
 	productItems,
 }: ProductDetailsSelectionSectionProps) => {
-	const router = useRouter();
-	const searchParams = useSearchParams();
 	const { addPack } = useCartStore();
-
-	// Get variant slug from query params
+	const searchParams = useSearchParams();
 	const variantSlug = searchParams.get('variant');
 
 	// Find product item by slug if variant slug is provided
 	const initialSelectedItemId = useMemo(() => {
 		if (variantSlug) {
 			const itemBySlug = productItems.find(
-				(item) => item.slug === variantSlug
+				(item) => item.slug === variantSlug,
 			);
 			if (itemBySlug) {
 				return itemBySlug.id;
@@ -47,24 +44,43 @@ const ProductDetailsSelectionSection = ({
 	}, [variantSlug, productItems]);
 
 	const [selectedItemId, setSelectedItemId] = useState<string>(
-		initialSelectedItemId
+		initialSelectedItemId,
+	);
+	const [unitQuantity, setUnitQuantity] = useState(1);
+	const [numberOfPacks, setNumberOfPacks] = useState(1);
+	const [selectedAddons, setSelectedAddons] = useState<
+		Record<string, number>
+	>({}); // addonProductItemId -> quantity
+
+	const router = useRouter();
+
+	const selectedItem = productItems.find(
+		(item) => item.id === selectedItemId,
 	);
 
 	// Update selected item when variant slug changes
 	useEffect(() => {
 		if (variantSlug) {
 			const itemBySlug = productItems.find(
-				(item) => item.slug === variantSlug
+				(item) => item.slug === variantSlug,
 			);
 			if (itemBySlug) {
 				setSelectedItemId(itemBySlug.id);
 			}
 		}
 	}, [variantSlug, productItems]);
-	const [numberOfPacks, setNumberOfPacks] = useState(1);
-	const [selectedAddons, setSelectedAddons] = useState<
-		Record<string, number>
-	>({}); // addonProductItemId -> quantity
+	// Reset unitQuantity when selected item changes
+	useEffect(() => {
+		if (selectedItem?.pricingType === 'PER_UNIT') {
+			const minQty = selectedItem.minQuantity || 1;
+			const step = selectedItem.quantityStep || 1;
+			// Ensure initial quantity is a multiple of step and at least minQuantity
+			const initialQty = Math.max(minQty, Math.ceil(minQty / step) * step);
+			setUnitQuantity(initialQty);
+		} else {
+			setUnitQuantity(1);
+		}
+	}, [selectedItemId, selectedItem]);
 
 	// Fetch available addons (other product items from same vendor)
 	const { data: proteins = [] } =
@@ -90,32 +106,43 @@ const ProductDetailsSelectionSection = ({
 		}, 0);
 	}, [drinks, selectedAddons]);
 
-	const selectedItem = productItems.find(
-		(item) => item.id === selectedItemId
-	);
-
-	// Calculate total price
+	// Calculate total price based on pricing type
 	const totalPrice = useMemo(() => {
 		if (!selectedItem) return 0;
 
-		let total = selectedItem.price * numberOfPacks;
+		let singlePackTotal = 0;
 
-		// Add addon prices
+		// Base price calculation for ONE pack
+		if (selectedItem.pricingType === 'PER_UNIT') {
+			// For PER_UNIT: price * unitQuantity (for one pack)
+			singlePackTotal = selectedItem.price * unitQuantity;
+		} else {
+			// For FIXED: just the price (for one pack)
+			singlePackTotal = selectedItem.price;
+		}
+
+		// Add addon prices (for ONE pack)
 		Object.entries(selectedAddons).forEach(([addonId, quantity]) => {
-			const addon = proteins.find((p) => p.id === addonId);
+			const addon =
+				proteins.find((p) => p.id === addonId) ||
+				drinks.find((d) => d.id === addonId);
 			if (addon && quantity > 0) {
-				total += addon.price * quantity * numberOfPacks;
+				// Addons are NOT multiplied by unitQuantity
+				// If user selects 1 chicken addon, they get 1 chicken regardless of scoop count
+				singlePackTotal += addon.price * quantity;
 			}
 		});
-		Object.entries(selectedAddons).forEach(([addonId, quantity]) => {
-			const addon = drinks.find((d) => d.id === addonId);
-			if (addon && quantity > 0) {
-				total += addon.price * quantity * numberOfPacks;
-			}
-		});
 
-		return total;
-	}, [selectedItem, selectedAddons, proteins, numberOfPacks, drinks]);
+		// Multiply single pack total by number of packs
+		return singlePackTotal * numberOfPacks;
+	}, [
+		selectedItem,
+		selectedAddons,
+		proteins,
+		drinks,
+		numberOfPacks,
+		unitQuantity,
+	]);
 
 	const handleAddonToggle = (addonId: string, type: 'protein' | 'drink') => {
 		setSelectedAddons((prev) => {
@@ -146,7 +173,7 @@ const ProductDetailsSelectionSection = ({
 	const handleAddonQuantityChange = (
 		addonId: string,
 		quantity: number,
-		type: 'protein' | 'drink'
+		type: 'protein' | 'drink',
 	) => {
 		if (quantity <= 0) {
 			setSelectedAddons((prev) => {
@@ -165,9 +192,8 @@ const ProductDetailsSelectionSection = ({
 		// If increasing and limit reached
 		if (quantity > currentQuantity && currentTotal >= MAX_ADDONS) {
 			toast.error(
-				`You can select up to 4 ${
-					type === 'protein' ? 'proteins' : 'drinks'
-				}`
+				`You can select up to 4 ${type === 'protein' ? 'proteins' : 'drinks'
+				}`,
 			);
 			return;
 		}
@@ -193,20 +219,22 @@ const ProductDetailsSelectionSection = ({
 			}));
 
 		// Generate a groupKey for packs from the same selection
-		const groupKey = `${selectedItemId}-${JSON.stringify(addons)}`;
+		const groupKey = `${selectedItemId}-${JSON.stringify(addons)}-${unitQuantity}`;
 
-		// Add packs to cart (all packs have same items initially)
+		// Add packs to cart
 		for (let i = 0; i < numberOfPacks; i++) {
 			addPack(vendorId, {
 				productItemId: selectedItemId,
-				quantity: 1, // Each pack is quantity 1, but we add multiple packs
+				quantity:
+					selectedItem.pricingType === 'PER_UNIT' ? unitQuantity : 1,
+				numberOfPacks: 1, // Each iteration adds 1 pack
 				addons: addons.length > 0 ? addons : undefined,
 				groupKey,
 			});
 		}
 
 		toast.success(
-			`Added ${numberOfPacks} pack${numberOfPacks > 1 ? 's' : ''} to tray`
+			`Added ${numberOfPacks} pack${numberOfPacks > 1 ? 's' : ''} to tray`,
 		);
 		router.push(PAGES_DATA.tray_page);
 	};
@@ -220,7 +248,7 @@ const ProductDetailsSelectionSection = ({
 	}
 
 	const selectedProductItem = productItems.find(
-		(item) => item.id === selectedItemId
+		(item) => item.id === selectedItemId,
 	);
 
 	return (
@@ -254,6 +282,12 @@ const ProductDetailsSelectionSection = ({
 											</p>
 											<p className='text-foreground/50'>
 												{formatCurency(item.price)}
+												{item.pricingType === 'PER_UNIT' &&
+													item.unitName && (
+														<span className='text-xs ml-1'>
+															per {item.unitName}
+														</span>
+													)}
 											</p>
 										</div>
 									</Label>
@@ -263,6 +297,45 @@ const ProductDetailsSelectionSection = ({
 										className='w-6 h-6'
 									/>
 								</div>
+								{/* Show unit quantity selector inline when this item is selected and is PER_UNIT */}
+								{selectedItemId === item.id &&
+									item.pricingType === 'PER_UNIT' && (
+										<div className='mt-3 ml-9 space-y-2'>
+											<div className='flex items-center gap-2'>
+												<p className='text-sm text-foreground/70'>
+													How many {item.unitName || 'units'}?
+												</p>
+												<Badge
+													variant={'outline'}
+													className='border-destructive text-destructive text-[10px] px-1.5 py-0'>
+													Required
+												</Badge>
+											</div>
+											<div className='flex items-center gap-3'>
+												<CounterComponent
+													count={unitQuantity}
+													setCount={setUnitQuantity}
+													min={item.minQuantity}
+													max={
+														item.maxQuantity
+															? item.maxQuantity
+															: undefined
+													}
+													step={item.quantityStep || 1}
+													className='max-w-[200px] py-2'
+												/>
+												<div className='text-xs text-foreground/50'>
+													<p>
+														{formatCurency(
+															item.price *
+															unitQuantity,
+														)}{' '}
+														total
+													</p>
+												</div>
+											</div>
+										</div>
+									)}
 								{index < productItems.length - 1 && (
 									<Separator className='mt-3' />
 								)}
@@ -312,7 +385,7 @@ const ProductDetailsSelectionSection = ({
 														)}
 														<p className='text-sm text-foreground/70'>
 															{formatCurency(
-																protein.price
+																protein.price,
 															)}
 														</p>
 													</div>
@@ -322,7 +395,7 @@ const ProductDetailsSelectionSection = ({
 														onClick={() =>
 															handleAddonToggle(
 																protein.id,
-																'protein'
+																'protein',
 															)
 														}
 														variant={'muted'}
@@ -336,18 +409,18 @@ const ProductDetailsSelectionSection = ({
 														<CounterComponent
 															count={quantity}
 															countChangeEffect={(
-																newCount
+																newCount,
 															) =>
 																handleAddonQuantityChange(
 																	protein.id,
 																	newCount,
-																	'protein'
+																	'protein',
 																)
 															}
 															className='w-[120px] py-1'
 															disabledAdd={
 																selectedProteinCount >=
-																	MAX_ADDONS &&
+																MAX_ADDONS &&
 																quantity === 0
 															}
 														/>
@@ -405,7 +478,7 @@ const ProductDetailsSelectionSection = ({
 														)}
 														<p className='text-sm text-foreground/70'>
 															{formatCurency(
-																drink.price
+																drink.price,
 															)}
 														</p>
 													</div>
@@ -415,7 +488,7 @@ const ProductDetailsSelectionSection = ({
 														onClick={() =>
 															handleAddonToggle(
 																drink.id,
-																'drink'
+																'drink',
 															)
 														}
 														variant={'muted'}
@@ -429,18 +502,18 @@ const ProductDetailsSelectionSection = ({
 														<CounterComponent
 															count={quantity}
 															countChangeEffect={(
-																newCount
+																newCount,
 															) =>
 																handleAddonQuantityChange(
 																	drink.id,
 																	newCount,
-																	'drink'
+																	'drink',
 																)
 															}
 															className='w-[120px] py-1'
 															disabledAdd={
 																selectedDrinkCount >=
-																	MAX_ADDONS &&
+																MAX_ADDONS &&
 																quantity === 0
 															}
 														/>
@@ -476,6 +549,13 @@ const ProductDetailsSelectionSection = ({
 						<p className='text-xl font-semibold text-foreground'>
 							{formatCurency(totalPrice)}
 						</p>
+						{selectedItem?.pricingType === 'PER_UNIT' && (
+							<p className='text-xs text-foreground/50'>
+								{numberOfPacks} pack
+								{numberOfPacks > 1 ? 's' : ''} × {unitQuantity}{' '}
+								{selectedItem.unitName || 'units'}
+							</p>
+						)}
 					</div>
 					<Button
 						variant={'game'}

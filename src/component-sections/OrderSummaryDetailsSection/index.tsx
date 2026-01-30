@@ -60,19 +60,19 @@ const OrderSummaryDetailsSection = ({ vendorId }: { vendorId: string }) => {
 			const mainItem = productItemsMap.get(pack.productItemId);
 			if (!mainItem) continue;
 
-			// Main item price * quantity
+			// Main item price * quantity (this handles both FIXED and PER_UNIT correctly)
 			const packPrice = mainItem.price * pack.quantity;
 			total += packPrice;
 
-			// Add addon prices
+			// Add addon prices - DO NOT multiply by pack.quantity
 			if (pack.addons) {
 				for (const addon of pack.addons) {
 					const addonItem = productItemsMap.get(
 						addon.addonProductItemId
 					);
 					if (addonItem) {
-						total +=
-							addonItem.price * addon.quantity * pack.quantity;
+						// Addons are per pack, not per unit
+						total += addonItem.price * addon.quantity;
 					}
 				}
 			}

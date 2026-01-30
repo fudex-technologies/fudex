@@ -1142,10 +1142,18 @@ export const vendorRouter = createTRPCRouter({
                     // address: true,
                     items: {
                         include: {
-                            productItem: true,
+                            productItem: {
+                                include: {
+                                    product: true
+                                }
+                            },
                             addons: {
                                 include: {
-                                    addonProductItem: true
+                                    addonProductItem: {
+                                        include: {
+                                            product: true
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1201,10 +1209,18 @@ export const vendorRouter = createTRPCRouter({
                     // address: true,
                     items: {
                         include: {
-                            productItem: true,
+                            productItem: {
+                                include :{
+                                    product: true
+                                }
+                            },
                             addons: {
                                 include: {
-                                    addonProductItem: true
+                                    addonProductItem: {
+                                        include: {
+                                            product: true
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1375,6 +1391,11 @@ export const vendorRouter = createTRPCRouter({
                 categories: z.array(z.string()).optional().default([]),
                 isActive: z.boolean().optional().default(true),
                 inStock: z.boolean().optional().default(true),
+                pricingType: z.enum(['FIXED', 'PER_UNIT']).optional().default('FIXED'),
+                unitName: z.string().optional().nullable(),
+                minQuantity: z.number().optional().default(1),
+                maxQuantity: z.number().optional().nullable(),
+                quantityStep: z.number().optional().default(1),
             })
         )
         .mutation(async ({ ctx, input }) => {
@@ -1495,6 +1516,11 @@ export const vendorRouter = createTRPCRouter({
                 images: z.array(z.string()).optional(),
                 isActive: z.boolean().optional(),
                 inStock: z.boolean().optional(),
+                pricingType: z.enum(['FIXED', 'PER_UNIT']).optional(),
+                unitName: z.string().optional().nullable(),
+                minQuantity: z.number().optional(),
+                maxQuantity: z.number().optional().nullable(),
+                quantityStep: z.number().optional(),
             })
         }))
         .mutation(async ({ ctx, input }) => {

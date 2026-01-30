@@ -334,6 +334,14 @@ model ProductItem {
   isActive        Boolean               @default(true)
   createdAt       DateTime              @default(now())
   inStock         Boolean               @default(true)
+  
+  // NEW FIELDS FOR FLEXIBLE QUANTITY
+  pricingType     PricingType           @default(FIXED)
+  unitName        String?               // "scoop", "wrap", "piece", "kg"
+  minQuantity     Int                   @default(1)
+  maxQuantity     Int?                  // optional limit
+  quantityStep    Int                   @default(1) // for items sold in multiples
+  
   orderItems      OrderItem[]
   orderItemAddons OrderItemAddon[]
   product         Product?              @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -650,4 +658,10 @@ enum SettlementStatus {
   UNSETTLED
   PENDING_VERIFICATION
   SETTLED
+}
+
+
+enum PricingType {
+  FIXED       // Traditional: price is for the whole item
+  PER_UNIT    // New: price is per unit (scoop, wrap, etc.)
 }

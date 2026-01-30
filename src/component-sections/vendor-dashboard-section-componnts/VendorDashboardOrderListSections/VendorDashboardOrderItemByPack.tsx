@@ -1,4 +1,5 @@
 import { formatCurency } from '@/lib/commonFunctions';
+import { Product } from '@prisma/client';
 import React from 'react';
 
 // Define types for the props
@@ -7,6 +8,7 @@ interface Addon {
 	quantity: number;
 	name?: string;
 	price?: number;
+	parentProduct: Product;
 }
 
 interface MainItem {
@@ -14,6 +16,9 @@ interface MainItem {
 	name: string;
 	quantity?: number;
 	price?: number;
+	pricingType?: 'FIXED' | 'PER_UNIT';
+	unitName?: string | null;
+	parentProduct: Product
 }
 
 interface Pack {
@@ -37,6 +42,7 @@ const VendorDashboardOrderItemByPack: React.FC<
 	VendorDashboardOrderItemByPackProps
 > = ({ pack, index, addonItems, packTotal }) => {
 	const mainItem = pack.mainItem;
+
 	return (
 		<div className='p-5 border-b border-foreground/50'>
 			<div className='flex justify-between mb-3'>
@@ -48,17 +54,41 @@ const VendorDashboardOrderItemByPack: React.FC<
 			<div className='flex justify-between items-start'>
 				<div className='flex-1'>
 					<div className='flex items-center justify-between'>
-						<div className='flex gap-2 items-center'>
+						<div className='flex gap-2 items-center flex-1'>
 							<span className='w-2 h-2 rounded-full bg-foreground' />{' '}
-							<p className='text-lg font-medium'>
-								{mainItem.name} x{mainItem.quantity || 1}
-							</p>
+							<div className='flex-1'>
+								<p>Main product: {pack.mainItem.parentProduct.name}</p>
+								<p className='text-lg font-medium'>
+									Variant: {mainItem.name}
+									{mainItem.pricingType === 'PER_UNIT' &&
+										mainItem.unitName && (
+											<span className='text-sm text-foreground/50 ml-1 font-normal'>
+												({mainItem.quantity || 1} {mainItem.unitName}
+												{(mainItem.quantity || 1) !== 1 ? 's' : ''})
+											</span>
+										)}
+									{mainItem.pricingType !== 'PER_UNIT' && (
+										<span className='text-sm text-foreground/50 ml-1 font-normal'>
+											x{mainItem.quantity || 1}
+										</span>
+									)}
+								</p>
+								{mainItem.pricingType === 'PER_UNIT' &&
+									mainItem.unitName &&
+									mainItem.price !== undefined && (
+										<p className='text-xs text-foreground/50 mt-0.5'>
+											{formatCurency(mainItem.price)} per{' '}
+											{mainItem.unitName}
+										</p>
+									)}
+								{mainItem.pricingType !== 'PER_UNIT' &&
+									mainItem.price !== undefined && (
+										<p className='text-sm text-foreground/70 mt-0.5'>
+											{formatCurency(mainItem.price)} / unit
+										</p>
+									)}
+							</div>
 						</div>
-						{mainItem.price !== undefined && (
-							<p className='text-sm text-foreground/70'>
-								{formatCurency(mainItem.price)} / unit
-							</p>
-						)}
 					</div>
 					{pack.addons && pack.addons.length > 0 && (
 						<div className='flex flex-col gap-1 pl-4 mt-2'>
@@ -78,7 +108,7 @@ const VendorDashboardOrderItemByPack: React.FC<
 										key={idx}
 										className='flex items-center justify-between text-sm'>
 										<p className='font-light'>
-											{name} x{addon.quantity}
+											({addon.parentProduct.name})	{name} x{addon.quantity}
 										</p>
 										{addon.price !== undefined && (
 											<p className='text-[10px] text-foreground/50'>
