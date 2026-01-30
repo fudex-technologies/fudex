@@ -10,6 +10,7 @@ import { PAGES_DATA } from '@/data/pagesData';
 import { useSession } from '@/lib/auth-client';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import PromoTemplate from './PromoTemplate';
 
 const PromoSection = () => {
 	const { data: session } = useSession();
@@ -32,16 +33,28 @@ const PromoSection = () => {
 		<SectionWrapper className='w-full p-0! overflow-hidden flex items-center justify-center'>
 			<PromoCarousel>
 				{!session ? (
-					<ReferralPromo
+					<PromoTemplate
 						textLine1='Refer 5 friends and get'
 						textLine2='1 Free Delivery'
 						buttonLabel='Refer Now!'
+						backgroundImagePath='/assets/delivery-promo-image.jpg'
+						link={
+							session
+								? PAGES_DATA.profile_referral_page
+								: PAGES_DATA.login_page
+						}
 					/>
 				) : session && referralPromoStillValid ? (
-					<ReferralPromo
+					<PromoTemplate
 						textLine1='Refer 5 friends and get'
 						textLine2='1 Free Delivery'
 						buttonLabel='Refer Now!'
+						backgroundImagePath='/assets/delivery-promo-image.jpg'
+						link={
+							session
+								? PAGES_DATA.profile_referral_page
+								: PAGES_DATA.login_page
+						}
 					/>
 				) : null}
 
@@ -60,6 +73,15 @@ const PromoSection = () => {
 						buttonLabel='Order Now!'
 					/>
 				) : null}
+
+				<PromoTemplate
+					textLine1='Make 3 Orders, get '
+					textLine2='1 Free Too-Fit Joggers'
+					buttonLabel='Order Now!'
+					backgroundImagePath='/assets/toofitimage.jpg'
+					link={`${PAGES_DATA.home_page}#vendors`}
+					buttonClassName={"bg-[#603DEB] hover:bg-[#603DEB]/50 text-white"}
+				/>
 			</PromoCarousel>
 		</SectionWrapper>
 	);
@@ -80,7 +102,7 @@ const ThreeOrdersPromo = ({
 }) => {
 	return (
 		<div
-			className='noise-effect w-full max-w-md min-w-sm rounded-xl h-[170px] overflow-hidden flex items-center p-0'
+			className='noise-effect w-full max-w-md min-w-xs rounded-xl h-[170px] overflow-hidden flex items-center p-0'
 			style={{
 				background:
 					'linear-gradient(230.521deg, #52AA24 37.752%, #2D5D14  58.068%)',
@@ -110,61 +132,6 @@ const ThreeOrdersPromo = ({
 						alt='promo'
 					/>
 				</div>
-			</div>
-		</div>
-	);
-};
-
-const ReferralPromo = ({
-	textLine1,
-	textLine2,
-	image,
-	buttonLabel,
-}: {
-	textLine1: string;
-	textLine2: string;
-	image?: string;
-	buttonLabel: string;
-}) => {
-	const { data: session } = useSession();
-	return (
-		<div
-			className='blur-effect w-full max-w-md min-w-sm rounded-xl h-[170px] overflow-hidden flex items-center p-0 bg-center bg-cover'
-			style={{
-				backgroundImage: `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url("/assets/delivery-promo-image.jpg")`,
-			}}>
-			<div className='flex-[1.2] p-5 flex flex-col gap-5'>
-				<div className='flex flex-col text-white'>
-					<p className='text-sm sm:text-base'>{textLine1}</p>
-					<p className='text-xl font-semibold'>{textLine2}</p>
-				</div>
-
-				<Link
-					href={
-						session
-							? PAGES_DATA.profile_referral_page
-							: PAGES_DATA.login_page
-					}
-					className={cn(
-						buttonVariants({
-							size: 'lg',
-						}),
-						'rounded-full bg-foreground text-background py-6 hover:bg-foreground/50 hover:text-background',
-					)}>
-					{buttonLabel}
-				</Link>
-			</div>
-
-			<div className='flex-1 h-full flex items-end'>
-				{image && (
-					<div className='relative w-full aspect-square'>
-						<ImageWithFallback
-							src={image}
-							className='w-full h-full object-top '
-							alt='promo'
-						/>
-					</div>
-				)}
 			</div>
 		</div>
 	);

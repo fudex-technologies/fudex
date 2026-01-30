@@ -64,23 +64,18 @@ export const PromoCarousel = ({
 	const [idx, setIdx] = useState(0);
 	const childrenCount = items.length;
 
+	// Interval to advance the slide
 	useEffect(() => {
 		if (!isOverflowing || itemWidth === 0) return;
 
 		const timer = setInterval(() => {
-			setIdx((prev) => {
-				const next = prev + 1;
-				// If we reach the end of the first set, we need to handle reset
-				// But for seamless animation, we let it animate to 'childrenCount'
-				// and then reset silently.
-				return next;
-			});
+			setIdx((prev) => prev + 1);
 		}, interval);
 
 		return () => clearInterval(timer);
 	}, [isOverflowing, itemWidth, interval]);
 
-	// Handle Animation
+	// Handle animation and looping
 	useEffect(() => {
 		if (!isOverflowing) {
 			x.set(0);
@@ -90,24 +85,23 @@ export const PromoCarousel = ({
 		const slideDistance = itemWidth + gap;
 		const targetX = -idx * slideDistance;
 
-		// If we wrap around (idx == childrenCount), we are technically showing the start of the second set
-		// which looks exactly like the start of the first set (idx 0).
-		// We can animate to it, and then instantly reset to 0.
 		const controls = animate(x, targetX, {
-			type: 'spring',
-			stiffness: 100,
-			damping: 20,
+			type: 'tween',
+			duration: 0.6,
+			ease: 'easeInOut',
 			onComplete: () => {
+				// When the animation reaches the start of the duplicated items,
+				// instantly jump back to the real start.
 				if (idx >= childrenCount) {
-					// Reset safely
-					setIdx(0);
 					x.set(0);
+					setIdx(0);
 				}
 			},
 		});
 
 		return () => controls.stop();
-	}, [idx, isOverflowing, itemWidth, gap, childrenCount, x]);
+		// Correct dependency array, excludes the motion value 'x'
+	}, [idx, isOverflowing, itemWidth, gap, childrenCount]);
 
 	return (
 		<div ref={containerRef} className={cn('w-full overflow-x-hidden px-4', className)}>
@@ -124,10 +118,9 @@ export const PromoCarousel = ({
 					ref={contentRef}
 					style={{ x }}
 					className='flex gap-5 w-max'
-					// Drag support can be added easily with motion
 					drag='x'
 					dragConstraints={{
-						left: -((itemWidth + gap) * (2 * childrenCount - 1)),
+						left: -((itemWidth + gap) * (childrenCount - 1)),
 						right: 0,
 					}}>
 					{extendedItems.map((child, i) => (
