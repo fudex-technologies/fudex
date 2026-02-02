@@ -91,6 +91,7 @@ export const vendorRouter = createTRPCRouter({
             q: z.string().optional(),
             ratingFilter: z.string().optional(),
             openedSort: z.boolean().optional(),
+            randomSeed: z.number().optional().default(0), // Added seed
             limit: z.number().min(1).max(100).default(20),
             cursor: z.number().default(0),
         }))
@@ -120,26 +121,28 @@ export const vendorRouter = createTRPCRouter({
 
                 // Prepare search parameter
                 const searchParam = input.q ? `%${input.q}%` : null;
+                // Parameter index offset because of searchParam
+                let paramIdx = searchParam ? 2 : 1;
 
-                // Raw SQL query with open/closed sorting
+                // Raw SQL query with open/closed sorting AND randomized seed
                 const query = `
-                    SELECT 
+                    SELECT
                         v.*,
-                        CASE 
+                        CASE
                             WHEN v."availabilityStatus" = 'OPEN' THEN 1
                             WHEN v."availabilityStatus" = 'CLOSED' THEN 0
                             WHEN v."availabilityStatus" = 'AUTO' THEN
-                                CASE 
+                                CASE
                                     WHEN EXISTS (
-                                        SELECT 1 
+                                        SELECT 1
                                         FROM "VendorOpeningHour" oh
                                         WHERE oh."vendorId" = v.id
-                                        AND oh.day = $${searchParam ? 2 : 1}
+                                        AND oh.day = $${paramIdx}
                                         AND oh."isClosed" = false
                                         AND oh."openTime" IS NOT NULL
                                         AND oh."closeTime" IS NOT NULL
-                                        AND oh."openTime" <= $${searchParam ? 3 : 2}
-                                        AND oh."closeTime" >= $${searchParam ? 3 : 2}
+                                        AND oh."openTime" <= $${paramIdx + 1}
+                                        AND oh."closeTime" >= $${paramIdx + 1}
                                     ) THEN 1
                                     ELSE 0
                                 END
@@ -149,15 +152,25 @@ export const vendorRouter = createTRPCRouter({
                     WHERE v."approvalStatus" = 'APPROVED'
                     ${searchCondition}
                     ${ratingCondition}
-                    ORDER BY is_open DESC, v."createdAt" DESC
-                    LIMIT $${searchParam ? 4 : 3}
-                    OFFSET $${searchParam ? 5 : 4}
+                    ORDER BY
+                        is_open DESC,
+                        MD5(v.id || $${paramIdx + 4}::text) ASC,
+                        v."createdAt" DESC
+                    LIMIT $${paramIdx + 2}
+                    OFFSET $${paramIdx + 3}
                 `;
 
                 // Execute raw query with parameters
+                // param1: searchParam (optional)
+                // paramIdx: currentDay
+                // paramIdx+1: currentTime
+                // paramIdx+2: limit + 1
+                // paramIdx+3: skip
+                // paramIdx+4: randomSeed (stringified)
+
                 const params = searchParam
-                    ? [searchParam, currentDay, currentTime, limit + 1, skip]
-                    : [currentDay, currentTime, limit + 1, skip];
+                    ? [searchParam, currentDay, currentTime, limit + 1, skip, input.randomSeed.toString()]
+                    : [currentDay, currentTime, limit + 1, skip, input.randomSeed.toString()];
 
                 const items: any[] = await ctx.prisma.$queryRawUnsafe(query, ...params);
 

@@ -12,10 +12,16 @@ const VendorListSection = ({ title }: { title?: string }) => {
 	const [filterQueries] = useFilterVendorsQueries();
 	const selectedRating = filterQueries.rating;
 
+	// Use a ref to store the random seed so it persists across re-renders
+	// but is generated once per component mount (session) to keep pagination consistent
+	const randomSeedRef = useRef(Math.floor(Math.random() * 1000000));
+
 	const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
 		useInfiniteListVendors({
 			limit: 12,
 			ratingFilter: selectedRating as any,
+			openedSort: true, // Prioritize open vendors
+			randomSeed: randomSeedRef.current, // Pass the stable random seed
 		});
 
 	const vendors = useMemo(() => {
@@ -36,7 +42,7 @@ const VendorListSection = ({ title }: { title?: string }) => {
 					fetchNextPage();
 				}
 			},
-			{ threshold: 0.5 }
+			{ threshold: 0.5 },
 		);
 
 		if (observerTarget.current) {
@@ -55,7 +61,9 @@ const VendorListSection = ({ title }: { title?: string }) => {
 			{title && <h2 className='text-lg font-semibold '>{title}</h2>}
 			{vendors.length > 0 ? (
 				<>
-					<div id={"vendors"} className='w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5'>
+					<div
+						id={'vendors'}
+						className='w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5'>
 						{vendors.map((vendor) => (
 							<VendorCard vendor={vendor} key={vendor.id} />
 						))}

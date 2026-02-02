@@ -67,14 +67,15 @@ export function useVendorProductActions() {
             ),
         useListVendors: (input?: { q?: string; take?: number; skip?: number, ratingFilter?: RatingFilterType }) =>
             useQuery(trpc.vendors.list.queryOptions(input ?? {})),
-        useInfiniteListVendors: (input?: { q?: string; limit?: number; ratingFilter?: RatingFilterType }) =>
+        useInfiniteListVendors: (input?: { q?: string; limit?: number; ratingFilter?: RatingFilterType; randomSeed?: number; openedSort?: boolean }) =>
             useInfiniteQuery(
                 trpc.vendors.listInfinite.infiniteQueryOptions(
                     {
                         limit: input?.limit ?? 20,
                         q: input?.q,
                         ratingFilter: input?.ratingFilter,
-                        openedSort: true
+                        openedSort: input?.openedSort ?? true,
+                        randomSeed: input?.randomSeed
                     },
                     {
                         getNextPageParam: (lastPage) => lastPage.nextCursor,

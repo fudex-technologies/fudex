@@ -45,16 +45,21 @@ export const paymentRouter = createTRPCRouter({
 					throw new Error("Payment already completed for this order");
 				}
 
-				// If payment is pending, return existing payment info
-				if (order.payment.status === "PENDING") {
-					// Verify if payment was completed
+				// If payment is FAILED, delete it and create a new one
+				if (order.payment.status === "FAILED") {
+					await ctx.prisma.payment.delete({
+						where: { id: order.payment.id },
+					});
+					// Continue to create new payment below
+				} else if (order.payment.status === "PENDING") {
+					// Check if it's actually paid on Paystack
 					try {
 						const verification = await verifyPaystackTransaction(
 							order.payment.providerRef
 						);
 
 						if (verification.status && verification.data.status === "success") {
-							// Update payment status
+							// It WAS paid! Update DB and don't create new one.
 							await ctx.prisma.payment.update({
 								where: { id: order.payment.id },
 								data: {
@@ -63,25 +68,34 @@ export const paymentRouter = createTRPCRouter({
 								},
 							});
 
-							// Update order status
 							await ctx.prisma.order.update({
 								where: { id: order.id },
 								data: { status: "PAID" },
 							});
 
+							// Notify user it's already paid
 							throw new Error("Payment already completed for this order");
+						} else {
+							// Not paid on Paystack (or abandoned/failed there).
+							// The old reference is likely dead or the user wants a fresh start.
+							// Delete the old PENDING payment so we can generate a FRESH reference.
+							await ctx.prisma.payment.delete({
+								where: { id: order.payment.id },
+							});
+							// Continue to create new payment below
 						}
-					} catch (error) {
-						// If verification fails, continue with existing payment
+					} catch (error: any) {
+						if (error.message === "Payment already completed for this order") {
+							throw error; // Re-throw for frontend to handle
+						}
+						// If verification errored (e.g. network), we might assume it's safe to retry 
+						// OR fail safe. Let's assume if we can't verify, we shouldn't delete blindly?
+						// But if the user is clicking "Pay Now", they want to pay.
+						// Safest: Delete old and retry.
+						await ctx.prisma.payment.delete({
+							where: { id: order.payment.id },
+						}).catch(() => { }); // Ignore duplicate delete errors
 					}
-
-					// Return existing payment with new checkout URL
-					const checkoutUrl = `https://checkout.paystack.com/${order.payment.providerRef}`;
-					return {
-						payment: order.payment,
-						checkoutUrl,
-						reference: order.payment.providerRef,
-					};
 				}
 			}
 
@@ -100,9 +114,11 @@ export const paymentRouter = createTRPCRouter({
 			}
 
 			// Build callback URL
-			const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL
-				? `https://${process.env.VERCEL_URL}`
-				: "http://localhost:3000";
+			const baseUrl = process.env.NEXT_PUBLIC_BASE_URL
+				? process.env.NEXT_PUBLIC_BASE_URL
+				: process.env.VERCEL_URL
+					? `https://${process.env.VERCEL_URL}`
+					: "http://localhost:3000";
 			const callbackUrl =
 				input.callbackUrl ||
 				`${baseUrl}/orders/${order.id}/payment-callback?reference=${reference}`;
@@ -238,89 +254,101 @@ export const paymentRouter = createTRPCRouter({
 					data: { status: "PAID" },
 				});
 
-				const vendorId = payment?.order?.vendorId
-				const orderId = payment?.orderId
-				// Notify Vendor
-				if (vendorId && orderId) {
-					const vendor = await ctx.prisma.vendor.findUnique({
-						where: { id: vendorId },
-						select: {
-							name: true,
-							owner: {
-								select: {
-									id: true,
-									email: true
+				// SECURITY: Only send notifications if not already sent (idempotency)
+				if (!payment.notificationsSent) {
+					const vendorId = payment?.order?.vendorId
+					const orderId = payment?.orderId
+					// Notify Vendor
+					if (vendorId && orderId) {
+						const vendor = await ctx.prisma.vendor.findUnique({
+							where: { id: vendorId },
+							select: {
+								name: true,
+								owner: {
+									select: {
+										id: true,
+										email: true
+									}
 								}
 							}
-						}
-					});
+						});
 
-					if (vendor?.owner) {
-						// 1. Notify Vendor (Push)
-						NotificationService.sendToUser(vendor.owner.id, {
-							title: 'New Order Received! 🛍️',
-							body: `You have a new order (#${orderId.slice(0, 8)}) worth ${payment.order?.currency} ${payment.order?.productAmount.toFixed(2)}.`,
-							url: PAGES_DATA.vendor_dashboard_new_orders_page,
+						if (vendor?.owner) {
+							// 1. Notify Vendor (Push)
+							NotificationService.sendToUser(vendor.owner.id, {
+								title: 'New Order Received! 🛍️',
+								body: `You have a new order (#${orderId.slice(0, 8)}) worth ${payment.order?.currency} ${payment.order?.productAmount.toFixed(2)}.`,
+								url: PAGES_DATA.vendor_dashboard_new_orders_page,
+							}).catch(console.error);
+
+							// 2. Notify Vendor (Email)
+							if (vendor.owner.email && payment.order) {
+								sendVendorNewOrderEmail(
+									vendor.owner.email,
+									vendor.name,
+									orderId,
+									payment.order.productAmount,
+									payment.order.currency,
+									'orders@fudex.ng'
+								).catch(console.error);
+							}
+						}
+
+						// 3. Notify Operators (Push)
+						NotificationService.sendToRole('OPERATOR', {
+							title: 'New Order Paid! 💰',
+							body: `Order #${orderId.slice(0, 8)} has been paid and is ready for processing.`,
+							url: PAGES_DATA.operator_dashboard_orders_page // Correct page for operators
 						}).catch(console.error);
 
-						// 2. Notify Vendor (Email)
-						if (vendor.owner.email && payment.order) {
-							sendVendorNewOrderEmail(
-								vendor.owner.email,
-								vendor.name,
-								orderId,
-								payment.order.productAmount,
-								payment.order.currency,
-								'orders@fudex.ng'
-							).catch(console.error);
-						}
-					}
-
-					// 3. Notify Operators (Push)
-					NotificationService.sendToRole('OPERATOR', {
-						title: 'New Order Paid! 💰',
-						body: `Order #${orderId.slice(0, 8)} has been paid and is ready for processing.`,
-						url: PAGES_DATA.operator_dashboard_orders_page // Correct page for operators
-					}).catch(console.error);
-
-					// 4. Notify Operators (Email)
-					const operators = await ctx.prisma.user.findMany({
-						where: {
-							roles: {
-								some: {
-									role: "OPERATOR"
+						// 4. Notify Operators (Email)
+						const operators = await ctx.prisma.user.findMany({
+							where: {
+								roles: {
+									some: {
+										role: "OPERATOR"
+									}
 								}
-							}
-						},
-						select: { email: true }
-					});
-					const operatorEmails = operators.map(op => op.email).filter((email): email is string => !!email);
-
-					if (operatorEmails.length > 0) {
-						const customer = await ctx.prisma.user.findUnique({
-							where: { id: payment.userId }
+							},
+							select: { email: true }
 						});
-						const customerAddress = await ctx.prisma.address.findUnique(
-							{ where: { id: payment.order.addressId! } }
-						);
-						const vendor = await ctx.prisma.vendor.findUnique(
-							{ where: { id: vendorId }, include: { addresses: true } }
-						);
+						const operatorEmails = operators.map(op => op.email).filter((email): email is string => !!email);
 
-						if (customer && customerAddress && vendor) {
-							sendOperatorNewOrderEmail(
-								operatorEmails,
-								vendor.name,
-								`${vendor.addresses?.[0]?.line1}, ${vendor.addresses?.[0]?.city}, ${vendor.addresses?.[0]?.state}`,
-								`${customer.firstName} ${customer.lastName}`,
-								`${customerAddress.line1}, ${customerAddress.city}, ${customerAddress.state}`,
-								orderId,
-								payment.amount,
-								payment.currency,
-								'orders@fudex.ng'
-							).catch(console.error);
+						if (operatorEmails.length > 0) {
+							const customer = await ctx.prisma.user.findUnique({
+								where: { id: payment.userId }
+							});
+							const customerAddress = await ctx.prisma.address.findUnique(
+								{ where: { id: payment.order.addressId! } }
+							);
+							const vendor = await ctx.prisma.vendor.findUnique(
+								{ where: { id: vendorId }, include: { addresses: true } }
+							);
+
+							if (customer && customerAddress && vendor) {
+								sendOperatorNewOrderEmail(
+									operatorEmails,
+									vendor.name,
+									`${vendor.addresses?.[0]?.line1}, ${vendor.addresses?.[0]?.city}, ${vendor.addresses?.[0]?.state}`,
+									`${customer.firstName} ${customer.lastName}`,
+									`${customerAddress.line1}, ${customerAddress.city}, ${customerAddress.state}`,
+									orderId,
+									payment.amount,
+									payment.currency,
+									'orders@fudex.ng'
+								).catch(console.error);
+							}
 						}
 					}
+
+					// Mark notifications as sent
+					await ctx.prisma.payment.update({
+						where: { id: payment.id },
+						data: {
+							notificationsSent: true,
+							notificationsSentAt: new Date(),
+						},
+					});
 				}
 			}
 
@@ -328,6 +356,8 @@ export const paymentRouter = createTRPCRouter({
 				payment: updatedPayment,
 				verified: paymentStatus === "COMPLETED",
 				paystackData,
+				// Indicate if this was a duplicate verification
+				alreadyVerified: payment.notificationsSent && paymentStatus === "COMPLETED",
 			};
 		}),
 
