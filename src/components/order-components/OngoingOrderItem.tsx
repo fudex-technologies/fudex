@@ -112,7 +112,7 @@ const OngoingOrderItem = ({
 
 						<Badge
 							className={cn(
-								'capitalize',
+								'capitalize w-fit h-fit',
 								orderStatus === 'paid' &&
 									'text-success bg-success/10',
 								orderStatus === 'preparing' &&
