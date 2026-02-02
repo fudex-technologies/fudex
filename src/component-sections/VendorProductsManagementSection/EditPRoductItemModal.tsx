@@ -39,6 +39,7 @@ export default function EditProductItemModal({
 		minQuantity: (item.minQuantity || 1).toString(),
 		maxQuantity: item.maxQuantity ? item.maxQuantity.toString() : '',
 		quantityStep: (item.quantityStep || 1).toString(),
+		packagingFee: item.packagingFee ? item.packagingFee.toString() : '',
 	});
 
 	const [isUploading, setIsUploading] = useState(false);
@@ -123,11 +124,19 @@ export default function EditProductItemModal({
 		}
 
 		const minQty = parseInt(formData.minQuantity) || 1;
-		const maxQty = formData.maxQuantity ? parseInt(formData.maxQuantity) : null;
+		const maxQty = formData.maxQuantity
+			? parseInt(formData.maxQuantity)
+			: null;
 		if (maxQty !== null && maxQty <= minQty) {
-			toast.error('Maximum quantity must be greater than minimum quantity');
+			toast.error(
+				'Maximum quantity must be greater than minimum quantity',
+			);
 			return;
 		}
+
+		const packagingFee = formData.packagingFee
+			? parseFloat(formData.packagingFee)
+			: null;
 
 		updateDetailsMutation.mutate({
 			id: item.id,
@@ -141,10 +150,20 @@ export default function EditProductItemModal({
 				isActive: formData.isActive,
 				inStock: formData.inStock,
 				pricingType: formData.pricingType,
-				unitName: formData.pricingType === 'PER_UNIT' ? formData.unitName : null,
-				minQuantity: formData.pricingType === 'PER_UNIT' ? minQty : undefined,
-				maxQuantity: formData.pricingType === 'PER_UNIT' ? maxQty : null,
-				quantityStep: formData.pricingType === 'PER_UNIT' ? parseInt(formData.quantityStep) || 1 : undefined,
+				unitName:
+					formData.pricingType === 'PER_UNIT'
+						? formData.unitName
+						: null,
+				minQuantity:
+					formData.pricingType === 'PER_UNIT' ? minQty : undefined,
+				maxQuantity:
+					formData.pricingType === 'PER_UNIT' ? maxQty : null,
+				quantityStep:
+					formData.pricingType === 'PER_UNIT'
+						? parseInt(formData.quantityStep) || 1
+						: undefined,
+				packagingFee:
+					formData.pricingType === 'PER_UNIT' ? packagingFee : null,
 			},
 		});
 	};
@@ -251,19 +270,27 @@ export default function EditProductItemModal({
 						/>
 					</div>
 					<div className='space-y-2'>
-						<Label htmlFor='edit-pricing-type'>Pricing Type *</Label>
+						<Label htmlFor='edit-pricing-type'>
+							Pricing Type *
+						</Label>
 						<select
 							id='edit-pricing-type'
 							value={formData.pricingType}
 							onChange={(e) =>
 								setFormData((prev) => ({
 									...prev,
-									pricingType: e.target.value as 'FIXED' | 'PER_UNIT',
+									pricingType: e.target.value as
+										| 'FIXED'
+										| 'PER_UNIT',
 								}))
 							}
 							className='w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm'>
-							<option value='FIXED'>Fixed Price (Traditional)</option>
-							<option value='PER_UNIT'>Per Unit (e.g., per scoop, wrap, piece)</option>
+							<option value='FIXED'>
+								Fixed Price (Traditional)
+							</option>
+							<option value='PER_UNIT'>
+								Per Unit (e.g., per scoop, wrap, piece)
+							</option>
 						</select>
 					</div>
 
@@ -369,7 +396,32 @@ export default function EditProductItemModal({
 									placeholder='1'
 								/>
 								<p className='text-xs text-foreground/50'>
-									Customers can only order in multiples of this number
+									Customers can only order in multiples of
+									this number
+								</p>
+							</div>
+
+							<div className='space-y-2'>
+								<Label htmlFor='edit-packaging-fee'>
+									Packaging Fee (per pack) - Optional
+								</Label>
+								<Input
+									id='edit-packaging-fee'
+									type='number'
+									step='0.01'
+									min='0'
+									value={formData.packagingFee}
+									onChange={(e) =>
+										setFormData((prev) => ({
+											...prev,
+											packagingFee: e.target.value,
+										}))
+									}
+									placeholder='e.g., 200'
+								/>
+								<p className='text-xs text-foreground/50'>
+									Optional one-time fee per pack for
+									packaging/container
 								</p>
 							</div>
 						</>

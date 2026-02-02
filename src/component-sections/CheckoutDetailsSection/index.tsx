@@ -123,9 +123,17 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 			const mainItem = productItemsMap.get(pack.productItemId);
 			if (!mainItem) continue;
 
+			// Calculate price for ONE pack
+			let singlePackPrice = 0;
+
 			// Main item price * quantity (works for both FIXED and PER_UNIT)
 			const packPrice = mainItem.price * pack.quantity;
-			total += packPrice;
+			singlePackPrice += packPrice;
+
+			// Add packaging fee for PER_UNIT items (once per pack)
+			if (mainItem.pricingType === 'PER_UNIT' && mainItem.packagingFee) {
+				singlePackPrice += mainItem.packagingFee;
+			}
 
 			// Add addon prices - DO NOT multiply by pack.quantity
 			if (pack.addons) {
@@ -135,10 +143,14 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 					);
 					if (addonItem) {
 						// Addons are per pack, not per unit of the main item
-						total += addonItem.price * addon.quantity;
+						singlePackPrice += addonItem.price * addon.quantity;
 					}
 				}
 			}
+
+			// Multiply by numberOfPacks (e.g., if user wants 2 packs of this configuration)
+			const numberOfPacks = pack.numberOfPacks || 1;
+			total += singlePackPrice * numberOfPacks;
 		}
 
 		return total;
@@ -254,13 +266,19 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 			return;
 		}
 
-		// Convert cart packs to order items
-		const items = packs.map((pack) => ({
-			productItemId: pack.productItemId,
-			quantity: pack.quantity,
-			groupKey: pack.groupKey,
-			addons: pack.addons,
-		}));
+		// Transform packs into order items
+		// IMPORTANT: Each pack may have numberOfPacks > 1, so we need to create separate order items
+		// for each pack instance to ensure backend calculates correct total
+		const items = packs.flatMap((pack) => {
+			const numberOfPacks = pack.numberOfPacks || 1;
+			// Create numberOfPacks copies of this pack configuration
+			return Array.from({ length: numberOfPacks }, () => ({
+				productItemId: pack.productItemId,
+				quantity: pack.quantity,
+				groupKey: pack.groupKey,
+				addons: pack.addons,
+			}));
+		});
 
 		// Combine notes
 		const notes = [noteToStore, noteToRider].filter(Boolean).join(' | ');
@@ -298,10 +316,11 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 						checkout
 					</p>
 					<Link
-						href={`${PAGES_DATA.login_page
-							}?redirect=${encodeURIComponent(
-								PAGES_DATA.checkout_page(vendorId),
-							)}`}
+						href={`${
+							PAGES_DATA.login_page
+						}?redirect=${encodeURIComponent(
+							PAGES_DATA.checkout_page(vendorId),
+						)}`}
 						className={cn(
 							buttonVariants({
 								variant: 'game',
@@ -370,10 +389,11 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 								{selectedAddress ? (
 									<p className='text-left'>
 										{shortenText(
-											`${selectedAddress.line1}${selectedAddress.line2
-												? ', ' +
+											`${selectedAddress.line1}${
 												selectedAddress.line2
-												: ''
+													? ', ' +
+														selectedAddress.line2
+													: ''
 											}, ${selectedAddress.city}`,
 											40,
 										)}
@@ -423,7 +443,8 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 									onClick={() => {
 										if (prodileData?.phone) {
 											router.push(
-												`${PAGES_DATA.profile_verify_phone_page
+												`${
+													PAGES_DATA.profile_verify_phone_page
 												}?redirect=${encodeURIComponent(
 													PAGES_DATA.checkout_page(
 														vendorId,
@@ -538,7 +559,7 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 								<p className='font-semibold'>Total</p>
 								<p className='font-semibold'>
 									{isLoadingDeliveryFeeData ||
-										isLoadingServiceFee
+									isLoadingServiceFee
 										? 'Loading...'
 										: formatCurency(total)}
 								</p>
@@ -561,7 +582,7 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 								!vendorIsOpen
 							}>
 							{createOrderMutation.isPending ||
-								createPaymentMutation.isPending
+							createPaymentMutation.isPending
 								? 'Processing...'
 								: !vendorIsOpen
 									? 'Vendor is Closed'

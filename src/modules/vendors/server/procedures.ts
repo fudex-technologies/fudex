@@ -1210,7 +1210,7 @@ export const vendorRouter = createTRPCRouter({
                     items: {
                         include: {
                             productItem: {
-                                include :{
+                                include: {
                                     product: true
                                 }
                             },
@@ -1396,6 +1396,7 @@ export const vendorRouter = createTRPCRouter({
                 minQuantity: z.number().optional().default(1),
                 maxQuantity: z.number().optional().nullable(),
                 quantityStep: z.number().optional().default(1),
+                packagingFee: z.number().optional().nullable(),
             })
         )
         .mutation(async ({ ctx, input }) => {
@@ -1521,6 +1522,7 @@ export const vendorRouter = createTRPCRouter({
                 minQuantity: z.number().optional(),
                 maxQuantity: z.number().optional().nullable(),
                 quantityStep: z.number().optional(),
+                packagingFee: z.number().optional().nullable(),
             })
         }))
         .mutation(async ({ ctx, input }) => {

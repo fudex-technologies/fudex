@@ -153,6 +153,11 @@ export const orderRouter = createTRPCRouter({
                 // Main item: price * quantity (works for both FIXED and PER_UNIT)
                 let totalPrice = unit * it.quantity;
 
+                // Add packaging fee for PER_UNIT items (once per pack)
+                if (mainPi.pricingType === 'PER_UNIT' && mainPi.packagingFee) {
+                    totalPrice += mainPi.packagingFee;
+                }
+
                 const addonsToCreate: any[] = [];
                 if (it.addons && it.addons.length) {
                     for (const a of it.addons) {
@@ -182,57 +187,57 @@ export const orderRouter = createTRPCRouter({
                 });
             }
 
-                // Calculate total amount including delivery and service fees
-                const totalAmount = orderSubTotal + deliveryFee + serviceFee;
+            // Calculate total amount including delivery and service fees
+            const totalAmount = orderSubTotal + deliveryFee + serviceFee;
 
-                // Persist order + items + addons in a single transaction
-                const created = await ctx.prisma.$transaction(async (prisma) => {
-                    const order = await prisma.order.create({
+            // Persist order + items + addons in a single transaction
+            const created = await ctx.prisma.$transaction(async (prisma) => {
+                const order = await prisma.order.create({
+                    data: {
+                        userId,
+                        vendorId: vendorId ?? undefined,
+                        addressId: input.addressId,
+                        totalAmount,
+                        deliveryFee,
+                        serviceFee,
+                        currency: "NGN",
+                        notes: input.notes,
+                        productAmount: orderSubTotal
+                    },
+                });
+
+                // create order items and related addons
+                for (const oi of orderItemsCreate) {
+                    const createdItem = await prisma.orderItem.create({
                         data: {
-                            userId,
-                            vendorId: vendorId ?? undefined,
-                            addressId: input.addressId,
-                            totalAmount,
-                            deliveryFee,
-                            serviceFee,
-                            currency: "NGN",
-                            notes: input.notes,
-                            productAmount: orderSubTotal
+                            orderId: order.id,
+                            productItemId: oi.productItemId,
+                            quantity: oi.quantity,
+                            unitPrice: oi.unitPrice,
+                            totalPrice: oi.totalPrice,
+                            groupKey: oi.groupKey,
                         },
                     });
 
-                    // create order items and related addons
-                    for (const oi of orderItemsCreate) {
-                        const createdItem = await prisma.orderItem.create({
+                    // create addons if any
+                    for (const a of oi._addons || []) {
+                        await prisma.orderItemAddon.create({
                             data: {
-                                orderId: order.id,
-                                productItemId: oi.productItemId,
-                                quantity: oi.quantity,
-                                unitPrice: oi.unitPrice,
-                                totalPrice: oi.totalPrice,
-                                groupKey: oi.groupKey,
+                                orderItemId: createdItem.id,
+                                addonProductItemId: a.addonProductItemId,
+                                quantity: a.quantity,
+                                unitPrice: a.unitPrice,
                             },
                         });
-
-                        // create addons if any
-                        for (const a of oi._addons || []) {
-                            await prisma.orderItemAddon.create({
-                                data: {
-                                    orderItemId: createdItem.id,
-                                    addonProductItemId: a.addonProductItemId,
-                                    quantity: a.quantity,
-                                    unitPrice: a.unitPrice,
-                                },
-                            });
-                        }
                     }
+                }
 
-                    // return full order with items and addons
-                    return prisma.order.findUnique({ where: { id: order.id }, include: { items: { include: { productItem: true, addons: { include: { addonProductItem: true } } } }, payment: true } });
-                });
+                // return full order with items and addons
+                return prisma.order.findUnique({ where: { id: order.id }, include: { items: { include: { productItem: true, addons: { include: { addonProductItem: true } } } }, payment: true } });
+            });
 
-                return created;
-            }),
+            return created;
+        }),
 
     // List orders for current user
     listMyOrders: protectedProcedure
@@ -280,7 +285,7 @@ export const orderRouter = createTRPCRouter({
                             name: true,
                         }
                     },
-                    payment:{
+                    payment: {
                         select: {
                             providerRef: true
                         }
