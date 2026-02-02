@@ -75,7 +75,10 @@ const ProductDetailsSelectionSection = ({
 			const minQty = selectedItem.minQuantity || 1;
 			const step = selectedItem.quantityStep || 1;
 			// Ensure initial quantity is a multiple of step and at least minQuantity
-			const initialQty = Math.max(minQty, Math.ceil(minQty / step) * step);
+			const initialQty = Math.max(
+				minQty,
+				Math.ceil(minQty / step) * step,
+			);
 			setUnitQuantity(initialQty);
 		} else {
 			setUnitQuantity(1);
@@ -116,6 +119,11 @@ const ProductDetailsSelectionSection = ({
 		if (selectedItem.pricingType === 'PER_UNIT') {
 			// For PER_UNIT: price * unitQuantity (for one pack)
 			singlePackTotal = selectedItem.price * unitQuantity;
+
+			// Add packaging fee for PER_UNIT items (once per pack)
+			if (selectedItem.packagingFee) {
+				singlePackTotal += selectedItem.packagingFee;
+			}
 		} else {
 			// For FIXED: just the price (for one pack)
 			singlePackTotal = selectedItem.price;
@@ -192,7 +200,8 @@ const ProductDetailsSelectionSection = ({
 		// If increasing and limit reached
 		if (quantity > currentQuantity && currentTotal >= MAX_ADDONS) {
 			toast.error(
-				`You can select up to 4 ${type === 'protein' ? 'proteins' : 'drinks'
+				`You can select up to 4 ${
+					type === 'protein' ? 'proteins' : 'drinks'
 				}`,
 			);
 			return;
@@ -282,7 +291,8 @@ const ProductDetailsSelectionSection = ({
 											</p>
 											<p className='text-foreground/50'>
 												{formatCurency(item.price)}
-												{item.pricingType === 'PER_UNIT' &&
+												{item.pricingType ===
+													'PER_UNIT' &&
 													item.unitName && (
 														<span className='text-xs ml-1'>
 															per {item.unitName}
@@ -303,7 +313,8 @@ const ProductDetailsSelectionSection = ({
 										<div className='mt-3 ml-9 space-y-2'>
 											<div className='flex items-center gap-2'>
 												<p className='text-sm text-foreground/70'>
-													How many {item.unitName || 'units'}?
+													How many{' '}
+													{item.unitName || 'units'}?
 												</p>
 												<Badge
 													variant={'outline'}
@@ -321,17 +332,28 @@ const ProductDetailsSelectionSection = ({
 															? item.maxQuantity
 															: undefined
 													}
-													step={item.quantityStep || 1}
+													step={
+														item.quantityStep || 1
+													}
 													className='max-w-[200px] py-2'
 												/>
 												<div className='text-xs text-foreground/50'>
 													<p>
 														{formatCurency(
 															item.price *
-															unitQuantity,
+																unitQuantity,
 														)}{' '}
 														total
 													</p>
+													{item.packagingFee && (
+														<p>
+															+
+															{formatCurency(
+																item.packagingFee,
+															)}{' '}
+															packaging fee
+														</p>
+													)}
 												</div>
 											</div>
 										</div>
@@ -420,7 +442,7 @@ const ProductDetailsSelectionSection = ({
 															className='w-[120px] py-1'
 															disabledAdd={
 																selectedProteinCount >=
-																MAX_ADDONS &&
+																	MAX_ADDONS &&
 																quantity === 0
 															}
 														/>
@@ -513,7 +535,7 @@ const ProductDetailsSelectionSection = ({
 															className='w-[120px] py-1'
 															disabledAdd={
 																selectedDrinkCount >=
-																MAX_ADDONS &&
+																	MAX_ADDONS &&
 																quantity === 0
 															}
 														/>

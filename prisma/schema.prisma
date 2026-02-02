@@ -342,6 +342,9 @@ model ProductItem {
   maxQuantity     Int?                  // optional limit
   quantityStep    Int                   @default(1) // for items sold in multiples
   
+  // Packaging fee (only applicable for PER_UNIT items)
+  packagingFee    Float?                // Fee per pack (e.g., ₦200 per container)
+  
   orderItems      OrderItem[]
   orderItemAddons OrderItemAddon[]
   product         Product?              @relation(fields: [productId], references: [id], onDelete: Cascade)

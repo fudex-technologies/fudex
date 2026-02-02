@@ -29,7 +29,7 @@ const OrderSummaryDetailsSection = ({ vendorId }: { vendorId: string }) => {
 	const allProductItemIds = useMemo(() => {
 		const mainIds = packs.map((p) => p.productItemId);
 		const addonIds = packs.flatMap(
-			(p) => p.addons?.map((a) => a.addonProductItemId) || []
+			(p) => p.addons?.map((a) => a.addonProductItemId) || [],
 		);
 		return Array.from(new Set([...mainIds, ...addonIds]));
 	}, [packs]);
@@ -60,26 +60,38 @@ const OrderSummaryDetailsSection = ({ vendorId }: { vendorId: string }) => {
 			const mainItem = productItemsMap.get(pack.productItemId);
 			if (!mainItem) continue;
 
+			// Calculate price for ONE pack
+			let singlePackPrice = 0;
+
 			// Main item price * quantity (this handles both FIXED and PER_UNIT correctly)
 			const packPrice = mainItem.price * pack.quantity;
-			total += packPrice;
+			singlePackPrice += packPrice;
+
+			// Add packaging fee for PER_UNIT items (once per pack)
+			if (mainItem.pricingType === 'PER_UNIT' && mainItem.packagingFee) {
+				singlePackPrice += mainItem.packagingFee;
+			}
 
 			// Add addon prices - DO NOT multiply by pack.quantity
 			if (pack.addons) {
 				for (const addon of pack.addons) {
 					const addonItem = productItemsMap.get(
-						addon.addonProductItemId
+						addon.addonProductItemId,
 					);
 					if (addonItem) {
 						// Addons are per pack, not per unit
-						total += addonItem.price * addon.quantity;
+						singlePackPrice += addonItem.price * addon.quantity;
 					}
 				}
 			}
+
+			// Multiply by numberOfPacks (e.g., if user wants 2 packs of this configuration)
+			const numberOfPacks = pack.numberOfPacks || 1;
+			total += singlePackPrice * numberOfPacks;
 		}
 
 		return total;
-	}, [packs, productItemsMap]);
+	}, [packs, productItemsMap, productItems.length]);
 
 	const isEmpty = packs.length === 0;
 
@@ -144,7 +156,7 @@ const OrderSummaryDetailsSection = ({ vendorId }: { vendorId: string }) => {
 					className={cn(
 						buttonVariants({
 							className: 'bg-primary/10 text-primary',
-						})
+						}),
 					)}
 					href={
 						vendorId
