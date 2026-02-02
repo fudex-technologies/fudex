@@ -72,9 +72,9 @@ export default function ProfileAddressesPage() {
 						</Link>
 					</div>
 
-					<UseCurentAddressDrawer
+					{/* <UseCurentAddressDrawer
 						addAddressEffect={() => refetch()}
-					/>
+					/> */}
 				</div>
 			</SectionWrapper>
 
@@ -147,7 +147,7 @@ const AddressListItem = ({
 		<div
 			className={cn(
 				'px-5 py-2 bg-background flex flex-col gap-1 text-start text-foreground overflow-hidden text-nowrap whitespace-nowrap border-b',
-				className
+				className,
 			)}>
 			<div className='flex gap-2 items-center'>
 				{addressType === 'home' ||
@@ -184,7 +184,7 @@ const AddressListItemSkeleton = ({
 		<div
 			className={cn(
 				'px-5 py-2 bg-background flex flex-col gap-2 text-start text-foreground overflow-hidden text-nowrap whitespace-nowrap border-b',
-				className
+				className,
 			)}>
 			<div className='flex gap-2 items-center'>
 				<Skeleton className='h-5 w-5 rounded-sm' />

@@ -342,6 +342,9 @@ model ProductItem {
   maxQuantity     Int?                  // optional limit
   quantityStep    Int                   @default(1) // for items sold in multiples
   
+  // Packaging fee (only applicable for PER_UNIT items)
+  packagingFee    Float?                // Fee per pack (e.g., ₦200 per container)
+  
   orderItems      OrderItem[]
   orderItemAddons OrderItemAddon[]
   product         Product?              @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -477,12 +480,19 @@ model Payment {
   status      PaymentStatus @default(PENDING)
   paidAt      DateTime?
   createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @default(now()) @updatedAt
   metadata    Json?
+  
+  // Track if notifications have been sent to prevent duplicates
+  notificationsSent     Boolean   @default(false)
+  notificationsSentAt   DateTime?
+  
   order       Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
   user        User          @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([providerRef])
+  @@index([status])
 }
 
 model VendorPayout {

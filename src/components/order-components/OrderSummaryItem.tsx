@@ -51,8 +51,8 @@ const PackEditSection = ({
 				...acc,
 				[addon.addonProductItemId]: addon.quantity,
 			}),
-			{}
-		) || {}
+			{},
+		) || {},
 	);
 
 	// Fetch product items for selection
@@ -73,7 +73,9 @@ const PackEditSection = ({
 			categorySlug: 'hydration',
 		});
 
-	const selectedItem = productItems.find((item) => item.id === selectedItemId);
+	const selectedItem = productItems.find(
+		(item) => item.id === selectedItemId,
+	);
 
 	// Initialize and sync unitQuantity from pack
 	useEffect(() => {
@@ -89,7 +91,7 @@ const PackEditSection = ({
 		if (selectedItem.pricingType === 'PER_UNIT') {
 			const minQty = selectedItem.minQuantity || 1;
 			const step = selectedItem.quantityStep || 1;
-			
+
 			// If it's the same item as in pack, validate pack.quantity
 			// Otherwise, start with minQuantity
 			if (selectedItemId === pack.productItemId) {
@@ -97,12 +99,15 @@ const PackEditSection = ({
 				const currentQty = pack.quantity || minQty;
 				const validQty = Math.max(
 					minQty,
-					Math.ceil(currentQty / step) * step
+					Math.ceil(currentQty / step) * step,
 				);
 				setUnitQuantity(validQty);
 			} else {
 				// Different item - start with minQuantity
-				const initialQty = Math.max(minQty, Math.ceil(minQty / step) * step);
+				const initialQty = Math.max(
+					minQty,
+					Math.ceil(minQty / step) * step,
+				);
 				setUnitQuantity(initialQty);
 			}
 		} else {
@@ -150,7 +155,7 @@ const PackEditSection = ({
 	const handleAddonQuantityChange = (
 		addonId: string,
 		quantity: number,
-		type: 'protein' | 'drink'
+		type: 'protein' | 'drink',
 	) => {
 		if (quantity <= 0) {
 			setSelectedAddons((prev) => {
@@ -243,7 +248,8 @@ const PackEditSection = ({
 									<div className='mt-3 ml-8 space-y-2'>
 										<div className='flex items-center gap-2'>
 											<p className='text-sm text-foreground/70'>
-												How many {item.unitName || 'units'}?
+												How many{' '}
+												{item.unitName || 'units'}?
 											</p>
 											<Badge
 												variant={'outline'}
@@ -267,7 +273,8 @@ const PackEditSection = ({
 											<div className='text-xs text-foreground/50'>
 												<p>
 													{formatCurency(
-														item.price * unitQuantity
+														item.price *
+															unitQuantity,
 													)}{' '}
 													total
 												</p>
@@ -316,7 +323,9 @@ const PackEditSection = ({
 													</p>
 												)}
 												<p className='text-xs text-foreground/70'>
-													{formatCurency(protein.price)}
+													{formatCurency(
+														protein.price,
+													)}
 												</p>
 											</div>
 										</div>
@@ -325,7 +334,7 @@ const PackEditSection = ({
 												onClick={() =>
 													handleAddonToggle(
 														protein.id,
-														'protein'
+														'protein',
 													)
 												}
 												variant={'muted'}
@@ -339,18 +348,18 @@ const PackEditSection = ({
 												<CounterComponent
 													count={quantity}
 													countChangeEffect={(
-														newCount
+														newCount,
 													) =>
 														handleAddonQuantityChange(
 															protein.id,
 															newCount,
-															'protein'
+															'protein',
 														)
 													}
 													className='w-[100px] py-1'
 													disabledAdd={
 														selectedProteinCount >=
-														MAX_ADDONS &&
+															MAX_ADDONS &&
 														quantity === 0
 													}
 												/>
@@ -409,7 +418,7 @@ const PackEditSection = ({
 												onClick={() =>
 													handleAddonToggle(
 														drink.id,
-														'drink'
+														'drink',
 													)
 												}
 												variant={'muted'}
@@ -423,18 +432,18 @@ const PackEditSection = ({
 												<CounterComponent
 													count={quantity}
 													countChangeEffect={(
-														newCount
+														newCount,
 													) =>
 														handleAddonQuantityChange(
 															drink.id,
 															newCount,
-															'drink'
+															'drink',
 														)
 													}
 													className='w-[100px] py-1'
 													disabledAdd={
 														selectedDrinkCount >=
-														MAX_ADDONS &&
+															MAX_ADDONS &&
 														quantity === 0
 													}
 												/>
@@ -499,15 +508,20 @@ const OrderSummaryItem = ({
 	// Calculate pack total
 	const packTotal = useMemo(() => {
 		if (!mainItem) return 0;
-		
+
 		// For PER_UNIT: price per unit * unit quantity * number of packs
 		// For FIXED: price * number of packs
 		const unitQuantity = pack.quantity || 1;
 		const packs = numberOfPacks || 1;
-		
+
 		let total = 0;
 		if (mainItem.pricingType === 'PER_UNIT') {
 			total = mainItem.price * unitQuantity * packs;
+
+			// Add packaging fee for PER_UNIT items (once per pack)
+			if (mainItem.packagingFee) {
+				total += mainItem.packagingFee * packs;
+			}
 		} else {
 			total = mainItem.price * packs;
 		}
@@ -516,7 +530,7 @@ const OrderSummaryItem = ({
 		if (pack.addons) {
 			pack.addons.forEach((addon) => {
 				const addonItem = addonItems.find(
-					(item) => item?.id === addon.addonProductItemId
+					(item) => item?.id === addon.addonProductItemId,
 				);
 				if (addonItem) {
 					// Addons are multiplied by addon quantity and number of packs
@@ -581,7 +595,7 @@ const OrderSummaryItem = ({
 							{pack.addons.map((addon, idx) => {
 								const addonItem = addonItems.find(
 									(item) =>
-										item?.id === addon.addonProductItemId
+										item?.id === addon.addonProductItemId,
 								);
 								if (!addonItem) return null;
 								return (
@@ -610,8 +624,9 @@ const OrderSummaryItem = ({
 							className='text-primary text-sm p-0 h-auto flex items-center gap-1'>
 							{isEditOpen ? 'Close' : 'Edit pack'}
 							<ChevronDown
-								className={`h-3 w-3 transition-transform ${isEditOpen ? 'rotate-180' : ''
-									}`}
+								className={`h-3 w-3 transition-transform ${
+									isEditOpen ? 'rotate-180' : ''
+								}`}
 							/>
 						</Button>
 					</CollapsibleTrigger>

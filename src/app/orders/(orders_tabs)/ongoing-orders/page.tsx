@@ -22,12 +22,12 @@ export default function OngoingOrdersPage() {
 
 	// Map order status to component status
 	const getOrderStatus = (
-		status: OrderStatus
-	): 'pending' | "paid" | 'preparing' | 'on-the-way' | 'delivered' => {
-		if (status === OrderStatus.PENDING ) {
+		status: OrderStatus,
+	): 'pending' | 'paid' | 'preparing' | 'on-the-way' | 'delivered' => {
+		if (status === OrderStatus.PENDING) {
 			return 'pending';
 		}
-		if (status === OrderStatus.PAID ) {
+		if (status === OrderStatus.PAID) {
 			return 'paid';
 		}
 		if (
@@ -109,7 +109,7 @@ export default function OngoingOrdersPage() {
 					{ongoingOrders.map((order) => {
 						const itemCount = order.items.reduce(
 							(sum, item) => sum + item.quantity,
-							0
+							0,
 						);
 						const displayOrderId = order.id
 							.slice(0, 8)
@@ -122,6 +122,9 @@ export default function OngoingOrdersPage() {
 								itemCount={itemCount}
 								orderId={order.id}
 								vendorName={order.vendor?.name || 'Vendor'}
+								vendorImage={
+									order.vendor?.coverImage || undefined
+								}
 								orderStatus={getOrderStatus(order.status)}
 								displayOrderId={displayOrderId}
 								paymentRef={order?.payment?.providerRef}

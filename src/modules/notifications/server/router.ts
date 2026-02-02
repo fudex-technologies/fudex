@@ -15,34 +15,48 @@ export const notificationRouter = createTRPCRouter({
             })
         )
         .mutation(async ({ ctx, input }) => {
+            console.log('[tRPC] Subscribe mutation called');
+            console.log('[tRPC] User ID:', ctx.session.user.id);
+            console.log('[tRPC] Endpoint:', input.endpoint);
+
             const { id: userId } = ctx.session.user;
 
-            // Check if subscription already exists to avoid duplicates
-            const existing = await prisma.pushSubscription.findUnique({
-                where: { endpoint: input.endpoint },
-            });
+            try {
+                // Check if subscription already exists
+                const existing = await prisma.pushSubscription.findUnique({
+                    where: { endpoint: input.endpoint },
+                });
 
-            if (existing) {
-                if (existing.userId !== userId) {
-                    // Update owner if endpoint exists but user changed (rare but possible)
-                    await prisma.pushSubscription.update({
-                        where: { id: existing.id },
-                        data: { userId },
-                    });
+                console.log('[tRPC] Existing subscription:', existing ? 'Found' : 'None');
+
+                if (existing) {
+                    if (existing.userId !== userId) {
+                        console.log('[tRPC] Updating subscription owner');
+                        await prisma.pushSubscription.update({
+                            where: { id: existing.id },
+                            data: { userId },
+                        });
+                    }
+                    console.log('[tRPC] Returning existing subscription');
+                    return { success: true, id: existing.id };
                 }
-                return { success: true, id: existing.id };
+
+                console.log('[tRPC] Creating new subscription');
+                const created = await prisma.pushSubscription.create({
+                    data: {
+                        userId,
+                        endpoint: input.endpoint,
+                        p256dh: input.keys.p256dh,
+                        auth: input.keys.auth,
+                    },
+                });
+
+                console.log('[tRPC] Subscription created:', created.id);
+                return { success: true, id: created.id };
+            } catch (error) {
+                console.error('[tRPC] Database error:', error);
+                throw new Error(`Failed to save subscription: ${error instanceof Error ? error.message : 'Unknown error'}`);
             }
-
-            await prisma.pushSubscription.create({
-                data: {
-                    userId,
-                    endpoint: input.endpoint,
-                    p256dh: input.keys.p256dh,
-                    auth: input.keys.auth,
-                },
-            });
-
-            return { success: true };
         }),
 
     unsubscribe: protectedProcedure

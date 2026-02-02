@@ -47,6 +47,7 @@ function CreateProductItemModal({
 		minQuantity: '1',
 		maxQuantity: '',
 		quantityStep: '1',
+		packagingFee: '',
 	});
 	const [isUploading, setIsUploading] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -73,6 +74,7 @@ function CreateProductItemModal({
 				minQuantity: '1',
 				maxQuantity: '',
 				quantityStep: '1',
+				packagingFee: '',
 			});
 			setCreatedProductItemId(null);
 		}
@@ -98,15 +100,14 @@ function CreateProductItemModal({
 				inStock: data.inStock,
 				pricingType: data.pricingType,
 				unitName: data.unitName || '',
-				minQuantity: data.minQuantity
-					? String(data.minQuantity)
-					: '1',
-				maxQuantity: data.maxQuantity
-					? String(data.maxQuantity)
-					: '',
+				minQuantity: data.minQuantity ? String(data.minQuantity) : '1',
+				maxQuantity: data.maxQuantity ? String(data.maxQuantity) : '',
 				quantityStep: data.quantityStep
 					? String(data.quantityStep)
 					: '1',
+				packagingFee: data.packagingFee
+					? String(data.packagingFee)
+					: '',
 			});
 		},
 	});
@@ -194,11 +195,19 @@ function CreateProductItemModal({
 		}
 
 		const minQty = parseInt(formData.minQuantity) || 1;
-		const maxQty = formData.maxQuantity ? parseInt(formData.maxQuantity) : null;
+		const maxQty = formData.maxQuantity
+			? parseInt(formData.maxQuantity)
+			: null;
 		if (maxQty !== null && maxQty <= minQty) {
-			toast.error('Maximum quantity must be greater than minimum quantity');
+			toast.error(
+				'Maximum quantity must be greater than minimum quantity',
+			);
 			return;
 		}
+
+		const packagingFee = formData.packagingFee
+			? parseFloat(formData.packagingFee)
+			: null;
 
 		createProductMutate.mutate({
 			vendorId: targetVendorId,
@@ -211,10 +220,17 @@ function CreateProductItemModal({
 			isActive: formData.isActive,
 			inStock: formData.inStock,
 			pricingType: formData.pricingType,
-			unitName: formData.pricingType === 'PER_UNIT' ? formData.unitName : null,
-			minQuantity: formData.pricingType === 'PER_UNIT' ? minQty : undefined,
+			unitName:
+				formData.pricingType === 'PER_UNIT' ? formData.unitName : null,
+			minQuantity:
+				formData.pricingType === 'PER_UNIT' ? minQty : undefined,
 			maxQuantity: formData.pricingType === 'PER_UNIT' ? maxQty : null,
-			quantityStep: formData.pricingType === 'PER_UNIT' ? parseInt(formData.quantityStep) || 1 : undefined,
+			quantityStep:
+				formData.pricingType === 'PER_UNIT'
+					? parseInt(formData.quantityStep) || 1
+					: undefined,
+			packagingFee:
+				formData.pricingType === 'PER_UNIT' ? packagingFee : null,
 		});
 	};
 
@@ -383,7 +399,9 @@ function CreateProductItemModal({
 					</div>
 
 					<div className='space-y-2'>
-						<Label htmlFor='item-pricing-type'>Pricing Type *</Label>
+						<Label htmlFor='item-pricing-type'>
+							Pricing Type *
+						</Label>
 						<select
 							id='item-pricing-type'
 							value={formData.pricingType}
@@ -391,12 +409,18 @@ function CreateProductItemModal({
 							onChange={(e) =>
 								setFormData((prev) => ({
 									...prev,
-									pricingType: e.target.value as 'FIXED' | 'PER_UNIT',
+									pricingType: e.target.value as
+										| 'FIXED'
+										| 'PER_UNIT',
 								}))
 							}
 							className='w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm'>
-							<option value='FIXED'>Fixed Price (Traditional)</option>
-							<option value='PER_UNIT'>Per Unit (e.g., per scoop, wrap, piece)</option>
+							<option value='FIXED'>
+								Fixed Price (Traditional)
+							</option>
+							<option value='PER_UNIT'>
+								Per Unit (e.g., per scoop, wrap, piece)
+							</option>
 						</select>
 					</div>
 
@@ -508,7 +532,33 @@ function CreateProductItemModal({
 									placeholder='1'
 								/>
 								<p className='text-xs text-foreground/50'>
-									Customers can only order in multiples of this number
+									Customers can only order in multiples of
+									this number
+								</p>
+							</div>
+
+							<div className='space-y-2'>
+								<Label htmlFor='item-packaging-fee'>
+									Packaging Fee (per pack) - Optional
+								</Label>
+								<Input
+									id='item-packaging-fee'
+									type='number'
+									step='0.01'
+									min='0'
+									value={formData.packagingFee}
+									disabled={isEditMode}
+									onChange={(e) =>
+										setFormData((prev) => ({
+											...prev,
+											packagingFee: e.target.value,
+										}))
+									}
+									placeholder='e.g., 200'
+								/>
+								<p className='text-xs text-foreground/50'>
+									Optional one-time fee per pack for
+									packaging/container
 								</p>
 							</div>
 						</>

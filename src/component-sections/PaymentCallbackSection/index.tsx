@@ -6,25 +6,41 @@ import { useOrderingActions } from '@/api-hooks/useOrderingActions';
 import { PAGES_DATA } from '@/data/pagesData';
 import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { toast } from 'sonner';
 
 const PaymentCallbackSection = () => {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const [status, setStatus] = useState<'loading' | 'success' | 'failed'>(
-		'loading'
+		'loading',
 	);
 	const [error, setError] = useState<string | null>(null);
 	const reference = searchParams.get('reference');
 
 	const verifyPaymentMutation = useOrderingActions().verifyPayment({
-		onSuccess: () => {
-			setStatus('success');
+		onSuccess: (data) => {
+			if ((data as any).alreadyVerified) {
+				toast.info('This payment was already verified');
+				// Redirect to order details if available, otherwise ongoing orders
+				const orderId = (data as any).payment?.orderId;
+				if (orderId) {
+					router.push(PAGES_DATA.order_info_page(orderId));
+				} else {
+					router.push(PAGES_DATA.ongoing_orders_page);
+				}
+			} else if ((data as any).verified) {
+				setStatus('success');
+			} else {
+				// Verification failed (provider status not success)
+				setError('Payment verification failed');
+				setStatus('failed');
+			}
 		},
 		onError: (err) => {
 			setError(
 				err instanceof Error
 					? err.message
-					: 'Payment verification failed'
+					: 'Payment verification failed',
 			);
 			setStatus('failed');
 		},
