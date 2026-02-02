@@ -480,12 +480,19 @@ model Payment {
   status      PaymentStatus @default(PENDING)
   paidAt      DateTime?
   createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @default(now()) @updatedAt
   metadata    Json?
+  
+  // Track if notifications have been sent to prevent duplicates
+  notificationsSent     Boolean   @default(false)
+  notificationsSentAt   DateTime?
+  
   order       Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
   user        User          @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([providerRef])
+  @@index([status])
 }
 
 model VendorPayout {

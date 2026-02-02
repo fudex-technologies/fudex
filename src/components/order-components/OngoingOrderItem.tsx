@@ -1,7 +1,7 @@
 'use client';
 
 import { Badge } from '../ui/badge';
-import { Check, ChevronRight, Repeat } from 'lucide-react';
+import { Check, ChevronRight, Repeat, CreditCard } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { ImageWithFallback } from '../ui/ImageWithFallback';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,8 @@ import { PAGES_DATA } from '@/data/pagesData';
 import { Button } from '../ui/button';
 import ConfirmOrderDeliveryModal from './ConfirmOrderDeliveryModal';
 import { useState } from 'react';
+import { useOrderingActions } from '@/api-hooks/useOrderingActions';
+import { toast } from 'sonner';
 
 const OngoingOrderItem = ({
 	vendorName,
@@ -17,6 +19,7 @@ const OngoingOrderItem = ({
 	itemCount,
 	estimatedTime,
 	orderId,
+	vendorImage,
 
 	deliveryDate,
 	deliveryTime,
@@ -24,10 +27,11 @@ const OngoingOrderItem = ({
 	pickupTime,
 	pickupAddress,
 	displayOrderId,
-	paymentRef
+	paymentRef,
 }: {
 	displayOrderId: string;
 	vendorName: string;
+	vendorImage?: string;
 	orderStatus:
 		| 'preparing'
 		| 'on-the-way'
@@ -50,6 +54,27 @@ const OngoingOrderItem = ({
 	// If orderId is short (8 chars), it's a display ID, otherwise use as-is
 	const linkOrderId = orderId.length === 8 ? orderId : orderId;
 	const [open, setOpen] = useState(false);
+	const { createPayment } = useOrderingActions();
+	const createPaymentMutation = createPayment();
+
+	const retryPayment = async (e: React.MouseEvent<HTMLButtonElement>) => {
+		e.preventDefault();
+		e.stopPropagation();
+
+		try {
+			const result = await createPaymentMutation.mutateAsync({ orderId });
+			// Redirect to Paystack checkout
+			window.location.href = result.checkoutUrl;
+		} catch (error: any) {
+			// If payment is already completed (caught by backend check), refresh to show updated status
+			if (error.message?.includes('Payment already completed')) {
+				toast.success('Payment was already completed!');
+				window.location.reload();
+				return;
+			}
+			toast.error(error.message || 'Failed to initialize payment');
+		}
+	};
 
 	const verifyPayment = (e: React.MouseEvent<HTMLButtonElement>) => {
 		e.preventDefault();
@@ -60,7 +85,7 @@ const OngoingOrderItem = ({
 				? window.location.origin
 				: process.env.NEXT_PUBLIC_BASE_URL || '';
 		const callbackUrl = `${baseUrl}/orders/${orderId}/payment-callback?reference=${paymentRef}`;
-		window.location.href = callbackUrl
+		window.location.href = callbackUrl;
 	};
 
 	return (
@@ -76,7 +101,7 @@ const OngoingOrderItem = ({
 					<ImageWithFallback
 						width={60}
 						height={60}
-						src={'/assets/products/prod1.png'}
+						src={vendorImage || '/assets/products/prod1.png'}
 						className='object-cover rounded-md '
 					/>
 				</div>
@@ -122,24 +147,30 @@ const OngoingOrderItem = ({
 				</div>
 			</div>
 
-			{orderStatus === 'pending' && paymentRef && (
+			{orderStatus === 'pending' && (
 				<>
 					<Separator
 						orientation='horizontal'
 						className='bg-foreground/50'
 					/>
-					{/* <ConfirmOrderDeliveryModal 
-						open={open} 
-						setOpen={setOpen}
-						orderId={orderId}
-					/> */}
-					<Button
-						onClick={verifyPayment}
-						variant={'outline'}
-						className='w-full border-primary text-primary py-5'>
-						<Check />
-						Please Verify Payment
-					</Button>
+					<div className='flex gap-2'>
+						<Button
+							onClick={retryPayment}
+							variant={'game'}
+							className='flex-1 py-5'>
+							<CreditCard />
+							Pay Now
+						</Button>
+						{paymentRef && (
+							<Button
+								onClick={verifyPayment}
+								variant={'outline'}
+								className='flex-1 border-primary text-primary py-5'>
+								<Check />
+								Check Status
+							</Button>
+						)}
+					</div>
 				</>
 			)}
 			{orderStatus === 'on-the-way' && (

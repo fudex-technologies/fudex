@@ -42,7 +42,7 @@ export default function CompletedOrdersPage() {
 					fetchNextPage();
 				}
 			},
-			{ threshold: 0.5 }
+			{ threshold: 0.5 },
 		);
 
 		if (observerTarget.current) {
@@ -92,17 +92,17 @@ export default function CompletedOrdersPage() {
 					{orders.map((order) => {
 						const itemCount = order.items.reduce(
 							(sum, item) => sum + item.quantity,
-							0
+							0,
 						);
 						const deliveryDate = new Date(
-							order.updatedAt
+							order.updatedAt,
 						).toLocaleDateString('en-GB', {
 							day: 'numeric',
 							month: 'short',
 							year: 'numeric',
 						});
 						const deliveryTime = new Date(
-							order.updatedAt
+							order.updatedAt,
 						).toLocaleTimeString('en-US', {
 							hour: 'numeric',
 							minute: '2-digit',
@@ -113,14 +113,14 @@ export default function CompletedOrdersPage() {
 									order.address.line2
 										? ', ' + order.address.line2
 										: ''
-							  }, ${order.address.city}${
+								}, ${order.address.city}${
 									order.address.state
 										? ', ' + order.address.state
 										: ''
-							  }`
+								}`
 							: 'Address not available';
 						const pickupTime = new Date(
-							order.createdAt
+							order.createdAt,
 						).toLocaleTimeString('en-US', {
 							hour: 'numeric',
 							minute: '2-digit',
@@ -139,6 +139,9 @@ export default function CompletedOrdersPage() {
 								itemCount={itemCount}
 								orderId={order.id}
 								vendorName={order.vendor?.name || 'Vendor'}
+								vendorImage={
+									order.vendor?.coverImage || undefined
+								}
 								orderStatus='delivered'
 								deliveryDate={deliveryDate}
 								deliveryTime={deliveryTime}
