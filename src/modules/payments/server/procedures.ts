@@ -8,6 +8,8 @@ import {
 import { sendOperatorNewOrderEmail, sendVendorNewOrderEmail } from "@/lib/email";
 import { NotificationService } from "@/modules/notifications/server/service";
 import { PAGES_DATA } from "@/data/pagesData";
+import prisma from "@/lib/prisma";
+import { handlePaymentCompletion } from "@/lib/payment-completion";
 
 export const paymentRouter = createTRPCRouter({
 	// Create a payment record for an order and initialize Paystack transaction
@@ -58,23 +60,26 @@ export const paymentRouter = createTRPCRouter({
 							order.payment.providerRef
 						);
 
-						if (verification.status && verification.data.status === "success") {
-							// It WAS paid! Update DB and don't create new one.
+					if (verification.status && verification.data.status === "success") {
+						// It WAS paid! Update DB, send notifications, and don't create new one.
+						// Update paidAt if not already set
+						if (!order.payment.paidAt) {
 							await ctx.prisma.payment.update({
 								where: { id: order.payment.id },
 								data: {
-									status: "COMPLETED",
 									paidAt: new Date(verification.data.paid_at || new Date()),
 								},
 							});
+						}
 
-							await ctx.prisma.order.update({
-								where: { id: order.id },
-								data: { status: "PAID" },
-							});
+						// Handle payment completion (updates status and sends notifications if needed)
+						await handlePaymentCompletion(order.payment.id).catch((error) => {
+							console.error('[Payment] Error handling payment completion in createPayment:', error);
+							// Don't throw - payment is already completed, just notification might have failed
+						});
 
-							// Notify user it's already paid
-							throw new Error("Payment already completed for this order");
+						// Notify user it's already paid
+						throw new Error("Payment already completed for this order");
 						} else {
 							// Not paid on Paystack (or abandoned/failed there).
 							// The old reference is likely dead or the user wants a fresh start.
@@ -233,131 +238,58 @@ export const paymentRouter = createTRPCRouter({
 				paymentStatus = "FAILED";
 			}
 
-			// Update payment record
-			const updatedPayment = await ctx.prisma.payment.update({
-				where: { id: payment.id },
-				data: {
-					status: paymentStatus,
-					paidAt:
-						paystackData.paid_at || paystackData.paidAt
+			// Update payment record with paidAt if completed
+			if (paymentStatus === "COMPLETED" && !payment.paidAt) {
+				await ctx.prisma.payment.update({
+					where: { id: payment.id },
+					data: {
+						paidAt: paystackData.paid_at || paystackData.paidAt
 							? new Date(paystackData.paid_at || paystackData.paidAt || "")
-							: paymentStatus === "COMPLETED"
-								? new Date()
-								: null,
-				},
-			});
-
-			// Update order status if payment is completed
-			if (paymentStatus === "COMPLETED") {
-				await ctx.prisma.order.update({
-					where: { id: payment.orderId },
-					data: { status: "PAID" },
+							: new Date(),
+					},
 				});
+			}
 
-				// SECURITY: Only send notifications if not already sent (idempotency)
-				if (!payment.notificationsSent) {
-					const vendorId = payment?.order?.vendorId
-					const orderId = payment?.orderId
-					// Notify Vendor
-					if (vendorId && orderId) {
-						const vendor = await ctx.prisma.vendor.findUnique({
-							where: { id: vendorId },
-							select: {
-								name: true,
-								owner: {
-									select: {
-										id: true,
-										email: true
-									}
-								}
-							}
-						});
+			// Update payment status if not already completed
+			if (paymentStatus === "COMPLETED" && payment.status !== "COMPLETED") {
+				await ctx.prisma.payment.update({
+					where: { id: payment.id },
+					data: {
+						status: "COMPLETED",
+					},
+				});
+			} else if (paymentStatus === "FAILED" && payment.status !== "FAILED") {
+				await ctx.prisma.payment.update({
+					where: { id: payment.id },
+					data: {
+						status: "FAILED",
+					},
+				});
+			}
 
-						if (vendor?.owner) {
-							// 1. Notify Vendor (Push)
-							NotificationService.sendToUser(vendor.owner.id, {
-								title: 'New Order Received! 🛍️',
-								body: `You have a new order (#${orderId.slice(0, 8)}) worth ${payment.order?.currency} ${payment.order?.productAmount.toFixed(2)}.`,
-								url: PAGES_DATA.vendor_dashboard_new_orders_page,
-							}).catch(console.error);
-
-							// 2. Notify Vendor (Email)
-							if (vendor.owner.email && payment.order) {
-								sendVendorNewOrderEmail(
-									vendor.owner.email,
-									vendor.name,
-									orderId,
-									payment.order.productAmount,
-									payment.order.currency,
-									'orders@fudex.ng'
-								).catch(console.error);
-							}
-						}
-
-						// 3. Notify Operators (Push)
-						NotificationService.sendToRole('OPERATOR', {
-							title: 'New Order Paid! 💰',
-							body: `Order #${orderId.slice(0, 8)} has been paid and is ready for processing.`,
-							url: PAGES_DATA.operator_dashboard_orders_page // Correct page for operators
-						}).catch(console.error);
-
-						// 4. Notify Operators (Email)
-						const operators = await ctx.prisma.user.findMany({
-							where: {
-								roles: {
-									some: {
-										role: "OPERATOR"
-									}
-								}
-							},
-							select: { email: true }
-						});
-						const operatorEmails = operators.map(op => op.email).filter((email): email is string => !!email);
-
-						if (operatorEmails.length > 0) {
-							const customer = await ctx.prisma.user.findUnique({
-								where: { id: payment.userId }
-							});
-							const customerAddress = await ctx.prisma.address.findUnique(
-								{ where: { id: payment.order.addressId! } }
-							);
-							const vendor = await ctx.prisma.vendor.findUnique(
-								{ where: { id: vendorId }, include: { addresses: true } }
-							);
-
-							if (customer && customerAddress && vendor) {
-								sendOperatorNewOrderEmail(
-									operatorEmails,
-									vendor.name,
-									`${vendor.addresses?.[0]?.line1}, ${vendor.addresses?.[0]?.city}, ${vendor.addresses?.[0]?.state}`,
-									`${customer.firstName} ${customer.lastName}`,
-									`${customerAddress.line1}, ${customerAddress.city}, ${customerAddress.state}`,
-									orderId,
-									payment.amount,
-									payment.currency,
-									'orders@fudex.ng'
-								).catch(console.error);
-							}
-						}
-					}
-
-					// Mark notifications as sent
-					await ctx.prisma.payment.update({
-						where: { id: payment.id },
-						data: {
-							notificationsSent: true,
-							notificationsSentAt: new Date(),
-						},
-					});
+			// Handle payment completion (updates order status and sends notifications if needed)
+			let alreadyCompleted = false;
+			if (paymentStatus === "COMPLETED") {
+				try {
+					const result = await handlePaymentCompletion(payment.id);
+					alreadyCompleted = result.alreadyCompleted;
+				} catch (error) {
+					console.error('[Payment] Error handling payment completion:', error);
+					// Don't throw - payment is verified, just notification might have failed
 				}
 			}
+
+			// Re-fetch updated payment
+			const updatedPayment = await ctx.prisma.payment.findUnique({
+				where: { id: payment.id },
+			});
 
 			return {
 				payment: updatedPayment,
 				verified: paymentStatus === "COMPLETED",
 				paystackData,
 				// Indicate if this was a duplicate verification
-				alreadyVerified: payment.notificationsSent && paymentStatus === "COMPLETED",
+				alreadyVerified: alreadyCompleted || (payment.notificationsSent && paymentStatus === "COMPLETED"),
 			};
 		}),
 

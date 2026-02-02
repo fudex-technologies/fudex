@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyPaystackWebhook } from "@/lib/paystack";
 import prisma from "@/lib/prisma";
+import { handlePaymentCompletion } from "@/lib/payment-completion";
 
 /**
  * Paystack Webhook Handler
@@ -88,27 +89,33 @@ async function handleSuccessfulPayment(data: any) {
 	const expectedAmount = payment.amount * 100; // Convert to kobo
 	if (data.amount !== expectedAmount) {
 		console.error(
-			`Amount mismatch for payment ${payment.id}: expected ${expectedAmount}, got ${data.amount}`
+			`[Webhook] Amount mismatch for payment ${payment.id}: expected ${expectedAmount}, got ${data.amount}`
 		);
 		return;
 	}
 
-	// Update payment status
-	await prisma.payment.update({
-		where: { id: payment.id },
-		data: {
-			status: "COMPLETED",
-			paidAt: data.paid_at ? new Date(data.paid_at) : new Date(),
-		},
-	});
+	// Update paidAt if provided and not already set
+	if (data.paid_at && !payment.paidAt) {
+		await prisma.payment.update({
+			where: { id: payment.id },
+			data: {
+				paidAt: new Date(data.paid_at),
+			},
+		});
+	}
 
-	// Update order status
-	await prisma.order.update({
-		where: { id: payment.orderId },
-		data: { status: "PAID" },
-	});
-
-	// console.log(`Payment ${payment.id} marked as successful`);
+	// Handle payment completion (updates status and sends notifications if needed)
+	try {
+		const result = await handlePaymentCompletion(payment.id);
+		if (result.alreadyCompleted) {
+			console.log(`[Webhook] Payment ${payment.id} was already completed, skipping duplicate processing`);
+		} else {
+			console.log(`[Webhook] Payment ${payment.id} marked as successful and notifications sent`);
+		}
+	} catch (error) {
+		console.error(`[Webhook] Error handling payment completion for ${payment.id}:`, error);
+		// Don't throw - webhook should return success even if notification fails
+	}
 }
 
 /**

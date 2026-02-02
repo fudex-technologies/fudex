@@ -22,10 +22,12 @@ export function usePushNotifications() {
     const [subscription, setSubscription] = useState<PushSubscription | null>(null);
     const [permission, setPermission] = useState<NotificationPermission>('default');
     const [isInitializing, setIsInitializing] = useState(true);
+    const [isSubscribing, setIsSubscribing] = useState(false);
+    const [isUnsubscribing, setIsUnsubscribing] = useState(false);
 
     const { subscribeToPush, unsubscribeFromPush } = useNotificationActions();
-    const subscribeMutation = subscribeToPush();
-    const unsubscribeMutation = unsubscribeFromPush();
+    const subscribeMutation = subscribeToPush({ silent: true });
+    const unsubscribeMutation = unsubscribeFromPush({ silent: true });
 
     // Initialize - check support and get current subscription
     useEffect(() => {
@@ -81,6 +83,13 @@ export function usePushNotifications() {
             return;
         }
 
+        if (isSubscribing) {
+            console.log('[Push] Already subscribing, skipping');
+            return;
+        }
+
+        setIsSubscribing(true);
+
         try {
             // Step 1: Request permission
             console.log('[Push] Requesting permission...');
@@ -91,6 +100,7 @@ export function usePushNotifications() {
             if (permissionResult !== 'granted') {
                 console.error('[Push] Permission denied');
                 toast.error('Notification permission denied');
+                setIsSubscribing(false);
                 return;
             }
 
@@ -112,21 +122,25 @@ export function usePushNotifications() {
                 if (jsonSub.endpoint && jsonSub.keys?.p256dh && jsonSub.keys?.auth) {
                     console.log('[Push] Sending to backend...');
                     try {
-                        const result = await subscribeMutation.mutateAsync({
+                        await subscribeMutation.mutateAsync({
                             endpoint: jsonSub.endpoint,
                             keys: {
                                 p256dh: jsonSub.keys.p256dh,
                                 auth: jsonSub.keys.auth,
                             }
                         });
-                        console.log('[Push] Backend response:', result);
+                        console.log('[Push] Backend response received');
+                        setSubscription(sub);
+                        toast.success('Notifications enabled successfully!');
                     } catch (backendError) {
                         console.error('[Push] Backend error:', backendError);
                         toast.error('Failed to save subscription to server');
-                        return;
+                    } finally {
+                        setIsSubscribing(false);
                     }
+                } else {
+                    setIsSubscribing(false);
                 }
-                setSubscription(sub);
                 return;
             }
 
@@ -138,6 +152,7 @@ export function usePushNotifications() {
             if (!vapidPublicKey) {
                 console.error('[Push] VAPID public key not found in environment');
                 toast.error("Configuration Error: VAPID Public Key not found");
+                setIsSubscribing(false);
                 return;
             }
 
@@ -155,10 +170,9 @@ export function usePushNotifications() {
             } catch (subscribeError) {
                 console.error('[Push] Subscribe error:', subscribeError);
                 toast.error('Failed to subscribe to push notifications');
+                setIsSubscribing(false);
                 return;
             }
-
-            setSubscription(sub);
 
             // Step 6: Send to backend
             const jsonSub = sub.toJSON();
@@ -167,30 +181,40 @@ export function usePushNotifications() {
             if (jsonSub.endpoint && jsonSub.keys?.p256dh && jsonSub.keys?.auth) {
                 console.log('[Push] Sending to backend...');
                 try {
-                    const result = await subscribeMutation.mutateAsync({
+                    await subscribeMutation.mutateAsync({
                         endpoint: jsonSub.endpoint,
                         keys: {
                             p256dh: jsonSub.keys.p256dh,
                             auth: jsonSub.keys.auth,
                         }
                     });
-                    console.log('[Push] Backend response:', result);
+                    console.log('[Push] Backend response received');
+                    setSubscription(sub);
                     toast.success('Notifications enabled successfully!');
                 } catch (backendError) {
                     console.error('[Push] Backend error:', backendError);
                     toast.error('Failed to save subscription to server');
-                    throw backendError;
+                    // Unsubscribe from push manager if backend save failed
+                    try {
+                        await sub.unsubscribe();
+                    } catch (unsubError) {
+                        console.error('[Push] Error unsubscribing after backend failure:', unsubError);
+                    }
+                } finally {
+                    setIsSubscribing(false);
                 }
             } else {
                 console.error('[Push] Invalid subscription JSON:', jsonSub);
                 toast.error('Invalid subscription data');
+                setIsSubscribing(false);
             }
 
         } catch (error) {
             console.error('[Push] Failed to subscribe to push notifications:', error);
             toast.error('Failed to enable notifications');
+            setIsSubscribing(false);
         }
-    }, [isSupported, subscribeMutation]);
+    }, [isSupported, isSubscribing, subscribeMutation]);
 
     const unsubscribe = useCallback(async () => {
         console.log('[Push] Unsubscribe called');
@@ -200,20 +224,30 @@ export function usePushNotifications() {
             return;
         }
 
+        if (isUnsubscribing) {
+            console.log('[Push] Already unsubscribing, skipping');
+            return;
+        }
+
+        setIsUnsubscribing(true);
+
         try {
+            const endpoint = subscription.endpoint;
+            
             console.log('[Push] Unsubscribing from push...');
             await subscription.unsubscribe();
             console.log('[Push] Unsubscribed from push manager');
 
-            if (subscription.endpoint) {
+            if (endpoint) {
                 console.log('[Push] Removing from backend...');
                 try {
                     await unsubscribeMutation.mutateAsync({
-                        endpoint: subscription.endpoint
+                        endpoint: endpoint
                     });
                     console.log('[Push] Removed from backend');
                 } catch (backendError) {
                     console.error('[Push] Backend removal error:', backendError);
+                    // Still update local state even if backend fails
                 }
             }
 
@@ -222,8 +256,10 @@ export function usePushNotifications() {
         } catch (error) {
             console.error('[Push] Failed to unsubscribe:', error);
             toast.error('Failed to disable notifications');
+        } finally {
+            setIsUnsubscribing(false);
         }
-    }, [subscription, unsubscribeMutation]);
+    }, [subscription, isUnsubscribing, unsubscribeMutation]);
 
     return {
         isSupported,
@@ -231,6 +267,6 @@ export function usePushNotifications() {
         subscription,
         subscribe,
         unsubscribe,
-        isLoading: isInitializing || subscribeMutation.isPending || unsubscribeMutation.isPending,
+        isLoading: isInitializing || isSubscribing || isUnsubscribing,
     };
 }
