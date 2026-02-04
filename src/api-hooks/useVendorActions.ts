@@ -67,7 +67,7 @@ export function useVendorProductActions() {
             ),
         useListVendors: (input?: { q?: string; take?: number; skip?: number, ratingFilter?: RatingFilterType }) =>
             useQuery(trpc.vendors.list.queryOptions(input ?? {})),
-        useInfiniteListVendors: (input?: { q?: string; limit?: number; ratingFilter?: RatingFilterType; randomSeed?: number; openedSort?: boolean }) =>
+        useInfiniteListVendors: (input?: { q?: string; limit?: number; ratingFilter?: RatingFilterType; randomSeed?: number; openedSort?: boolean; categorySlug?: string }) =>
             useInfiniteQuery(
                 trpc.vendors.listInfinite.infiniteQueryOptions(
                     {
@@ -75,7 +75,8 @@ export function useVendorProductActions() {
                         q: input?.q,
                         ratingFilter: input?.ratingFilter,
                         openedSort: input?.openedSort ?? true,
-                        randomSeed: input?.randomSeed
+                        randomSeed: input?.randomSeed,
+                        categorySlug: input?.categorySlug
                     },
                     {
                         getNextPageParam: (lastPage) => lastPage.nextCursor,

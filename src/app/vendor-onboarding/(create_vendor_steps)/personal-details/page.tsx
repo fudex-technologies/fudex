@@ -14,9 +14,13 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { localStorageStrings } from '@/constants/localStorageStrings';
 import { useSession } from '@/lib/auth-client';
+import { useCategoryActions } from '@/api-hooks/useCategoryActions';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { PAGES_DATA } from '@/data/pagesData';
+import { cn } from '@/lib/utils';
 
 interface IFormData {
 	phone: string;
@@ -25,6 +29,7 @@ interface IFormData {
 	lastName: string;
 	businessName: string;
 	businessDescription: string;
+	categoryIds: string[];
 }
 
 interface IFormTouchedData {
@@ -34,6 +39,7 @@ interface IFormTouchedData {
 	lastName?: boolean;
 	businessName?: boolean;
 	businessDescription?: boolean;
+	categoryIds?: boolean;
 }
 
 interface IAvailabilityErrors {
@@ -48,12 +54,16 @@ const initialFormData = {
 	lastName: '',
 	businessName: '',
 	businessDescription: '',
+	categoryIds: [],
 };
 
 export default function VendorOnboardingPersonalDetailsPage() {
 	const router = useRouter();
 	const trpc = useTRPC();
 	const { data: session } = useSession();
+	const { useListCategories } = useCategoryActions();
+	const { data: categoriesData, isLoading: isLoadingCategories } =
+		useListCategories();
 
 	const [form, setForm] = useState<IFormData>(initialFormData);
 	const [touched, setTouched] = useState<IFormTouchedData>({});
@@ -75,6 +85,7 @@ export default function VendorOnboardingPersonalDetailsPage() {
 				lastName: (session.user as any).lastName || '',
 				businessName: '',
 				businessDescription: '',
+				categoryIds: [],
 			});
 		}
 	}, [session]);
@@ -275,6 +286,19 @@ export default function VendorOnboardingPersonalDetailsPage() {
 			setTouched({ ...touched, [field]: true });
 		};
 
+	const handleCategoryToggle = (categoryId: string) => {
+		setForm((prev) => {
+			const isSelected = prev.categoryIds.includes(categoryId);
+			return {
+				...prev,
+				categoryIds: isSelected
+					? prev.categoryIds.filter((id) => id !== categoryId)
+					: [...prev.categoryIds, categoryId],
+			};
+		});
+		setTouched({ ...touched, categoryIds: true });
+	};
+
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 
@@ -410,6 +434,62 @@ export default function VendorOnboardingPersonalDetailsPage() {
 							errorsNow.businessDescription
 						}
 					/>
+					<div className='w-full space-y-3 my-4'>
+						<div className='space-y-1'>
+							<Label className='text-sm font-medium'>
+								Vendor Categories
+							</Label>
+							<p className='text-xs text-foreground/50'>
+								Select the categories that best describe your
+								business (e.g., Cakes, Fast Food)
+							</p>
+						</div>
+
+						{isLoadingCategories ? (
+							<div className='flex flex-wrap gap-2 animate-pulse'>
+								{[1, 2, 3, 4].map((i) => (
+									<div
+										key={i}
+										className='h-8 w-20 bg-muted rounded-full'
+									/>
+								))}
+							</div>
+						) : (
+							<div className='flex flex-wrap gap-3'>
+								{categoriesData?.map((category) => (
+									<div
+										key={category.id}
+										className={cn(
+											'flex items-center gap-2 p-2 px-3 rounded-full border cursor-pointer transition-colors',
+											form.categoryIds.includes(
+												category.id,
+											)
+												? 'bg-primary/10 border-primary text-primary'
+												: 'bg-background border-input hover:border-primary/50',
+										)}
+										onClick={() =>
+											handleCategoryToggle(category.id)
+										}>
+										<Checkbox
+											id={`cat-${category.id}`}
+											checked={form.categoryIds.includes(
+												category.id,
+											)}
+											onCheckedChange={() =>
+												handleCategoryToggle(
+													category.id,
+												)
+											}
+											className='hidden'
+										/>
+										<span className='text-sm font-medium whitespace-nowrap'>
+											{category.name}
+										</span>
+									</div>
+								))}
+							</div>
+						)}
+					</div>
 
 					<Button
 						type='submit'

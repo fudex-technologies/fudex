@@ -317,6 +317,62 @@ export function useAdminActions() {
                     retry: false,
                 })
             ),
+
+        // Global Category Management
+        useInfiniteListCategories: (input: { limit?: number } = {}) =>
+            useInfiniteQuery(
+                trpc.admin.listCategories.infiniteQueryOptions(
+                    { ...input },
+                    {
+                        getNextPageParam: (lastPage: any) => lastPage.nextCursor,
+                    }
+                )
+            ),
+
+        createCategory: (options?: UseAPICallerOptions) =>
+            useMutation(
+                trpc.admin.createCategory.mutationOptions({
+                    onSuccess: (data) => {
+                        if (!options?.silent) toast.success("Category created");
+                        options?.onSuccess?.(data);
+                    },
+                    onError: (err: unknown) => {
+                        if (!options?.silent) toast.error("Failed to create category", { description: err instanceof Error ? err.message : String(err) });
+                        options?.onError?.(err);
+                    },
+                    retry: false,
+                })
+            ),
+
+        updateCategory: (options?: UseAPICallerOptions) =>
+            useMutation(
+                trpc.admin.updateCategory.mutationOptions({
+                    onSuccess: (data) => {
+                        if (!options?.silent) toast.success("Category updated");
+                        options?.onSuccess?.(data);
+                    },
+                    onError: (err: unknown) => {
+                        if (!options?.silent) toast.error("Failed to update category", { description: err instanceof Error ? err.message : String(err) });
+                        options?.onError?.(err);
+                    },
+                    retry: false,
+                })
+            ),
+
+        deleteCategory: (options?: UseAPICallerOptions) =>
+            useMutation(
+                trpc.admin.deleteCategory.mutationOptions({
+                    onSuccess: (data) => {
+                        if (!options?.silent) toast.success("Category deleted");
+                        options?.onSuccess?.(data);
+                    },
+                    onError: (err: unknown) => {
+                        if (!options?.silent) toast.error("Failed to delete category", { description: err instanceof Error ? err.message : String(err) });
+                        options?.onError?.(err);
+                    },
+                    retry: false,
+                })
+            ),
     };
 }
 

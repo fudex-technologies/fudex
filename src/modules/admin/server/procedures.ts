@@ -826,4 +826,79 @@ export const adminRouter = createTRPCRouter({
                 });
             }
         }),
+
+    // Global Category Management
+    listCategories: adminProcedure
+        .input(z.object({
+            limit: z.number().min(1).max(100).nullish(),
+            cursor: z.string().nullish(),
+        }))
+        .query(async ({ ctx, input }) => {
+            const limit = input.limit ?? 100;
+            const { cursor } = input;
+
+            const items = await ctx.prisma.category.findMany({
+                take: limit + 1,
+                cursor: cursor ? { id: cursor } : undefined,
+                orderBy: { name: "asc" },
+                include: {
+                    _count: {
+                        select: {
+                            vendors: true,
+                            items: true
+                        }
+                    }
+                }
+            });
+
+            let nextCursor: typeof cursor | undefined = undefined;
+            if (items.length > limit) {
+                const nextItem = items.pop();
+                nextCursor = nextItem!.id;
+            }
+            return {
+                items,
+                nextCursor,
+            };
+        }),
+
+    createCategory: adminProcedure
+        .input(z.object({
+            name: z.string(),
+            slug: z.string().optional(),
+            image: z.string().optional(),
+        }))
+        .mutation(({ ctx, input }) => {
+            const data = {
+                ...input,
+                slug: input.slug || input.name.toLowerCase().replace(/ /g, "-"),
+            }
+            return ctx.prisma.category.create({ data });
+        }),
+
+    updateCategory: adminProcedure
+        .input(z.object({
+            id: z.string(),
+            name: z.string().optional(),
+            slug: z.string().optional(),
+            image: z.string().optional(),
+        }))
+        .mutation(({ ctx, input }) => {
+            const { id, ...data } = input;
+            if (data.name && !data.slug) {
+                data.slug = data.name.toLowerCase().replace(/ /g, "-");
+            }
+            return ctx.prisma.category.update({
+                where: { id },
+                data
+            });
+        }),
+
+    deleteCategory: adminProcedure
+        .input(z.object({ id: z.string() }))
+        .mutation(({ ctx, input }) => {
+            return ctx.prisma.category.delete({
+                where: { id: input.id }
+            });
+        }),
 });

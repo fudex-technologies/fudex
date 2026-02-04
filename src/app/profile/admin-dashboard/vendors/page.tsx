@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useInView } from 'react-intersection-observer';
 import { useAdminActions } from '@/api-hooks/useAdminActions';
+import { useCategoryActions } from '@/api-hooks/useCategoryActions';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -30,7 +32,14 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
 export default function AdminVendorsPage() {
-	const { useInfiniteListVendors, updateVendorByAdmin } = useAdminActions();
+	const {
+		useInfiniteListVendors,
+		updateVendorByAdmin,
+		useListVendorCategories,
+		toggleVendorCategory,
+	} = useAdminActions();
+	const { useListCategories } = useCategoryActions();
+	const { data: allCategoriesData } = useListCategories();
 	const [searchQuery, setSearchQuery] = useState('');
 	const [debouncedSearch, setDebouncedSearch] = useState('');
 
@@ -68,6 +77,29 @@ export default function AdminVendorsPage() {
 			setEditingVendor(null);
 		},
 	});
+
+	const { data: vendorCategoriesData, refetch: refetchVendorCategories } =
+		useListVendorCategories({
+			vendorId: editingVendor?.id || '',
+		});
+
+	const toggleCategoryMutation = toggleVendorCategory({
+		onSuccess: () => {
+			refetchVendorCategories();
+		},
+	});
+
+	const handleCategoryToggle = (categoryId: string) => {
+		if (!editingVendor) return;
+		const isAssigned = vendorCategoriesData?.some(
+			(vc) => vc.categoryId === categoryId,
+		);
+		toggleCategoryMutation.mutate({
+			vendorId: editingVendor.id,
+			categoryId,
+			action: isAssigned ? 'remove' : 'add',
+		});
+	};
 
 	const handleUpdate = (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
@@ -328,7 +360,7 @@ export default function AdminVendorsPage() {
 										</option>
 									</select>
 								</div>
-								{/* <div className='space-y-2'>
+								<div className='space-y-2'>
 									<Label htmlFor='edit-isActive'>
 										Visibility Status
 									</Label>
@@ -348,8 +380,54 @@ export default function AdminVendorsPage() {
 											Inactive (Hidden)
 										</option>
 									</select>
-								</div> */}
+								</div>
 							</div>
+
+							<div className='space-y-3 pt-2 border-t'>
+								<Label className='text-sm font-semibold'>
+									Vendor Categories
+								</Label>
+								<div className='flex flex-wrap gap-2'>
+									{allCategoriesData?.map((category) => {
+										const isSelected =
+											vendorCategoriesData?.some(
+												(vc) =>
+													vc.categoryId ===
+													category.id,
+											);
+										return (
+											<div
+												key={category.id}
+												className={cn(
+													'flex items-center gap-2 px-3 py-1.5 rounded-full border cursor-pointer transition-all',
+													isSelected
+														? 'bg-primary/10 border-primary text-primary'
+														: 'bg-background border-border hover:border-primary/30',
+												)}
+												onClick={() =>
+													handleCategoryToggle(
+														category.id,
+													)
+												}>
+												<Checkbox
+													id={`edit-cat-${category.id}`}
+													checked={isSelected}
+													onCheckedChange={() =>
+														handleCategoryToggle(
+															category.id,
+														)
+													}
+													className='h-4 w-4'
+												/>
+												<span className='text-xs font-medium'>
+													{category.name}
+												</span>
+											</div>
+										);
+									})}
+								</div>
+							</div>
+
 							<div className='flex gap-3 justify-end pt-4'>
 								<Button
 									type='button'

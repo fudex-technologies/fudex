@@ -41,6 +41,7 @@ export const PAGES_DATA = {
     admin_dashboard_vendor_request_details_page: (id: string) => `/profile/admin-dashboard/vendor-requests/${id}`,
     admin_dashboard_settings_page: `/profile/admin-dashboard/settings`,
     admin_dashboard_settlements_page: `/profile/admin-dashboard/settlements`,
+    admin_dashboard_categories_page: `/profile/admin-dashboard/categories`,
 
     // operator dashboard pages
     operator_dashboard_page: `/profile/operator-dashboard`,

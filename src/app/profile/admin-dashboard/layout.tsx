@@ -15,6 +15,7 @@ import {
 	Store,
 	Users,
 	CreditCard,
+	Tag,
 } from 'lucide-react';
 import TabComponent from '@/components/TabComponent';
 import { useState, useEffect, useMemo } from 'react';
@@ -44,6 +45,8 @@ export default function AdminDashboardLayout({
 			const path = window.location.pathname;
 			if (path.includes('/settings')) {
 				setActiveTab('settings');
+			} else if (path.includes('/categories')) {
+				setActiveTab('categories');
 			} else if (path.includes('/settlements')) {
 				setActiveTab('settlements');
 			} else if (path.includes('/payouts')) {
@@ -136,6 +139,11 @@ export default function AdminDashboardLayout({
 							icon: <BsBicycle size={18} />,
 						},
 						{
+							id: 'categories',
+							label: 'Categories',
+							icon: <Tag size={18} />,
+						},
+						{
 							id: 'settings',
 							label: 'Settings',
 							icon: <Settings size={18} />,
@@ -161,6 +169,10 @@ export default function AdminDashboardLayout({
 							);
 						} else if (id === 'areas') {
 							router.push(PAGES_DATA.admin_dashboard_areas_page);
+						} else if (id === 'categories') {
+							router.push(
+								PAGES_DATA.admin_dashboard_categories_page,
+							);
 						} else if (id === 'vendors') {
 							router.push('/profile/admin-dashboard/vendors');
 						} else if (id === 'users') {

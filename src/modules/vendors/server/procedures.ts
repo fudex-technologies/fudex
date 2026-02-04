@@ -94,6 +94,7 @@ export const vendorRouter = createTRPCRouter({
             randomSeed: z.number().optional().default(0), // Added seed
             limit: z.number().min(1).max(100).default(20),
             cursor: z.number().default(0),
+            categorySlug: z.string().optional(),
         }))
         .query(async ({ ctx, input }) => {
             const limit = input.limit;
@@ -121,7 +122,7 @@ export const vendorRouter = createTRPCRouter({
 
                 // Build WHERE conditions with proper parameterization
                 const conditions: string[] = ['v."approvalStatus" = \'APPROVED\''];
-                
+
                 if (input.q) {
                     const searchParam = `%${input.q}%`;
                     params.push(searchParam);
@@ -159,6 +160,17 @@ export const vendorRouter = createTRPCRouter({
                 // Add random seed parameter
                 params.push(input.randomSeed.toString());
                 const randomSeedParam = paramIndex;
+
+                if (input.categorySlug) {
+                    params.push(input.categorySlug);
+                    conditions.push(`v.id IN (
+                        SELECT vc."vendorId" 
+                        FROM "VendorCategory" vc 
+                        JOIN "Category" c ON c.id = vc."categoryId" 
+                        WHERE c.slug = $${paramIndex}
+                    )`);
+                    paramIndex++;
+                }
 
                 // Raw SQL query with open/closed sorting AND randomized seed
                 // Sorting logic:
@@ -251,6 +263,15 @@ export const vendorRouter = createTRPCRouter({
                         input.ratingFilter === "3.5+" ? 3.5 :
                             input.ratingFilter === "4.0+" ? 4 :
                                 input.ratingFilter === "4.5+" ? 4.5 : 0
+                }
+                if (input.categorySlug) {
+                    where.vendorCategories = {
+                        some: {
+                            category: {
+                                slug: input.categorySlug
+                            }
+                        }
+                    }
                 }
             }
 
@@ -1713,9 +1734,10 @@ export const vendorRouter = createTRPCRouter({
             verificationToken: z.string(), // Email verification token
             address: z.string().optional(), // Business address
             areaId: z.string().optional(), // Area ID for delivery zone
+            categoryIds: z.array(z.string()).optional(), // Optional categories to link
         }))
         .mutation(async ({ ctx, input }) => {
-            const { userId, email, phone, firstName, lastName, businessName, businessDescription, address, areaId, verificationToken } = input;
+            const { userId, email, phone, firstName, lastName, businessName, businessDescription, address, areaId, verificationToken, categoryIds } = input;
 
             // Verify email token
             const payload = verifyVerificationToken(verificationToken);
@@ -1857,6 +1879,16 @@ export const vendorRouter = createTRPCRouter({
                     },
                     update: {}
                 });
+
+                // Link vendor to categories if provided
+                if (categoryIds && categoryIds.length > 0) {
+                    await tx.vendorCategory.createMany({
+                        data: categoryIds.map((categoryId) => ({
+                            vendorId: vendor.id,
+                            categoryId,
+                        })),
+                    });
+                }
 
                 return {
                     user,
