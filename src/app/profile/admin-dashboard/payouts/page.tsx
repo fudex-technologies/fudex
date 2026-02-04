@@ -31,7 +31,7 @@ export default function AdminPayoutsPage() {
 		setExpandedVendors((prev) =>
 			prev.includes(vendorId)
 				? prev.filter((id) => id !== vendorId)
-				: [...prev, vendorId]
+				: [...prev, vendorId],
 		);
 	};
 
@@ -39,17 +39,17 @@ export default function AdminPayoutsPage() {
 		setSelectedPayoutIds((prev) =>
 			prev.includes(payoutId)
 				? prev.filter((id) => id !== payoutId)
-				: [...prev, payoutId]
+				: [...prev, payoutId],
 		);
 	};
 
 	const toggleVendorSelection = (vendorId: string, payoutIds: string[]) => {
 		const allSelected = payoutIds.every((id) =>
-			selectedPayoutIds.includes(id)
+			selectedPayoutIds.includes(id),
 		);
 		if (allSelected) {
 			setSelectedPayoutIds((prev) =>
-				prev.filter((id) => !payoutIds.includes(id))
+				prev.filter((id) => !payoutIds.includes(id)),
 			);
 		} else {
 			setSelectedPayoutIds((prev) => [
@@ -66,7 +66,7 @@ export default function AdminPayoutsPage() {
 
 		if (
 			confirm(
-				`Are you sure you want to initiate ${selectedPayoutIds.length} transfers?`
+				`Are you sure you want to initiate ${selectedPayoutIds.length} transfers?`,
 			)
 		) {
 			initiateTransfers.mutate({ payoutIds: selectedPayoutIds });
@@ -123,10 +123,10 @@ export default function AdminPayoutsPage() {
 					pendingVendors?.map((v) => {
 						const vendorPayoutIds = v.payouts.map((p: any) => p.id);
 						const isAllSelected = vendorPayoutIds.every(
-							(id: string) => selectedPayoutIds.includes(id)
+							(id: string) => selectedPayoutIds.includes(id),
 						);
 						const isExpanded = expandedVendors.includes(
-							v.vendor.id
+							v.vendor.id,
 						);
 
 						return (
@@ -140,14 +140,14 @@ export default function AdminPayoutsPage() {
 											onCheckedChange={() =>
 												toggleVendorSelection(
 													v.vendor.id,
-													vendorPayoutIds
+													vendorPayoutIds,
 												)
 											}
 										/>
 										<div
 											onClick={() =>
 												toggleVendorExpansion(
-													v.vendor.id
+													v.vendor.id,
 												)
 											}
 											className='cursor-pointer'>
@@ -177,7 +177,7 @@ export default function AdminPayoutsPage() {
 											size='icon'
 											onClick={() =>
 												toggleVendorExpansion(
-													v.vendor.id
+													v.vendor.id,
 												)
 											}>
 											{isExpanded ? (
@@ -198,11 +198,11 @@ export default function AdminPayoutsPage() {
 												<div className='flex items-center gap-3 min-w-[300px]'>
 													<Checkbox
 														checked={selectedPayoutIds.includes(
-															p.id
+															p.id,
 														)}
 														onCheckedChange={() =>
 															togglePayoutSelection(
-																p.id
+																p.id,
 															)
 														}
 													/>
@@ -211,24 +211,31 @@ export default function AdminPayoutsPage() {
 															Order #
 															{p.order.id.substring(
 																0,
-																8
+																8,
 															)}
 														</p>
 														<p className='text-xs text-muted-foreground'>
 															{new Date(
-																p.order.createdAt
+																p.order
+																	.createdAt,
 															).toLocaleDateString()}{' '}
 															•{' '}
 															{new Date(
-																p.order.createdAt
+																p.order
+																	.createdAt,
 															).toLocaleTimeString()}
+														</p>
+														<p className='text-xs font-medium text-foreground/80 mt-1'>
+															{p.order.user
+																?.name ||
+																'Unknown Customer'}
 														</p>
 													</div>
 												</div>
 												<div className='text-right'>
 													<p className='text-sm font-bold'>
 														{formatCurency(
-															p.amount
+															p.amount,
 														)}
 													</p>
 													<p className='text-[10px] text-muted-foreground'>

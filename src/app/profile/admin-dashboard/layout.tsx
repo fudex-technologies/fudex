@@ -14,6 +14,7 @@ import {
 	LayoutDashboard,
 	Store,
 	Users,
+	CreditCard,
 } from 'lucide-react';
 import TabComponent from '@/components/TabComponent';
 import { useState, useEffect, useMemo } from 'react';
@@ -47,6 +48,8 @@ export default function AdminDashboardLayout({
 				setActiveTab('settlements');
 			} else if (path.includes('/payouts')) {
 				setActiveTab('payouts');
+			} else if (path.includes('/payments')) {
+				setActiveTab('payments');
 			} else if (path.includes('/vendor-requests')) {
 				setActiveTab('requests');
 			} else if (path.includes('/users')) {
@@ -123,6 +126,11 @@ export default function AdminDashboardLayout({
 							icon: <Landmark size={18} />,
 						},
 						{
+							id: 'payments',
+							label: 'Payments',
+							icon: <CreditCard size={18} />,
+						},
+						{
 							id: 'settlements',
 							label: 'Delivery Settlements',
 							icon: <BsBicycle size={18} />,
@@ -141,6 +149,8 @@ export default function AdminDashboardLayout({
 							);
 						} else if (id === 'payouts') {
 							router.push('/profile/admin-dashboard/payouts');
+						} else if (id === 'payments') {
+							router.push('/profile/admin-dashboard/payments');
 						} else if (id === 'requests') {
 							router.push(
 								PAGES_DATA.admin_dashboard_vendor_requests_page,

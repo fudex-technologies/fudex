@@ -41,8 +41,27 @@ export async function handlePaymentCompletion(paymentId: string) {
 		if (payment.order.status !== "PAID") {
 			await tx.order.update({
 				where: { id: payment.orderId },
-				data: { status: "PAID" },
+				data: { status: "PAID", payoutStatus: "PENDING" },
 			});
+		}
+
+		// Create VendorPayout record if it doesn't exist (ensure payout data for all successful payments)
+		if (payment.order.vendorId) {
+			const existingPayout = await tx.vendorPayout.findUnique({
+				where: { orderId: payment.orderId }
+			});
+
+			if (!existingPayout) {
+				await tx.vendorPayout.create({
+					data: {
+						vendorId: payment.order.vendorId,
+						orderId: payment.orderId,
+						amount: payment.order.productAmount,
+						currency: payment.order.currency,
+						status: "PENDING"
+					}
+				});
+			}
 		}
 
 		// Send notifications if not already sent (idempotency check)
