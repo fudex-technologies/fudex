@@ -14,6 +14,8 @@ import {
 	LayoutDashboard,
 	Store,
 	Users,
+	CreditCard,
+	Tag,
 } from 'lucide-react';
 import TabComponent from '@/components/TabComponent';
 import { useState, useEffect, useMemo } from 'react';
@@ -43,10 +45,14 @@ export default function AdminDashboardLayout({
 			const path = window.location.pathname;
 			if (path.includes('/settings')) {
 				setActiveTab('settings');
+			} else if (path.includes('/categories')) {
+				setActiveTab('categories');
 			} else if (path.includes('/settlements')) {
 				setActiveTab('settlements');
 			} else if (path.includes('/payouts')) {
 				setActiveTab('payouts');
+			} else if (path.includes('/payments')) {
+				setActiveTab('payments');
 			} else if (path.includes('/vendor-requests')) {
 				setActiveTab('requests');
 			} else if (path.includes('/users')) {
@@ -123,9 +129,19 @@ export default function AdminDashboardLayout({
 							icon: <Landmark size={18} />,
 						},
 						{
+							id: 'payments',
+							label: 'Payments',
+							icon: <CreditCard size={18} />,
+						},
+						{
 							id: 'settlements',
 							label: 'Delivery Settlements',
 							icon: <BsBicycle size={18} />,
+						},
+						{
+							id: 'categories',
+							label: 'Categories',
+							icon: <Tag size={18} />,
 						},
 						{
 							id: 'settings',
@@ -141,6 +157,8 @@ export default function AdminDashboardLayout({
 							);
 						} else if (id === 'payouts') {
 							router.push('/profile/admin-dashboard/payouts');
+						} else if (id === 'payments') {
+							router.push('/profile/admin-dashboard/payments');
 						} else if (id === 'requests') {
 							router.push(
 								PAGES_DATA.admin_dashboard_vendor_requests_page,
@@ -151,6 +169,10 @@ export default function AdminDashboardLayout({
 							);
 						} else if (id === 'areas') {
 							router.push(PAGES_DATA.admin_dashboard_areas_page);
+						} else if (id === 'categories') {
+							router.push(
+								PAGES_DATA.admin_dashboard_categories_page,
+							);
 						} else if (id === 'vendors') {
 							router.push('/profile/admin-dashboard/vendors');
 						} else if (id === 'users') {

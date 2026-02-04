@@ -18,23 +18,23 @@ model User {
   lastName          String?
   phone             String?            @unique
   phoneVerified     Boolean            @default(false)
-  referralCode      String?            @unique // Unique code for sharing
+  referralCode      String?            @unique
   addresses         Address[]
   favoriteVendors   FavoriteVendor[]
   operator          Operator?
   orders            Order[]
   payments          Payment[]
   payoutBatches     PayoutBatch[]
+  pushSubscriptions PushSubscription[]
+  referredBy        Referral?          @relation("ReferredByReferrals")
+  referrals         Referral[]         @relation("ReferrerReferrals")
   reviews           Review[]
   roles             UserRole[]
-  vendors           Vendor[]           @relation("VendorOwner")
   approvedVendors   Vendor[]           @relation("VendorApprovedBy")
+  vendors           Vendor[]           @relation("VendorOwner")
+  vendorPayouts     VendorPayout[]
   accounts          Account[]
   sessions          Session[]
-  vendorPayouts     VendorPayout[]
-  referrals         Referral[]         @relation("ReferrerReferrals") // People I referred
-  referredBy        Referral?          @relation("ReferredByReferrals") // Who referred me
-  pushSubscriptions PushSubscription[]
 
   @@map("user")
 }
@@ -104,10 +104,10 @@ model Area {
   meta              Json?
   createdAt         DateTime           @default(now())
   addresses         Address[]
-  vendors           Vendor[]           @relation("AreaVendors") // Add relation name
-  riderRequestItems RiderRequestItem[]
   deliveryFees      DeliveryFeeRule[]
   operators         Operator[]
+  riderRequestItems RiderRequestItem[]
+  vendors           Vendor[]           @relation("AreaVendors")
 
   @@unique([name, state])
   @@index([state])
@@ -135,11 +135,10 @@ model RiderRequest {
   totalFee         Float              @default(0)
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
-
-  vendor        Vendor             @relation(fields: [vendorId], references: [id])
-  operator      Operator?          @relation(fields: [operatorId], references: [id])
-  assignedRider Rider?             @relation(fields: [assignedRiderId], references: [id])
-  items         RiderRequestItem[]
+  assignedRider    Rider?             @relation(fields: [assignedRiderId], references: [id])
+  operator         Operator?          @relation(fields: [operatorId], references: [id])
+  vendor           Vendor             @relation(fields: [vendorId], references: [id])
+  items            RiderRequestItem[]
 
   @@index([vendorId])
   @@index([status])
@@ -147,17 +146,16 @@ model RiderRequest {
 }
 
 model RiderRequestItem {
-  id              String   @id @default(uuid())
+  id              String       @id @default(uuid())
   riderRequestId  String
   customerName    String
   customerPhone   String
   customerAddress String
   areaId          String
   deliveryFee     Float
-  createdAt       DateTime @default(now())
-
-  riderRequest RiderRequest @relation(fields: [riderRequestId], references: [id], onDelete: Cascade)
-  area         Area         @relation(fields: [areaId], references: [id])
+  createdAt       DateTime     @default(now())
+  area            Area         @relation(fields: [areaId], references: [id])
+  riderRequest    RiderRequest @relation(fields: [riderRequestId], references: [id], onDelete: Cascade)
 
   @@index([riderRequestId])
   @@index([areaId])
@@ -197,7 +195,6 @@ model Rider {
 model Address {
   id         String   @id @default(uuid())
   userId     String
-  vendorId   String? // New field to link Address to Vendor
   label      String?
   line1      String
   line2      String?
@@ -211,58 +208,57 @@ model Address {
   createdAt  DateTime @default(now())
   areaId     String?
   customArea String?
+  vendorId   String?
   area       Area?    @relation(fields: [areaId], references: [id])
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  vendor     Vendor?  @relation(fields: [vendorId], references: [id]) // New relation to Vendor
+  vendor     Vendor?  @relation(fields: [vendorId], references: [id])
   orders     Order[]
 
   @@index([userId])
-  @@index([vendorId]) // Index for vendorId
+  @@index([vendorId])
 }
 
 model Vendor {
-  id                 String                   @id @default(uuid())
-  ownerId            String?
-  name               String
-  slug               String                   @unique
-  description        String?
-  phone              String?
-  email              String?
-  coverImage         String?
-  createdAt          DateTime                 @default(now())
-  reviewsAverage     Float                    @default(0)
-  reviewsCount       Int                      @default(0)
-  bankAccountNumber  String?
-  bankCode           String?
-  bankName           String?
-  bankAccountName    String?
-  payoutEnabled      Boolean                  @default(false)
-  paystackRecipient  String?
-  availabilityStatus VendorAvailabilityStatus @default(AUTO)
-  favoritedBy        FavoriteVendor[]
-  orders             Order[]
-  products           Product[]
-  productItems       ProductItem[]
-  reviews            Review[]
-  owner              User?                    @relation("VendorOwner", fields: [ownerId], references: [id])
-  vendorCategories   VendorCategory[]
-  openingHours       VendorOpeningHour[]
-  vendorPayouts      VendorPayout[]
-  areaId             String? // Add missing areaId field
-  area               Area?                    @relation("AreaVendors", fields: [areaId], references: [id]) // Add relation name
-  riderRequests      RiderRequest[]
-
-  // Approval workflow fields
-  approvalStatus        VendorApprovalStatus         @default(PENDING)
+  id                    String                       @id @default(uuid())
+  ownerId               String?
+  name                  String
+  slug                  String                       @unique
+  description           String?
+  phone                 String?
+  email                 String?
+  coverImage            String?
+  createdAt             DateTime                     @default(now())
+  reviewsAverage        Float                        @default(0)
+  reviewsCount          Int                          @default(0)
+  bankAccountNumber     String?
+  bankCode              String?
+  bankName              String?
+  payoutEnabled         Boolean                      @default(false)
+  paystackRecipient     String?
+  availabilityStatus    VendorAvailabilityStatus     @default(AUTO)
   approvalDate          DateTime?
+  approvalStatus        VendorApprovalStatus         @default(PENDING)
   approvedById          String?
-  approvedBy            User?                        @relation("VendorApprovedBy", fields: [approvedById], references: [id])
   declineReason         String?
-  verificationDocuments String[]                     @default([]) // Deprecated in favor of documents relation
-  documents             VendorVerificationDocument[]
-  submittedForApproval  Boolean                      @default(false)
   submittedAt           DateTime?
-  addresses             Address[] // New relation to Address
+  submittedForApproval  Boolean                      @default(false)
+  verificationDocuments String[]                     @default([])
+  areaId                String?
+  bankAccountName       String?
+  addresses             Address[]
+  favoritedBy           FavoriteVendor[]
+  orders                Order[]
+  products              Product[]
+  productItems          ProductItem[]
+  reviews               Review[]
+  riderRequests         RiderRequest[]
+  approvedBy            User?                        @relation("VendorApprovedBy", fields: [approvedById], references: [id])
+  area                  Area?                        @relation("AreaVendors", fields: [areaId], references: [id])
+  owner                 User?                        @relation("VendorOwner", fields: [ownerId], references: [id])
+  vendorCategories      VendorCategory[]
+  openingHours          VendorOpeningHour[]
+  vendorPayouts         VendorPayout[]
+  documents             VendorVerificationDocument[]
 
   @@index([name])
   @@index([areaId])
@@ -334,17 +330,12 @@ model ProductItem {
   isActive        Boolean               @default(true)
   createdAt       DateTime              @default(now())
   inStock         Boolean               @default(true)
-  
-  // NEW FIELDS FOR FLEXIBLE QUANTITY
-  pricingType     PricingType           @default(FIXED)
-  unitName        String?               // "scoop", "wrap", "piece", "kg"
+  maxQuantity     Int?
   minQuantity     Int                   @default(1)
-  maxQuantity     Int?                  // optional limit
-  quantityStep    Int                   @default(1) // for items sold in multiples
-  
-  // Packaging fee (only applicable for PER_UNIT items)
-  packagingFee    Float?                // Fee per pack (e.g., ₦200 per container)
-  
+  pricingType     PricingType           @default(FIXED)
+  quantityStep    Int                   @default(1)
+  unitName        String?
+  packagingFee    Float?
   orderItems      OrderItem[]
   orderItemAddons OrderItemAddon[]
   product         Product?              @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -470,25 +461,22 @@ model OrderItemAddon {
 }
 
 model Payment {
-  id          String        @id @default(uuid())
-  orderId     String        @unique
-  userId      String
-  amount      Float
-  currency    String        @default("NGN")
-  provider    String        @default("paystack")
-  providerRef String
-  status      PaymentStatus @default(PENDING)
-  paidAt      DateTime?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @default(now()) @updatedAt
-  metadata    Json?
-  
-  // Track if notifications have been sent to prevent duplicates
-  notificationsSent     Boolean   @default(false)
-  notificationsSentAt   DateTime?
-  
-  order       Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  user        User          @relation(fields: [userId], references: [id])
+  id                  String        @id @default(uuid())
+  orderId             String        @unique
+  userId              String
+  amount              Float
+  currency            String        @default("NGN")
+  provider            String        @default("paystack")
+  providerRef         String
+  status              PaymentStatus @default(PENDING)
+  paidAt              DateTime?
+  createdAt           DateTime      @default(now())
+  metadata            Json?
+  notificationsSent   Boolean       @default(false)
+  notificationsSentAt DateTime?
+  updatedAt           DateTime      @default(now()) @updatedAt
+  order               Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user                User          @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([providerRef])
@@ -507,11 +495,11 @@ model VendorPayout {
   initiatedAt  DateTime             @default(now())
   completedAt  DateTime?
   batchId      String?
+  userId       String?
   batch        PayoutBatch?         @relation(fields: [batchId], references: [id])
   order        Order                @relation(fields: [orderId], references: [id])
-  vendor       Vendor               @relation(fields: [vendorId], references: [id])
   user         User?                @relation(fields: [userId], references: [id])
-  userId       String?
+  vendor       Vendor               @relation(fields: [vendorId], references: [id])
 
   @@index([vendorId])
   @@index([status])
@@ -545,17 +533,15 @@ model PhoneVerification {
 
 model Referral {
   id             String         @id @default(uuid())
-  referrerUserId String // User who has the referral code
-  referredUserId String // User who signed up with code
-  referralCode   String // The code used
-  status         ReferralStatus @default(PENDING) // PENDING, CONFIRMED
-  confirmedAt    DateTime? // When referred user completed signup
+  referrerUserId String
+  referredUserId String         @unique
+  referralCode   String
+  status         ReferralStatus @default(PENDING)
+  confirmedAt    DateTime?
   createdAt      DateTime       @default(now())
+  referred       User           @relation("ReferredByReferrals", fields: [referredUserId], references: [id], onDelete: Cascade)
+  referrer       User           @relation("ReferrerReferrals", fields: [referrerUserId], references: [id], onDelete: Cascade)
 
-  referrer User @relation("ReferrerReferrals", fields: [referrerUserId], references: [id], onDelete: Cascade)
-  referred User @relation("ReferredByReferrals", fields: [referredUserId], references: [id], onDelete: Cascade)
-
-  @@unique([referredUserId]) // One user can only be referred by one person
   @@index([referralCode])
   @@index([referrerUserId])
   @@index([status])
@@ -628,13 +614,13 @@ enum PayoutTransferStatus {
 }
 
 enum DayOfWeek {
+  SUNDAY
   MONDAY
   TUESDAY
   WEDNESDAY
   THURSDAY
   FRIDAY
   SATURDAY
-  SUNDAY
 }
 
 enum VendorApprovalStatus {
@@ -670,8 +656,7 @@ enum SettlementStatus {
   SETTLED
 }
 
-
 enum PricingType {
-  FIXED       // Traditional: price is for the whole item
-  PER_UNIT    // New: price is per unit (scoop, wrap, etc.)
+  FIXED
+  PER_UNIT
 }

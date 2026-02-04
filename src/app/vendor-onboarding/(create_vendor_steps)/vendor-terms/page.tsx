@@ -58,6 +58,7 @@ export default function VendorOnboardingVendorTermsPage() {
 				verificationToken: tokenRaw,
 				address: location.businessAddress,
 				areaId: location.areaId,
+				categoryIds: details.categoryIds || [],
 			});
 		} catch (e) {
 			console.error('Finalization error:', e);

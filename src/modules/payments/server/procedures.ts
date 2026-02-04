@@ -1,4 +1,4 @@
-import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
+import { createTRPCRouter, protectedProcedure, adminProcedure } from "@/trpc/init";
 import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -8,6 +8,8 @@ import {
 import { sendOperatorNewOrderEmail, sendVendorNewOrderEmail } from "@/lib/email";
 import { NotificationService } from "@/modules/notifications/server/service";
 import { PAGES_DATA } from "@/data/pagesData";
+import prisma from "@/lib/prisma";
+import { handlePaymentCompletion } from "@/lib/payment-completion";
 
 export const paymentRouter = createTRPCRouter({
 	// Create a payment record for an order and initialize Paystack transaction
@@ -59,18 +61,21 @@ export const paymentRouter = createTRPCRouter({
 						);
 
 						if (verification.status && verification.data.status === "success") {
-							// It WAS paid! Update DB and don't create new one.
-							await ctx.prisma.payment.update({
-								where: { id: order.payment.id },
-								data: {
-									status: "COMPLETED",
-									paidAt: new Date(verification.data.paid_at || new Date()),
-								},
-							});
+							// It WAS paid! Update DB, send notifications, and don't create new one.
+							// Update paidAt if not already set
+							if (!order.payment.paidAt) {
+								await ctx.prisma.payment.update({
+									where: { id: order.payment.id },
+									data: {
+										paidAt: new Date(verification.data.paid_at || new Date()),
+									},
+								});
+							}
 
-							await ctx.prisma.order.update({
-								where: { id: order.id },
-								data: { status: "PAID" },
+							// Handle payment completion (updates status and sends notifications if needed)
+							await handlePaymentCompletion(order.payment.id).catch((error) => {
+								console.error('[Payment] Error handling payment completion in createPayment:', error);
+								// Don't throw - payment is already completed, just notification might have failed
 							});
 
 							// Notify user it's already paid
@@ -233,25 +238,32 @@ export const paymentRouter = createTRPCRouter({
 				paymentStatus = "FAILED";
 			}
 
-			// Update payment record
-			const updatedPayment = await ctx.prisma.payment.update({
-				where: { id: payment.id },
-				data: {
-					status: paymentStatus,
-					paidAt:
-						paystackData.paid_at || paystackData.paidAt
+			// Update payment record with paidAt if completed
+			if (paymentStatus === "COMPLETED" && !payment.paidAt) {
+				await ctx.prisma.payment.update({
+					where: { id: payment.id },
+					data: {
+						paidAt: paystackData.paid_at || paystackData.paidAt
 							? new Date(paystackData.paid_at || paystackData.paidAt || "")
-							: paymentStatus === "COMPLETED"
-								? new Date()
-								: null,
-				},
-			});
+							: new Date(),
+					},
+				});
+			}
 
-			// Update order status if payment is completed
-			if (paymentStatus === "COMPLETED") {
-				await ctx.prisma.order.update({
-					where: { id: payment.orderId },
-					data: { status: "PAID" },
+			// Update payment status if not already completed
+			if (paymentStatus === "COMPLETED" && payment.status !== "COMPLETED") {
+				await ctx.prisma.payment.update({
+					where: { id: payment.id },
+					data: {
+						status: "COMPLETED",
+					},
+				});
+			} else if (paymentStatus === "FAILED" && payment.status !== "FAILED") {
+				await ctx.prisma.payment.update({
+					where: { id: payment.id },
+					data: {
+						status: "FAILED",
+					},
 				});
 
 				// SECURITY: Only send notifications if not already sent (idempotency)
@@ -352,12 +364,29 @@ export const paymentRouter = createTRPCRouter({
 				}
 			}
 
+			// Handle payment completion (updates order status and sends notifications if needed)
+			let alreadyCompleted = false;
+			if (paymentStatus === "COMPLETED") {
+				try {
+					const result = await handlePaymentCompletion(payment.id);
+					alreadyCompleted = result.alreadyCompleted;
+				} catch (error) {
+					console.error('[Payment] Error handling payment completion:', error);
+					// Don't throw - payment is verified, just notification might have failed
+				}
+			}
+
+			// Re-fetch updated payment
+			const updatedPayment = await ctx.prisma.payment.findUnique({
+				where: { id: payment.id },
+			});
+
 			return {
 				payment: updatedPayment,
 				verified: paymentStatus === "COMPLETED",
 				paystackData,
 				// Indicate if this was a duplicate verification
-				alreadyVerified: payment.notificationsSent && paymentStatus === "COMPLETED",
+				alreadyVerified: alreadyCompleted || (payment.notificationsSent && paymentStatus === "COMPLETED"),
 			};
 		}),
 
@@ -388,5 +417,48 @@ export const paymentRouter = createTRPCRouter({
 				order,
 				payment: order.payment,
 			};
+		}),
+
+	getAllPayments: adminProcedure
+		.input(z.object({
+			skip: z.number().default(0),
+			take: z.number().default(50),
+			status: z.enum(["PENDING", "COMPLETED", "FAILED", "REFUNDED"]).optional(),
+			search: z.string().optional()
+		}))
+		.query(async ({ ctx, input }) => {
+			const where: any = {};
+			if (input.status) {
+				where.status = input.status;
+			}
+			if (input.search) {
+				where.OR = [
+					{ providerRef: { contains: input.search, mode: 'insensitive' } },
+					{ user: { email: { contains: input.search, mode: 'insensitive' } } },
+					{ orderId: { contains: input.search, mode: 'insensitive' } }
+				];
+			}
+
+			const payments = await ctx.prisma.payment.findMany({
+				where,
+				skip: input.skip,
+				take: input.take,
+				orderBy: { createdAt: 'desc' },
+				include: {
+					user: { select: { id: true, name: true, email: true } },
+					order: {
+						select: {
+							id: true,
+							totalAmount: true,
+							currency: true,
+							vendor: { select: { name: true } }
+						}
+					}
+				}
+			});
+
+			const total = await ctx.prisma.payment.count({ where });
+
+			return { payments, total };
 		}),
 });
