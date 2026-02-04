@@ -9,7 +9,12 @@ export const payoutRouter = createTRPCRouter({
     getPendingPayouts: adminProcedure
         .query(async ({ ctx }) => {
             const pendingPayouts = await ctx.prisma.vendorPayout.findMany({
-                where: { status: "PENDING" },
+                where: {
+                    status: "PENDING",
+                    order: {
+                        status: { notIn: ["CANCELLED"] }
+                    }
+                },
                 include: {
                     vendor: {
                         select: {
@@ -26,6 +31,13 @@ export const payoutRouter = createTRPCRouter({
                             totalAmount: true,
                             productAmount: true,
                             createdAt: true,
+                            user: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    email: true
+                                }
+                            }
                         }
                     }
                 },
@@ -149,6 +161,7 @@ export const payoutRouter = createTRPCRouter({
                             createdAt: true,
                             totalAmount: true,
                             productAmount: true,
+                            user: { select: { name: true } }
                         }
                     }
                 },

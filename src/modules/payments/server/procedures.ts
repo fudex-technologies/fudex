@@ -1,4 +1,4 @@
-import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
+import { createTRPCRouter, protectedProcedure, adminProcedure } from "@/trpc/init";
 import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -60,26 +60,26 @@ export const paymentRouter = createTRPCRouter({
 							order.payment.providerRef
 						);
 
-					if (verification.status && verification.data.status === "success") {
-						// It WAS paid! Update DB, send notifications, and don't create new one.
-						// Update paidAt if not already set
-						if (!order.payment.paidAt) {
-							await ctx.prisma.payment.update({
-								where: { id: order.payment.id },
-								data: {
-									paidAt: new Date(verification.data.paid_at || new Date()),
-								},
+						if (verification.status && verification.data.status === "success") {
+							// It WAS paid! Update DB, send notifications, and don't create new one.
+							// Update paidAt if not already set
+							if (!order.payment.paidAt) {
+								await ctx.prisma.payment.update({
+									where: { id: order.payment.id },
+									data: {
+										paidAt: new Date(verification.data.paid_at || new Date()),
+									},
+								});
+							}
+
+							// Handle payment completion (updates status and sends notifications if needed)
+							await handlePaymentCompletion(order.payment.id).catch((error) => {
+								console.error('[Payment] Error handling payment completion in createPayment:', error);
+								// Don't throw - payment is already completed, just notification might have failed
 							});
-						}
 
-						// Handle payment completion (updates status and sends notifications if needed)
-						await handlePaymentCompletion(order.payment.id).catch((error) => {
-							console.error('[Payment] Error handling payment completion in createPayment:', error);
-							// Don't throw - payment is already completed, just notification might have failed
-						});
-
-						// Notify user it's already paid
-						throw new Error("Payment already completed for this order");
+							// Notify user it's already paid
+							throw new Error("Payment already completed for this order");
 						} else {
 							// Not paid on Paystack (or abandoned/failed there).
 							// The old reference is likely dead or the user wants a fresh start.
@@ -320,5 +320,48 @@ export const paymentRouter = createTRPCRouter({
 				order,
 				payment: order.payment,
 			};
+		}),
+
+	getAllPayments: adminProcedure
+		.input(z.object({
+			skip: z.number().default(0),
+			take: z.number().default(50),
+			status: z.enum(["PENDING", "COMPLETED", "FAILED", "REFUNDED"]).optional(),
+			search: z.string().optional()
+		}))
+		.query(async ({ ctx, input }) => {
+			const where: any = {};
+			if (input.status) {
+				where.status = input.status;
+			}
+			if (input.search) {
+				where.OR = [
+					{ providerRef: { contains: input.search, mode: 'insensitive' } },
+					{ user: { email: { contains: input.search, mode: 'insensitive' } } },
+					{ orderId: { contains: input.search, mode: 'insensitive' } }
+				];
+			}
+
+			const payments = await ctx.prisma.payment.findMany({
+				where,
+				skip: input.skip,
+				take: input.take,
+				orderBy: { createdAt: 'desc' },
+				include: {
+					user: { select: { id: true, name: true, email: true } },
+					order: {
+						select: {
+							id: true,
+							totalAmount: true,
+							currency: true,
+							vendor: { select: { name: true } }
+						}
+					}
+				}
+			});
+
+			const total = await ctx.prisma.payment.count({ where });
+
+			return { payments, total };
 		}),
 });

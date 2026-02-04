@@ -550,7 +550,16 @@ export const adminRouter = createTRPCRouter({
 
             const orders = await ctx.prisma.order.findMany({
                 where: { createdAt: { gte: startDate } },
-                select: { createdAt: true, totalAmount: true, status: true },
+                select: {
+                    createdAt: true,
+                    totalAmount: true,
+                    status: true,
+                    payment: {
+                        select: {
+                            status: true
+                        }
+                    }
+                },
                 orderBy: { createdAt: "asc" }
             });
 
@@ -575,7 +584,8 @@ export const adminRouter = createTRPCRouter({
                     chartData[key] = { date: key, orders: 0, revenue: 0 };
                 }
                 chartData[key].orders++;
-                if (order.status !== "CANCELLED") {
+                // Only count revenue for COMPLETED payments
+                if (order.status !== "CANCELLED" && order.payment?.status === "COMPLETED") {
                     chartData[key].revenue += order.totalAmount;
                 }
             });
@@ -599,7 +609,11 @@ export const adminRouter = createTRPCRouter({
             const vendorsWithRevenue = await Promise.all(vendors.map(async (v) => {
                 const revenue = await ctx.prisma.order.aggregate({
                     _sum: { totalAmount: true },
-                    where: { vendorId: v.id, status: { not: "CANCELLED" } }
+                    where: {
+                        vendorId: v.id,
+                        status: { not: "CANCELLED" },
+                        payment: { status: "COMPLETED" }
+                    }
                 });
                 return {
                     ...v,
