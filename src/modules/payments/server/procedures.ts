@@ -265,6 +265,103 @@ export const paymentRouter = createTRPCRouter({
 						status: "FAILED",
 					},
 				});
+
+				// SECURITY: Only send notifications if not already sent (idempotency)
+				if (!payment.notificationsSent) {
+					const vendorId = payment?.order?.vendorId
+					const orderId = payment?.orderId
+					// Notify Vendor
+					if (vendorId && orderId) {
+						const vendor = await ctx.prisma.vendor.findUnique({
+							where: { id: vendorId },
+							select: {
+								name: true,
+								owner: {
+									select: {
+										id: true,
+										email: true
+									}
+								}
+							}
+						});
+
+						if (vendor?.owner) {
+							// 1. Notify Vendor (Push)
+							NotificationService.sendToUser(vendor.owner.id, {
+								title: 'New Order Received! 🛍️',
+								body: `You have a new order (#${orderId.slice(0, 8)}) worth ${payment.order?.currency} ${payment.order?.productAmount.toFixed(2)}.`,
+								url: PAGES_DATA.vendor_dashboard_new_orders_page,
+							}).catch(console.error);
+
+							// 2. Notify Vendor (Email)
+							if (vendor.owner.email && payment.order) {
+								sendVendorNewOrderEmail(
+									vendor.owner.email,
+									vendor.name,
+									orderId,
+									payment.order.productAmount,
+									payment.order.currency,
+									'orders@fudex.ng'
+								).catch(console.error);
+							}
+						}
+
+						// 3. Notify Operators (Push)
+						NotificationService.sendToRole('OPERATOR', {
+							title: 'New Order Paid! 💰',
+							body: `Order #${orderId.slice(0, 8)} has been paid and is ready for processing.`,
+							url: PAGES_DATA.operator_dashboard_orders_page // Correct page for operators
+						}).catch(console.error);
+
+						// 4. Notify Operators (Email)
+						const operators = await ctx.prisma.user.findMany({
+							where: {
+								roles: {
+									some: {
+										role: "OPERATOR"
+									}
+								}
+							},
+							select: { email: true }
+						});
+						const operatorEmails = operators.map(op => op.email).filter((email): email is string => !!email);
+
+						if (operatorEmails.length > 0) {
+							const customer = await ctx.prisma.user.findUnique({
+								where: { id: payment.userId }
+							});
+							const customerAddress = await ctx.prisma.address.findUnique(
+								{ where: { id: payment.order.addressId! } }
+							);
+							const vendor = await ctx.prisma.vendor.findUnique(
+								{ where: { id: vendorId }, include: { addresses: true } }
+							);
+
+							if (customer && customerAddress && vendor) {
+								sendOperatorNewOrderEmail(
+									operatorEmails,
+									vendor.name,
+									`${vendor.addresses?.[0]?.line1}, ${vendor.addresses?.[0]?.city}, ${vendor.addresses?.[0]?.state}`,
+									`${customer.firstName} ${customer.lastName}`,
+									`${customerAddress.line1}, ${customerAddress.city}, ${customerAddress.state}`,
+									orderId,
+									payment.amount,
+									payment.currency,
+									'orders@fudex.ng'
+								).catch(console.error);
+							}
+						}
+					}
+
+					// Mark notifications as sent
+					await ctx.prisma.payment.update({
+						where: { id: payment.id },
+						data: {
+							notificationsSent: true,
+							notificationsSentAt: new Date(),
+						},
+					});
+				}
 			}
 
 			// Handle payment completion (updates order status and sends notifications if needed)
