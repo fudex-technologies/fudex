@@ -148,7 +148,7 @@ export default function ReferralPage() {
 
 					<div className='w-full'>
 						<p className='text-lg text-gray-500'>Referrals</p>
-						<div className='w-full flex gap-5 items-end'>
+						<div className='w-full flex gap-5 items-end mb-6'>
 							<div className='relative flex-1 flex rounded-full h-7 overflow-hidden bg-foreground/10 items-center justify-center'>
 								<div
 									className={cn(
@@ -167,6 +167,69 @@ export default function ReferralPage() {
 								src={'/assets/gift.png'}
 								className='w-[34px]'
 							/>
+						</div>
+
+						{/* Referral List */}
+						<div className='space-y-4'>
+							{referralData?.referrals &&
+							referralData.referrals.length > 0 ? (
+								<div className='rounded-xl border bg-card overflow-hidden'>
+									<div className='divide-y'>
+										{referralData.referrals.map(
+											(referral: any) => (
+												<div
+													key={referral.id}
+													className='p-4 flex items-center justify-between'>
+													<div>
+														<p className='font-semibold'>
+															{referral.userName ||
+																'Unknown User'}
+														</p>
+														<p className='text-xs text-muted-foreground'>
+															Joined{' '}
+															{new Date(
+																referral.createdAt,
+															).toLocaleDateString()}
+														</p>
+													</div>
+													<div className='flex flex-col items-end gap-1'>
+														<span
+															className={cn(
+																'px-2 py-0.5 rounded-full text-xs font-medium',
+																referral.status ===
+																	'CONFIRMED'
+																	? 'bg-green-500/10 text-green-600'
+																	: 'bg-yellow-500/10 text-yellow-600',
+															)}>
+															{referral.status ===
+															'CONFIRMED'
+																? 'Confirmed'
+																: 'Pending'}
+														</span>
+														{referral.status ===
+															'PENDING' && (
+															<span className='text-[10px] text-muted-foreground'>
+																Needs to
+																complete signup
+															</span>
+														)}
+													</div>
+												</div>
+											),
+										)}
+									</div>
+								</div>
+							) : (
+								<div className='text-center py-10 border rounded-xl border-dashed bg-muted/30'>
+									<p className='text-muted-foreground mb-2'>
+										No referrals yet
+									</p>
+									<p className='text-xs text-muted-foreground max-w-xs mx-auto'>
+										Share your code with friends to start
+										earning rewards!
+									</p>
+								</div>
+							)}
 						</div>
 					</div>
 				</div>
