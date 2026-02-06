@@ -1,11 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import {
-	animate,
-	motion,
-	useMotionValue,
-} from 'motion/react';
+import { animate, motion, useMotionValue } from 'motion/react';
 import React, { useEffect, useRef, useState } from 'react';
 
 interface PromoCarouselProps {
@@ -18,7 +14,7 @@ interface PromoCarouselProps {
 export const PromoCarousel = ({
 	children,
 	className,
-	interval = 5000,
+	interval = 7000,
 	gap = 20,
 }: PromoCarouselProps) => {
 	const [isOverflowing, setIsOverflowing] = useState(false);
@@ -104,7 +100,9 @@ export const PromoCarousel = ({
 	}, [idx, isOverflowing, itemWidth, gap, childrenCount]);
 
 	return (
-		<div ref={containerRef} className={cn('w-full overflow-x-hidden px-4', className)}>
+		<div
+			ref={containerRef}
+			className={cn('w-full overflow-x-hidden px-4', className)}>
 			{!isOverflowing ? (
 				// Centered Static Layout
 				<div
