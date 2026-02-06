@@ -23,6 +23,7 @@ export const orderRouter = createTRPCRouter({
                     })
                 ),
                 notes: z.string().optional(),
+                deliveryType: z.enum(["DELIVERY", "PICKUP"]).optional().default("DELIVERY"),
             })
         )
         .mutation(async ({ ctx, input }) => {
@@ -136,7 +137,7 @@ export const orderRouter = createTRPCRouter({
             const orderPromoInitiated = successfulOrdersCount === 3;
             const referralPromoInitiated = confirmedReferredCount === 5;
 
-            if (orderPromoInitiated || referralPromoInitiated) {
+            if (orderPromoInitiated || referralPromoInitiated || input.deliveryType === "PICKUP") {
                 deliveryFee = 0;
             }
 
@@ -202,7 +203,8 @@ export const orderRouter = createTRPCRouter({
                         serviceFee,
                         currency: "NGN",
                         notes: input.notes,
-                        productAmount: orderSubTotal
+                        productAmount: orderSubTotal,
+                        deliveryType: input.deliveryType
                     },
                 });
 

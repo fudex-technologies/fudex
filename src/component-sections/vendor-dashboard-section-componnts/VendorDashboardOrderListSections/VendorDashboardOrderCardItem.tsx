@@ -33,7 +33,6 @@ const VendorDashboardOrderCardItem = ({
 	const handleUpdateStatus = (newStatus: OrderStatus) => {
 		updateStatusMutation.mutate({ id: order.id, status: newStatus });
 	};
-	
 
 	// Group items into packs based on groupKey
 	const packs = useMemo(() => {
@@ -45,7 +44,7 @@ const VendorDashboardOrderCardItem = ({
 				price: it.unitPrice,
 				pricingType: it.productItem?.pricingType,
 				unitName: it.productItem?.unitName,
-				parentProduct: it.productItem?.product
+				parentProduct: it.productItem?.product,
 			},
 			addons: (it.addons || []).map((a: any) => ({
 				addonProductItemId: a.addonProductItemId,
@@ -117,6 +116,11 @@ const VendorDashboardOrderCardItem = ({
 						{status === 'CANCELLED' && (
 							<div className='text-xs px-2 w-fit h-fit py-1 bg-red-100 text-red-600 flex items-center justify-center rounded-full ml-auto'>
 								Cancelled
+							</div>
+						)}
+						{order.deliveryType === 'PICKUP' && (
+							<div className='text-xs px-2 w-fit h-fit py-1 bg-purple-100 text-purple-600 flex items-center justify-center rounded-full ml-auto'>
+								PICKUP
 							</div>
 						)}
 						{(status === 'ACCEPTED' ||
