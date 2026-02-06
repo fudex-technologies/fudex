@@ -127,7 +127,7 @@ const ThreeOrdersPromo = ({
 }) => {
 	return (
 		<div
-			className='noise-effect w-full max-w-md min-w-xs rounded-xl h-[170px] overflow-hidden flex items-center p-0'
+			className='noise-effect w-full max-w-sm min-w-xs rounded-xl h-[170px] overflow-hidden flex items-center p-0'
 			style={{
 				background:
 					'linear-gradient(230.521deg, #52AA24 37.752%, #2D5D14  58.068%)',

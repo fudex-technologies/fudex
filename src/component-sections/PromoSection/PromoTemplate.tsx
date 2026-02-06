@@ -23,7 +23,7 @@ const PromoTemplate = ({
 }) => {
 	return (
 		<div
-			className='blur-effect w-full max-w-md min-w-xs rounded-xl h-[170px] overflow-hidden flex items-center p-0 bg-center bg-cover'
+			className='blur-effect w-full max-w-sm min-w-xs rounded-xl h-[170px] overflow-hidden flex items-center p-0 bg-center bg-cover'
 			style={{
 				backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.312), rgba(0, 0, 0, 0.307)), url(${backgroundImagePath})`,
 			}}>
