@@ -322,29 +322,29 @@ model Product {
 }
 
 model ProductItem {
-  id              String                @id @default(uuid())
-  vendorId        String
-  productId       String?
-  name            String
-  slug            String                @unique
-  description     String?
-  price           Float
-  currency        String                @default("NGN")
-  images          String[]              @default([])
-  isActive        Boolean               @default(true)
-  createdAt       DateTime              @default(now())
-  inStock         Boolean               @default(true)
-  
+  id          String   @id @default(uuid())
+  vendorId    String
+  productId   String?
+  name        String
+  slug        String   @unique
+  description String?
+  price       Float
+  currency    String   @default("NGN")
+  images      String[] @default([])
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  inStock     Boolean  @default(true)
+
   // NEW FIELDS FOR FLEXIBLE QUANTITY
-  pricingType     PricingType           @default(FIXED)
-  unitName        String?               // "scoop", "wrap", "piece", "kg"
-  minQuantity     Int                   @default(1)
-  maxQuantity     Int?                  // optional limit
-  quantityStep    Int                   @default(1) // for items sold in multiples
-  
+  pricingType  PricingType @default(FIXED)
+  unitName     String? // "scoop", "wrap", "piece", "kg"
+  minQuantity  Int         @default(1)
+  maxQuantity  Int? // optional limit
+  quantityStep Int         @default(1) // for items sold in multiples
+
   // Packaging fee (only applicable for PER_UNIT items)
-  packagingFee    Float?                // Fee per pack (e.g., ₦200 per container)
-  
+  packagingFee Float? // Fee per pack (e.g., ₦200 per container)
+
   orderItems      OrderItem[]
   orderItemAddons OrderItemAddon[]
   product         Product?              @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -422,6 +422,7 @@ model Order {
   updatedAt       DateTime      @updatedAt
   deliveryFee     Float         @default(0)
   serviceFee      Float         @default(0)
+  deliveryType    DeliveryType  @default(DELIVERY)
   payoutStatus    PayoutStatus  @default(NOT_ELIGIBLE)
   platformFee     Float         @default(0)
   productAmount   Float         @default(0)
@@ -482,13 +483,13 @@ model Payment {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @default(now()) @updatedAt
   metadata    Json?
-  
+
   // Track if notifications have been sent to prevent duplicates
-  notificationsSent     Boolean   @default(false)
-  notificationsSentAt   DateTime?
-  
-  order       Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  user        User          @relation(fields: [userId], references: [id])
+  notificationsSent   Boolean   @default(false)
+  notificationsSentAt DateTime?
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([providerRef])
@@ -607,6 +608,11 @@ enum OrderStatus {
   OUT_FOR_DELIVERY
 }
 
+enum DeliveryType {
+  DELIVERY
+  PICKUP
+}
+
 enum PaymentStatus {
   PENDING
   COMPLETED
@@ -670,8 +676,7 @@ enum SettlementStatus {
   SETTLED
 }
 
-
 enum PricingType {
-  FIXED       // Traditional: price is for the whole item
-  PER_UNIT    // New: price is per unit (scoop, wrap, etc.)
+  FIXED // Traditional: price is for the whole item
+  PER_UNIT // New: price is per unit (scoop, wrap, etc.)
 }
