@@ -36,13 +36,24 @@ const PromoSection = () => {
 				<ValentineTemplate
 					slides={[
 						{
-							textLine1: 'Let your loved one open the door to a ',
+							textLine1: (
+								<>
+									{' '}
+									Let your loved one open the <br /> door to
+									a{' '}
+								</>
+							),
 							textLine2: 'beautiful surprise.',
 							image: '/assets/valentine1.png',
 						},
 						{
-							textLine1: 'Gift your special someone with ',
-							textLine2: 'something sweet.',
+							textLine1: (
+								<>
+									Show up for your loved ones, <br /> even
+									from afar.
+								</>
+							),
+							textLine2: 'Send them gifts.',
 							image: '/assets/valentine2.png',
 						},
 					]}
@@ -127,7 +138,7 @@ const ThreeOrdersPromo = ({
 }) => {
 	return (
 		<div
-			className='noise-effect w-full max-w-sm min-w-xs rounded-xl h-[170px] overflow-hidden flex items-center p-0'
+			className='noise-effect w-[95vw] sm:w-full min-w-xs max-w-sm rounded-xl h-[170px] overflow-hidden flex items-center p-0'
 			style={{
 				background:
 					'linear-gradient(230.521deg, #52AA24 37.752%, #2D5D14  58.068%)',

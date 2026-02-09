@@ -4,11 +4,11 @@ import { cn } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { JSX, useEffect, useState } from 'react';
 import { ClassNameValue } from 'tailwind-merge';
 
 interface PromoSlide {
-	textLine1: string;
+	textLine1: JSX.Element | string;
 	textLine2: string;
 	image: string;
 }
@@ -47,7 +47,7 @@ const ValentineTemplate = ({
 	return (
 		<div
 			className={cn(
-				'noise-effect w-full max-w-sm min-w-xs rounded-xl h-[170px] overflow-hidden flex items-center p-0 relative',
+				'noise-effect w-[95vw] sm:w-full min-w-xs max-w-sm rounded-xl h-[170px] overflow-hidden flex items-center p-0 relative',
 				className,
 			)}
 			style={{
@@ -69,10 +69,10 @@ const ValentineTemplate = ({
 			/>
 			<div
 				className={cn(
-					'flex-[1.2] p-5 flex flex-col gap-5 relative z-10',
+					'w-full p-5 pb-0 flex flex-col relative z-10 justify-end',
 					firstSectionClassName,
 				)}>
-				<div className='flex flex-col text-white w-full overflow-hidden h-[40px]'>
+				<div className='flex flex-col text-white w-full overflow-hidden h-10 '>
 					<AnimatePresence mode='wait'>
 						<motion.div
 							key={currentSlideIndex}
@@ -81,7 +81,7 @@ const ValentineTemplate = ({
 							exit={{ y: 50, opacity: 0 }}
 							transition={{ duration: 0.6, ease: 'easeOut' }}
 							className='w-full'>
-							<p className='text-sm sm:text-base leading-tight'>
+							<p className='leading-tight w-full'>
 								{currentSlide.textLine1}{' '}
 								<span className='text-white/50'>
 									{currentSlide.textLine2}
@@ -91,35 +91,38 @@ const ValentineTemplate = ({
 					</AnimatePresence>
 				</div>
 
-				<Link
-					href={link || '#'}
-					className={cn(
-						buttonVariants({
-							size: 'lg',
-						}),
-						'rounded-full bg-foreground text-background py-6 hover:bg-foreground/50 hover:text-background w-fit ',
-						buttonClassName,
-					)}>
-					{buttonLabel}
-				</Link>
-			</div>
-
-			<div className='h-full flex items-end justify-start relative overflow-hidden'>
-				<AnimatePresence mode='wait'>
-					<motion.div
-						key={currentSlideIndex}
-						initial={{ y: 100, opacity: 0 }}
-						animate={{ y: 0, opacity: 1 }}
-						exit={{ y: -100, opacity: 0 }}
-						transition={{ duration: 0.6, ease: 'easeOut' }}
-						className='w-full'>
-						<ImageWithFallback
-							src={currentSlide.image}
-							className='w-full h-auto object-top max-w-[200px] sm:max-w-none'
-							alt='promo'
-						/>
-					</motion.div>
-				</AnimatePresence>
+				<div className='w-full flex items-center'>
+					<Link
+						href={link || '#'}
+						className={cn(
+							buttonVariants({
+								size: 'lg',
+							}),
+							'rounded-full bg-foreground text-background py-6 hover:bg-foreground/50 hover:text-background w-fit ',
+							buttonClassName,
+						)}>
+						{buttonLabel}
+					</Link>
+					<div className='h-full flex items-end justify-start relative overflow-hidden'>
+						<AnimatePresence mode='wait'>
+							<motion.div
+								key={currentSlideIndex}
+								initial={{ y: 100, opacity: 0 }}
+								animate={{ y: 0, opacity: 1 }}
+								exit={{ y: -100, opacity: 0 }}
+								transition={{ duration: 0.6, ease: 'easeOut' }}
+								className='w-full'>
+								<Image
+									width={200}
+									height={100}
+									src={currentSlide.image}
+									className='w-full h-auto object-top max-w-[200px] sm:max-w-none'
+									alt='promo'
+								/>
+							</motion.div>
+						</AnimatePresence>
+					</div>
+				</div>
 			</div>
 		</div>
 	);
