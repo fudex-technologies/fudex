@@ -13,7 +13,9 @@ const PackagesCategoriesSection = ({
 	packageSlug: string;
 }) => {
 	const { useGetPackageBySlug } = usePackageActions();
-	const { data: packageData, isLoading } = useGetPackageBySlug({ slug: packageSlug });
+	const { data: packageData, isLoading } = useGetPackageBySlug({
+		slug: packageSlug,
+	});
 
 	if (isLoading) {
 		return (
@@ -32,7 +34,11 @@ const PackagesCategoriesSection = ({
 		);
 	}
 
-	if (!packageData || !packageData.categories || packageData.categories.length === 0) {
+	if (
+		!packageData ||
+		!packageData.categories ||
+		packageData.categories.length === 0
+	) {
 		return (
 			<div className='w-full p-5 text-center text-foreground/50'>
 				No categories available for this package.
@@ -43,21 +49,23 @@ const PackagesCategoriesSection = ({
 	// Flatten all package items for the bottom bar
 	const allPackageItems = useMemo(() => {
 		if (!packageData?.categories) return [];
-		
+
 		return packageData.categories.flatMap((category) =>
 			(category.items || []).map((item) => ({
 				id: item.id,
 				name: item.name,
 				price: item.price,
-			}))
+			})),
 		);
 	}, [packageData]);
 
 	return (
 		<>
 			{/* Initialize package cart with current package ID */}
-			{packageData?.id && <PackageCartInitializer packageId={packageData.id} />}
-			
+			{packageData?.id && (
+				<PackageCartInitializer packageId={packageData.id} />
+			)}
+
 			<div className='w-full space-y-5 pb-24'>
 				{packageData.categories.map((category) => {
 					// Transform package items to match the expected format
@@ -66,7 +74,10 @@ const PackagesCategoriesSection = ({
 						name: item.name,
 						description: item.description || '',
 						price: item.price.toString(),
-						imageUrl: item.images && item.images.length > 0 ? item.images[0] : '/assets/empty-tray.png',
+						imageUrl:
+							item.images && item.images.length > 0
+								? item.images[0]
+								: '/assets/empty-tray.png',
 						packageItem: item, // Include full item for future use
 					}));
 
@@ -85,7 +96,7 @@ const PackagesCategoriesSection = ({
 			<PackageCartBottomBar
 				packageSlug={packageSlug}
 				packageItemsData={allPackageItems}
-				isPreorder={packageData?.type === 'PREORDER'}
+				isPreorder={packageData?.isPreorder}
 			/>
 		</>
 	);
