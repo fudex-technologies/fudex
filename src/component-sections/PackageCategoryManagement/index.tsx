@@ -46,6 +46,17 @@ const categoryFormSchema = z.object({
 
 type CategoryFormValues = z.infer<typeof categoryFormSchema>;
 
+interface PackageCategory {
+	id: string;
+	name: string;
+	slug: string;
+	description?: string | null;
+	order: number;
+	_count?: {
+		items: number;
+	};
+}
+
 interface PackageCategoryManagementProps {
 	packageId: string;
 	onSuccess: () => void;
@@ -55,20 +66,25 @@ export default function PackageCategoryManagement({
 	packageId,
 	onSuccess,
 }: PackageCategoryManagementProps) {
-	const { useGetPackageById, createCategory, updateCategory, deleteCategory } =
-		usePackageAdminActions();
+	const {
+		useGetPackageById,
+		createCategory,
+		updateCategory,
+		deleteCategory,
+	} = usePackageAdminActions();
 
 	const { data: packageData, refetch } = useGetPackageById(
 		{ id: packageId },
-		{ enabled: !!packageId }
+		{ enabled: !!packageId },
 	);
 
-	const categories = packageData?.categories || [];
+	const categories = (packageData?.categories as PackageCategory[]) || [];
 
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-	const [editingCategory, setEditingCategory] = useState<any>(null);
+	const [editingCategory, setEditingCategory] =
+		useState<PackageCategory | null>(null);
 	const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(
-		null
+		null,
 	);
 
 	const createMutation = createCategory({
@@ -121,9 +137,9 @@ export default function PackageCategoryManagement({
 						slug: editingCategory.slug || '',
 						description: editingCategory.description || '',
 						order: editingCategory.order || 0,
-				  }
+					}
 				: undefined,
-		[editingCategory]
+		[editingCategory],
 	);
 
 	return (
@@ -169,11 +185,13 @@ export default function PackageCategoryManagement({
 						<div
 							key={category.id}
 							className={cn(
-								'p-4 border rounded-lg hover:border-primary/50 transition-colors'
+								'p-4 border rounded-lg hover:border-primary/50 transition-colors',
 							)}>
 							<div className='flex items-start justify-between mb-2'>
 								<div className='flex-1'>
-									<h4 className='font-semibold'>{category.name}</h4>
+									<h4 className='font-semibold'>
+										{category.name}
+									</h4>
 									<p className='text-xs text-muted-foreground'>
 										Slug: {category.slug}
 									</p>
@@ -191,14 +209,18 @@ export default function PackageCategoryManagement({
 										size='icon'
 										variant='ghost'
 										className='h-8 w-8'
-										onClick={() => setEditingCategory(category)}>
+										onClick={() =>
+											setEditingCategory(category)
+										}>
 										<Edit size={14} />
 									</Button>
 									<Button
 										size='icon'
 										variant='ghost'
 										className='h-8 w-8 text-destructive'
-										onClick={() => setDeletingCategoryId(category.id)}>
+										onClick={() =>
+											setDeletingCategoryId(category.id)
+										}>
 										<Trash2 size={14} />
 									</Button>
 								</div>
@@ -233,8 +255,9 @@ export default function PackageCategoryManagement({
 					<AlertDialogHeader>
 						<AlertDialogTitle>Delete Category</AlertDialogTitle>
 						<AlertDialogDescription>
-							Are you sure you want to delete this category? This action
-							cannot be undone and will delete all items in this category.
+							Are you sure you want to delete this category? This
+							action cannot be undone and will delete all items in
+							this category.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
@@ -269,7 +292,7 @@ function CategoryForm({
 	onCancel: () => void;
 }) {
 	const form = useForm<CategoryFormValues>({
-		resolver: zodResolver(categoryFormSchema),
+		resolver: zodResolver(categoryFormSchema) as any,
 		defaultValues: initialData || {
 			name: '',
 			slug: '',
@@ -278,9 +301,23 @@ function CategoryForm({
 		},
 	});
 
+	const name = form.watch('name');
+
+	useMemo(() => {
+		if (name && !initialData?.slug) {
+			const slug = name
+				.toLowerCase()
+				.replace(/[^a-z0-9]+/g, '-')
+				.replace(/(^-|-$)/g, '');
+			form.setValue('slug', slug, { shouldValidate: true });
+		}
+	}, [name, form, initialData?.slug]);
+
 	return (
-		<Form {...form}>
-			<form onSubmit={form.handleSubmit(onSubmit)} className='space-y-4'>
+		<Form {...(form as any)}>
+			<form
+				onSubmit={form.handleSubmit(onSubmit as any)}
+				className='space-y-4'>
 				<FormField
 					control={form.control}
 					name='name'
@@ -288,7 +325,10 @@ function CategoryForm({
 						<FormItem>
 							<FormLabel>Category Name</FormLabel>
 							<FormControl>
-								<Input placeholder='e.g., Love Spark' {...field} />
+								<Input
+									placeholder='e.g., Love Spark'
+									{...field}
+								/>
 							</FormControl>
 							<FormMessage />
 						</FormItem>
@@ -301,7 +341,10 @@ function CategoryForm({
 						<FormItem>
 							<FormLabel>Category Slug</FormLabel>
 							<FormControl>
-								<Input placeholder='e.g., love-spark' {...field} />
+								<Input
+									placeholder='e.g., love-spark'
+									{...field}
+								/>
 							</FormControl>
 							<FormMessage />
 						</FormItem>
@@ -334,7 +377,11 @@ function CategoryForm({
 								<Input
 									type='number'
 									{...field}
-									onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+									onChange={(e) =>
+										field.onChange(
+											parseInt(e.target.value) || 0,
+										)
+									}
 								/>
 							</FormControl>
 							<FormMessage />
@@ -357,4 +404,3 @@ function CategoryForm({
 		</Form>
 	);
 }
-
