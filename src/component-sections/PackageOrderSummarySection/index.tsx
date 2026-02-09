@@ -38,7 +38,7 @@ const PackageOrderSummarySection = ({
 	// Get all package item IDs
 	const packageItemIds = useMemo(
 		() => cartItems.map((item) => item.packageItemId),
-		[cartItems]
+		[cartItems],
 	);
 
 	// Fetch package items
@@ -104,7 +104,9 @@ const PackageOrderSummarySection = ({
 					variant={'game'}
 					size={'lg'}
 					className='w-full mt-10 py-5'
-					onClick={() => router.push(PAGES_DATA.package_page(packageSlug))}>
+					onClick={() =>
+						router.push(PAGES_DATA.package_page(packageSlug))
+					}>
 					Browse Packages
 				</Button>
 			</div>
@@ -120,7 +122,8 @@ const PackageOrderSummarySection = ({
 					<div>
 						<h1 className='text-xl font-semibold'>Order Summary</h1>
 						<p className='text-sm text-foreground/60'>
-							{getTotalItems()} item{getTotalItems() !== 1 ? 's' : ''} selected
+							{getTotalItems()} item
+							{getTotalItems() !== 1 ? 's' : ''} selected
 						</p>
 					</div>
 				</div>
@@ -129,7 +132,9 @@ const PackageOrderSummarySection = ({
 			{/* Items List */}
 			<div className='w-full p-5 space-y-4'>
 				{cartItems.map((cartItem) => {
-					const packageItem = packageItemsMap.get(cartItem.packageItemId);
+					const packageItem = packageItemsMap.get(
+						cartItem.packageItemId,
+					);
 					if (!packageItem) return null;
 
 					return (
@@ -140,20 +145,22 @@ const PackageOrderSummarySection = ({
 							<div className='relative w-24 h-24 rounded-lg overflow-hidden bg-muted flex-shrink-0'>
 								<ImageWithFallback
 									src={
-										packageItem.images && packageItem.images.length > 0
+										packageItem.images &&
+										packageItem.images.length > 0
 											? packageItem.images[0]
 											: '/assets/empty-tray.png'
 									}
 									alt={packageItem.name}
-									fill
-									className='object-cover'
+									className='object-cover w-full h-full'
 								/>
 							</div>
 
 							{/* Details */}
 							<div className='flex-1 flex flex-col justify-between'>
 								<div>
-									<h3 className='font-medium'>{packageItem.name}</h3>
+									<h3 className='font-medium'>
+										{packageItem.name}
+									</h3>
 									{packageItem.description && (
 										<p className='text-sm text-foreground/60 line-clamp-2'>
 											{packageItem.description}
@@ -169,22 +176,33 @@ const PackageOrderSummarySection = ({
 									<CounterComponent
 										count={cartItem.quantity}
 										setCount={(newCount) =>
-											handleQuantityChange(cartItem.id, newCount)
+											handleQuantityChange(
+												cartItem.id,
+												newCount,
+											)
 										}
 										countChangeEffect={(newCount) =>
-											handleQuantityChange(cartItem.id, newCount)
+											handleQuantityChange(
+												cartItem.id,
+												newCount,
+											)
 										}
 										min={0}
 										className='max-w-[120px]'
 									/>
 									<div className='flex items-center gap-4'>
 										<p className='font-semibold'>
-											{formatCurency(packageItem.price * cartItem.quantity)}
+											{formatCurency(
+												packageItem.price *
+													cartItem.quantity,
+											)}
 										</p>
 										<Button
 											variant='ghost'
 											size='icon'
-											onClick={() => removeItem(cartItem.id)}
+											onClick={() =>
+												removeItem(cartItem.id)
+											}
 											className='text-destructive hover:text-destructive'>
 											<Trash2 className='h-4 w-4' />
 										</Button>
@@ -202,7 +220,7 @@ const PackageOrderSummarySection = ({
 					className={cn(
 						buttonVariants({
 							className: 'bg-primary/10 text-primary',
-						})
+						}),
 					)}
 					href={PAGES_DATA.package_page(packageSlug)}>
 					<Plus className='mr-2 h-4 w-4' />
@@ -223,7 +241,11 @@ const PackageOrderSummarySection = ({
 						variant={'game'}
 						size={'lg'}
 						onClick={() => {
-							router.push(PAGES_DATA.package_checkout_recipient_page(packageSlug));
+							router.push(
+								PAGES_DATA.package_checkout_recipient_page(
+									packageSlug,
+								),
+							);
 						}}>
 						Proceed to checkout
 					</Button>
@@ -234,4 +256,3 @@ const PackageOrderSummarySection = ({
 };
 
 export default PackageOrderSummarySection;
-
