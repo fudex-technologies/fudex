@@ -42,6 +42,8 @@ export const PAGES_DATA = {
     admin_dashboard_settings_page: `/profile/admin-dashboard/settings`,
     admin_dashboard_settlements_page: `/profile/admin-dashboard/settlements`,
     admin_dashboard_categories_page: `/profile/admin-dashboard/categories`,
+    admin_dashboard_packages_page: `/profile/admin-dashboard/packages`,
+    admin_dashboard_package_page: (id: string) => `/profile/admin-dashboard/packages/${id}`,
 
     // operator dashboard pages
     operator_dashboard_page: `/profile/operator-dashboard`,
@@ -108,4 +110,13 @@ export const PAGES_DATA = {
     vendor_dashboard_profile_bank_details_page: `/profile/vendor-dashboard/profile/bank-details`,
     vendor_dashboard_delivery_settlement_page: `/profile/vendor-dashboard/profile/delivery-settlement`,
     vendor_dashboard_rider_request_details_page: (id: string) => `/profile/vendor-dashboard/rider-requests/${id}`,
+
+    // package pages
+    package_page: (slug: string) => `/packages/${slug}`,
+    package_category_page: (packageSlug: string, categorySlug: string) => `/packages/${packageSlug}/${categorySlug}`,
+    package_order_summary_page: (packageSlug: string) => `/packages/${packageSlug}/order-summary`,
+    package_checkout_page: (packageSlug: string) => `/packages/${packageSlug}/checkout`,
+    package_checkout_recipient_page: (packageSlug: string) => `/packages/${packageSlug}/checkout/recipient`,
+    package_checkout_delivery_page: (packageSlug: string) => `/packages/${packageSlug}/checkout/delivery`,
+    package_checkout_card_page: (packageSlug: string) => `/packages/${packageSlug}/checkout/card`,
 }

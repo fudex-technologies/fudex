@@ -11,6 +11,7 @@ import { useSession } from '@/lib/auth-client';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import PromoTemplate from './PromoTemplate';
+import ValentineTemplate from './ValentineTemplate';
 
 const PromoSection = () => {
 	const { data: session } = useSession();
@@ -32,6 +33,39 @@ const PromoSection = () => {
 	return (
 		<SectionWrapper className='w-full p-0! overflow-hidden flex items-center justify-center'>
 			<PromoCarousel>
+				<ValentineTemplate
+					slides={[
+						{
+							textLine1: (
+								<>
+									{' '}
+									Let your loved one open the <br /> door to
+									a{' '}
+								</>
+							),
+							textLine2: 'beautiful surprise.',
+							image: '/assets/valentine1.png',
+						},
+						{
+							textLine1: (
+								<>
+									Show up for your loved ones, <br /> even
+									from afar.
+								</>
+							),
+							textLine2: 'Send them gifts.',
+							image: '/assets/valentine2.png',
+						},
+					]}
+					buttonLabel='Pre-order a gift now'
+					link={`/packages/valentine-packages`}
+					buttonClassName={
+						'bg-[#FD98AA] hover:bg-[#FD98AA]/50 text-black'
+					}
+					className={'bg-[#8D021B]'}
+					firstSectionClassName={'flex-1'}
+				/>
+
 				{!session ? (
 					<PromoTemplate
 						textLine1='Refer 5 friends and get'
@@ -74,14 +108,16 @@ const PromoSection = () => {
 					/>
 				) : null}
 
-				<PromoTemplate
+				{/* <PromoTemplate
 					textLine1='Make 3 Orders, get '
 					textLine2='1 Free Too-Fit Joggers'
 					buttonLabel='Order Now!'
 					backgroundImagePath='/assets/toofitimage.jpg'
 					link={`${PAGES_DATA.home_page}#vendors`}
-					buttonClassName={"bg-[#603DEB] hover:bg-[#603DEB]/50 text-white"}
-				/>
+					buttonClassName={
+						'bg-[#603DEB] hover:bg-[#603DEB]/50 text-white'
+					}
+				/> */}
 			</PromoCarousel>
 		</SectionWrapper>
 	);
@@ -102,7 +138,7 @@ const ThreeOrdersPromo = ({
 }) => {
 	return (
 		<div
-			className='noise-effect w-full max-w-md min-w-xs rounded-xl h-[170px] overflow-hidden flex items-center p-0'
+			className='noise-effect w-[95vw] sm:w-full min-w-xs max-w-sm rounded-xl h-[170px] overflow-hidden flex items-center p-0'
 			style={{
 				background:
 					'linear-gradient(230.521deg, #52AA24 37.752%, #2D5D14  58.068%)',

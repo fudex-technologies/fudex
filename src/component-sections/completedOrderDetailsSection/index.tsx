@@ -73,16 +73,25 @@ const CompletedOrderDetailsSection = ({ orderId }: { orderId: string }) => {
 				<div className='w-full space-y-5 px-5'>
 					<div className='w-full'>
 						<p className='font-light'>
-							Picked at {pickupDate} at {pickupTime}
+							Order placed at {pickupDate} at {pickupTime}
 						</p>
 						<p className='font-semibold'>{pickupAddress}</p>
 					</div>
-					<div className='w-full'>
-						<p className='font-light'>
-							Delivered at {deliveryDate} at {deliveryTime}
-						</p>
-						<p className='font-semibold'>{deliveryAddress}</p>
-					</div>
+					{(order as any).deliveryType === 'DELIVERY' && (
+						<div className='w-full'>
+							<p className='font-light'>
+								Delivered at {deliveryDate} at {deliveryTime}
+							</p>
+							<p className='font-semibold'>{deliveryAddress}</p>
+						</div>
+					)}
+					{(order as any).deliveryType === 'PICKUP' && (
+						<div className='w-full'>
+							<p className='font-light'>
+								Picked up at {deliveryDate} at {deliveryTime}
+							</p>
+						</div>
+					)}
 				</div>
 				<div className='w-full flex flex-col'>
 					<div className='px-5 py-2 bg-muted text-muted-foreground'>
@@ -141,16 +150,25 @@ const CompletedOrderDetailsSection = ({ orderId }: { orderId: string }) => {
 										<span className='w-2 h-2 rounded-full bg-foreground' />{' '}
 										<p className='text-lg capitalize'>
 											{item.productItem.name}
-											{item.productItem.pricingType === 'PER_UNIT' &&
+											{item.productItem.pricingType ===
+												'PER_UNIT' &&
 												item.productItem.unitName && (
 													<span className='text-sm text-foreground/50 ml-1 normal-case'>
-														({item.quantity} {item.productItem.unitName}
-														{item.quantity !== 1 ? 's' : ''})
+														({item.quantity}{' '}
+														{
+															item.productItem
+																.unitName
+														}
+														{item.quantity !== 1
+															? 's'
+															: ''}
+														)
 													</span>
 												)}
 										</p>
 									</div>
-									{item.productItem.pricingType === 'PER_UNIT' &&
+									{item.productItem.pricingType ===
+										'PER_UNIT' &&
 										item.productItem.unitName && (
 											<p className='text-xs text-foreground/50 pl-3 mt-1'>
 												Per {item.productItem.unitName}

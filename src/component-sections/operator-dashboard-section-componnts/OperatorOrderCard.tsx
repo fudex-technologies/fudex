@@ -35,7 +35,7 @@ export default function OperatorOrderCard({
 }: OperatorOrderCardProps) {
 	const { updateOrderStatus, assignRiderToOrder } = useOperatorActions();
 	const [selectedRiderId, setSelectedRiderId] = useState<string>(
-		order.assignedRiderId || ''
+		order.assignedRiderId || '',
 	);
 
 	const updateStatusMutation = updateOrderStatus({
@@ -88,7 +88,7 @@ export default function OperatorOrderCard({
 
 	const itemCount = order.items.reduce(
 		(sum: number, item: any) => sum + item.quantity,
-		0
+		0,
 	);
 	const displayOrderId = order.id.slice(0, 8).toUpperCase();
 
@@ -116,6 +116,15 @@ export default function OperatorOrderCard({
 									: 'UNPAID'}
 							</Badge>
 						)}
+						<Badge
+							variant='outline'
+							className={
+								order.deliveryType === 'PICKUP'
+									? 'border-purple-500 text-purple-500 bg-purple-500/5'
+									: 'border-blue-500 text-blue-500 bg-blue-500/5'
+							}>
+							{order.deliveryType}
+						</Badge>
 					</div>
 					<p className='text-sm text-muted-foreground'>
 						{new Date(order.createdAt).toLocaleString()}
@@ -156,19 +165,24 @@ export default function OperatorOrderCard({
 
 					<div>
 						<Label className='text-[10px] text-muted-foreground uppercase tracking-widest font-bold'>
-							DELIVER TO (CUSTOMER)
+							{order.deliveryType === 'PICKUP'
+								? 'PICKUP BY (CUSTOMER)'
+								: 'DELIVER TO (CUSTOMER)'}
 						</Label>
 						<div className='mt-1'>
 							<p className='font-bold text-base leading-tight'>
 								{order.user?.name}
 							</p>
-							<p className='text-sm text-muted-foreground leading-snug mt-1'>
-								{order.address?.line1}
-								{order.address?.line2 &&
-									`, ${order.address.line2}`}
-								<br />
-								{order.address?.city}, {order.address?.state}
-							</p>
+							{order.deliveryType === 'DELIVERY' && (
+								<p className='text-sm text-muted-foreground leading-snug mt-1'>
+									{order.address?.line1}
+									{order.address?.line2 &&
+										`, ${order.address.line2}`}
+									<br />
+									{order.address?.city},{' '}
+									{order.address?.state}
+								</p>
+							)}
 							{order.user?.phone && (
 								<p className='text-xs text-primary font-medium mt-1 uppercase'>
 									📞 {order.user.phone}
@@ -187,12 +201,12 @@ export default function OperatorOrderCard({
 							{order.items.map((item: any) => {
 								const productItem = item.productItem;
 								const productName = productItem?.name;
-								const isPerUnit = productItem?.pricingType === 'PER_UNIT';
+								const isPerUnit =
+									productItem?.pricingType === 'PER_UNIT';
 								const unitName = productItem?.unitName;
-								const parentProduct = item.productItem.product
+								const parentProduct = item.productItem.product;
 
 								console.log(item);
-
 
 								return (
 									<div
@@ -200,13 +214,19 @@ export default function OperatorOrderCard({
 										className='text-sm bg-muted/30 p-2 rounded-lg'>
 										<div className='flex justify-between items-start'>
 											<div className='flex-1'>
-												<p>Main: {parentProduct.name}</p>
+												<p>
+													Main: {parentProduct.name}
+												</p>
 												<span className='font-medium'>
 													{productName}
 													{isPerUnit && unitName && (
 														<span className='text-xs text-muted-foreground ml-1 font-normal'>
-															({item.quantity} {unitName}
-															{item.quantity !== 1 ? 's' : ''})
+															({item.quantity}{' '}
+															{unitName}
+															{item.quantity !== 1
+																? 's'
+																: ''}
+															)
 														</span>
 													)}
 													{!isPerUnit && (
@@ -217,7 +237,11 @@ export default function OperatorOrderCard({
 												</span>
 												{isPerUnit && unitName && (
 													<p className='text-[10px] text-muted-foreground mt-0.5'>
-														{formatCurency(productItem?.price || 0)} per {unitName}
+														{formatCurency(
+															productItem?.price ||
+																0,
+														)}{' '}
+														per {unitName}
 													</p>
 												)}
 											</div>
@@ -227,38 +251,56 @@ export default function OperatorOrderCard({
 										</div>
 										{item.addons?.length > 0 && (
 											<div className='pl-4 mt-1 space-y-0.5'>
-												{item.addons.map((addon: any) => (
-													<div
-														key={addon.id}
-														className='text-[11px] text-muted-foreground flex justify-between'>
-														<span>
-															({addon.addonProductItem.product.name})
-															+{' '}
-															{
-																addon
-																	.addonProductItem
-																	?.name
-															}
-															{isPerUnit && (
-																<span className='ml-1'>
-																	x{addon.quantity} per {unitName}
-																</span>
-															)}
-															{!isPerUnit && (
-																<span className='ml-1'>
-																	x{addon.quantity}
-																</span>
-															)}
-														</span>
-														<span>
-															{formatCurency(
-																addon.unitPrice *
-																addon.quantity *
-																item.quantity
-															)}
-														</span>
-													</div>
-												))}
+												{item.addons.map(
+													(addon: any) => (
+														<div
+															key={addon.id}
+															className='text-[11px] text-muted-foreground flex justify-between'>
+															<span>
+																(
+																{
+																	addon
+																		.addonProductItem
+																		.product
+																		.name
+																}
+																) +{' '}
+																{
+																	addon
+																		.addonProductItem
+																		?.name
+																}
+																{isPerUnit && (
+																	<span className='ml-1'>
+																		x
+																		{
+																			addon.quantity
+																		}{' '}
+																		per{' '}
+																		{
+																			unitName
+																		}
+																	</span>
+																)}
+																{!isPerUnit && (
+																	<span className='ml-1'>
+																		x
+																		{
+																			addon.quantity
+																		}
+																	</span>
+																)}
+															</span>
+															<span>
+																{formatCurency(
+																	addon.unitPrice *
+																		addon.quantity *
+																		item.quantity,
+																)}
+															</span>
+														</div>
+													),
+												)}
 											</div>
 										)}
 									</div>
@@ -335,7 +377,7 @@ export default function OperatorOrderCard({
 							</SelectTrigger>
 							<SelectContent>
 								{riders?.length > 0 &&
-									riders.filter((r) => r.isActive).length > 0 ? (
+								riders.filter((r) => r.isActive).length > 0 ? (
 									riders
 										.filter((r) => r.isActive)
 										.map((rider) => (
