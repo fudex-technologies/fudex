@@ -17,6 +17,19 @@ const PackagesCategoriesSection = ({
 		slug: packageSlug,
 	});
 
+	// Flatten all package items for the bottom bar
+	const allPackageItems = useMemo(() => {
+		if (!packageData?.categories) return [];
+
+		return packageData.categories.flatMap((category) =>
+			(category.items || []).map((item) => ({
+				id: item.id,
+				name: item.name,
+				price: item.price,
+			})),
+		);
+	}, [packageData]);
+
 	if (isLoading) {
 		return (
 			<div className='w-full space-y-5'>
@@ -45,19 +58,6 @@ const PackagesCategoriesSection = ({
 			</div>
 		);
 	}
-
-	// Flatten all package items for the bottom bar
-	const allPackageItems = useMemo(() => {
-		if (!packageData?.categories) return [];
-
-		return packageData.categories.flatMap((category) =>
-			(category.items || []).map((item) => ({
-				id: item.id,
-				name: item.name,
-				price: item.price,
-			})),
-		);
-	}, [packageData]);
 
 	return (
 		<>
