@@ -3,8 +3,8 @@ import { z } from "zod";
 import { calculateDeliveryFee, getServiceFee } from "@/lib/deliveryFeeCalculator";
 import { v4 as uuidv4 } from "uuid";
 import {
-	initializePaystackTransaction,
-	verifyPaystackTransaction,
+    initializePaystackTransaction,
+    verifyPaystackTransaction,
 } from "@/lib/paystack";
 
 // ========== ADMIN PROCEDURES ==========
@@ -145,6 +145,9 @@ export const packageAdminRouter = createTRPCRouter({
                 include: {
                     categories: {
                         include: {
+                            items: {
+                                orderBy: { createdAt: "desc" },
+                            },
                             _count: {
                                 select: { items: true },
                             },
@@ -749,7 +752,7 @@ export const packagePublicRouter = createTRPCRouter({
                         }
                         await ctx.prisma.packagePayment.delete({
                             where: { id: packageOrder.payment.id },
-                        }).catch(() => {});
+                        }).catch(() => { });
                     }
                 }
             }
@@ -837,4 +840,3 @@ export const packageRouter = createTRPCRouter({
     admin: packageAdminRouter,
     public: packagePublicRouter,
 });
-

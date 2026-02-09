@@ -54,18 +54,7 @@ const categoryFormSchema = z.object({
 	order: z.number().default(0),
 });
 
-const packageItemFormSchema = z.object({
-	name: z.string().min(1, 'Item name is required'),
-	slug: z.string().min(1, 'Item slug is required'),
-	description: z.string().optional(),
-	price: z.number().min(0, 'Price must be positive'),
-	images: z.array(z.string()).default([]),
-	isActive: z.boolean().default(true),
-	inStock: z.boolean().default(true),
-});
-
 type CategoryFormValues = z.infer<typeof categoryFormSchema>;
-type PackageItemFormValues = z.infer<typeof packageItemFormSchema>;
 
 interface Props {
 	params: Promise<{ packageId: string }>;
@@ -80,10 +69,11 @@ export default function AdminPackageDetailPage({ params }: Props) {
 		params.then((p) => setPackageId(p.packageId));
 	}, [params]);
 
-	const { data: packageData, isLoading, refetch } = useGetPackageById(
-		{ id: packageId || '' },
-		{ enabled: !!packageId }
-	);
+	const {
+		data: packageData,
+		isLoading,
+		refetch,
+	} = useGetPackageById({ id: packageId || '' }, { enabled: !!packageId });
 
 	if (isLoading || !packageId) {
 		return (
@@ -113,8 +103,15 @@ export default function AdminPackageDetailPage({ params }: Props) {
 				<div className='flex items-start justify-between'>
 					<div className='flex-1'>
 						<div className='flex items-center gap-3 mb-2'>
-							<h1 className='text-3xl font-bold'>{packageData.name}</h1>
-							<Badge variant={packageData.isActive ? 'default' : 'secondary'}>
+							<h1 className='text-3xl font-bold'>
+								{packageData.name}
+							</h1>
+							<Badge
+								variant={
+									packageData.isActive
+										? 'default'
+										: 'secondary'
+								}>
 								{packageData.isActive ? 'Active' : 'Inactive'}
 							</Badge>
 							{packageData.isPreorder && (
@@ -166,4 +163,3 @@ export default function AdminPackageDetailPage({ params }: Props) {
 		</SectionWrapper>
 	);
 }
-

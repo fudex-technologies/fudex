@@ -46,6 +46,24 @@ import Link from 'next/link';
 import { PAGES_DATA } from '@/data/pagesData';
 import { Badge } from '@/components/ui/badge';
 
+export interface Package {
+	id: string;
+	name: string;
+	slug: string;
+	description?: string | null;
+	coverImage?: string | null;
+	isActive: boolean;
+	isPreorder: boolean;
+	deliveryDate?: Date | string | null;
+	orderCloseDate?: Date | string | null;
+	createdAt: Date;
+	updatedAt: Date;
+	_count?: {
+		categories: number;
+		orders: number;
+	};
+}
+
 const packageFormSchema = z.object({
 	name: z.string().min(1, 'Package name is required'),
 	slug: z.string().min(1, 'Package slug is required'),
@@ -62,7 +80,7 @@ type PackageFormValues = z.infer<typeof packageFormSchema>;
 interface PackageFormProps {
 	onSubmit: (data: PackageFormValues) => void;
 	isPending: boolean;
-	initialData?: PackageFormValues;
+	initialData?: Partial<PackageFormValues>;
 	onCancel: () => void;
 }
 
@@ -73,24 +91,38 @@ function PackageForm({
 	onCancel,
 }: PackageFormProps) {
 	const form = useForm<PackageFormValues>({
-		resolver: zodResolver(packageFormSchema),
-		defaultValues: initialData || {
-			name: '',
-			slug: '',
-			description: '',
-			coverImage: '',
-			isActive: true,
-			isPreorder: false,
-			deliveryDate: '',
-			orderCloseDate: '',
+		resolver: zodResolver(packageFormSchema) as any,
+		defaultValues: {
+			name: initialData?.name ?? '',
+			slug: initialData?.slug ?? '',
+			description: initialData?.description ?? '',
+			coverImage: initialData?.coverImage ?? '',
+			isActive: initialData?.isActive ?? true,
+			isPreorder: initialData?.isPreorder ?? false,
+			deliveryDate: initialData?.deliveryDate ?? '',
+			orderCloseDate: initialData?.orderCloseDate ?? '',
 		},
 	});
 
 	const isPreorder = form.watch('isPreorder');
+	const name = form.watch('name');
+
+	// Auto-generate slug from name
+	useEffect(() => {
+		if (name && !initialData?.slug) {
+			const slug = name
+				.toLowerCase()
+				.replace(/[^a-z0-9]+/g, '-')
+				.replace(/^-+|-+$/g, '');
+			form.setValue('slug', slug);
+		}
+	}, [name, form, initialData?.slug]);
 
 	return (
-		<Form {...form}>
-			<form onSubmit={form.handleSubmit(onSubmit)} className='space-y-4'>
+		<Form {...(form as any)}>
+			<form
+				onSubmit={form.handleSubmit(onSubmit as any)}
+				className='space-y-4'>
 				<FormField
 					control={form.control}
 					name='name'
@@ -98,7 +130,10 @@ function PackageForm({
 						<FormItem>
 							<FormLabel>Package Name</FormLabel>
 							<FormControl>
-								<Input placeholder='e.g., Valentine Packages' {...field} />
+								<Input
+									placeholder='e.g., Valentine Packages'
+									{...field}
+								/>
 							</FormControl>
 							<FormMessage />
 						</FormItem>
@@ -250,19 +285,15 @@ function PackageForm({
 }
 
 export default function AdminPackagesPage() {
-	const {
-		useListPackages,
-		createPackage,
-		updatePackage,
-		deletePackage,
-	} = usePackageAdminActions();
+	const { useListPackages, createPackage, updatePackage, deletePackage } =
+		usePackageAdminActions();
 
 	const { data, isLoading, refetch } = useListPackages({ limit: 100 });
 
 	const packages = data?.items || [];
 
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-	const [editingPackage, setEditingPackage] = useState<any>(null);
+	const [editingPackage, setEditingPackage] = useState<Package | null>(null);
 	const [deletingPackageId, setDeletingPackageId] = useState<string | null>(
 		null,
 	);
@@ -289,6 +320,12 @@ export default function AdminPackagesPage() {
 	});
 
 	const handleCreateSubmit = (data: PackageFormValues) => {
+		const isValidDeliveryDate =
+			data.deliveryDate && !isNaN(new Date(data.deliveryDate).getTime());
+		const isValidOrderCloseDate =
+			data.orderCloseDate &&
+			!isNaN(new Date(data.orderCloseDate).getTime());
+
 		createMutation.mutate({
 			name: data.name,
 			slug: data.slug,
@@ -296,17 +333,25 @@ export default function AdminPackagesPage() {
 			coverImage: data.coverImage || undefined,
 			isActive: data.isActive,
 			isPreorder: data.isPreorder,
-			deliveryDate: data.deliveryDate
-				? new Date(data.deliveryDate)
-				: undefined,
-			orderCloseDate: data.orderCloseDate
-				? new Date(data.orderCloseDate)
+			deliveryDate:
+				data.isPreorder && isValidDeliveryDate
+					? new Date(data.deliveryDate!)
+					: undefined,
+			orderCloseDate: isValidOrderCloseDate
+				? new Date(data.orderCloseDate!)
 				: undefined,
 		});
 	};
 
 	const handleUpdateSubmit = (data: PackageFormValues) => {
 		if (editingPackage) {
+			const isValidDeliveryDate =
+				data.deliveryDate &&
+				!isNaN(new Date(data.deliveryDate).getTime());
+			const isValidOrderCloseDate =
+				data.orderCloseDate &&
+				!isNaN(new Date(data.orderCloseDate).getTime());
+
 			updateMutation.mutate({
 				id: editingPackage.id,
 				name: data.name,
@@ -315,11 +360,12 @@ export default function AdminPackagesPage() {
 				coverImage: data.coverImage || null,
 				isActive: data.isActive,
 				isPreorder: data.isPreorder,
-				deliveryDate: data.deliveryDate
-					? new Date(data.deliveryDate)
-					: null,
-				orderCloseDate: data.orderCloseDate
-					? new Date(data.orderCloseDate)
+				deliveryDate:
+					data.isPreorder && isValidDeliveryDate
+						? new Date(data.deliveryDate!)
+						: null,
+				orderCloseDate: isValidOrderCloseDate
+					? new Date(data.orderCloseDate!)
 					: null,
 			});
 		}
@@ -338,18 +384,18 @@ export default function AdminPackagesPage() {
 						deliveryDate: editingPackage.deliveryDate
 							? format(
 									new Date(editingPackage.deliveryDate),
-									"yyyy-MM-dd'T'HH:mm"
-							  )
+									"yyyy-MM-dd'T'HH:mm",
+								)
 							: '',
 						orderCloseDate: editingPackage.orderCloseDate
 							? format(
 									new Date(editingPackage.orderCloseDate),
-									"yyyy-MM-dd'T'HH:mm"
-							  )
+									"yyyy-MM-dd'T'HH:mm",
+								)
 							: '',
-				  }
+					}
 				: undefined,
-		[editingPackage]
+		[editingPackage],
 	);
 
 	if (isLoading) {
@@ -359,7 +405,10 @@ export default function AdminPackagesPage() {
 					<Skeleton className='h-10 w-32' />
 					<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
 						{Array.from({ length: 6 }).map((_, i) => (
-							<Skeleton key={i} className='h-64 w-full rounded-lg' />
+							<Skeleton
+								key={i}
+								className='h-64 w-full rounded-lg'
+							/>
 						))}
 					</div>
 				</div>
@@ -371,9 +420,12 @@ export default function AdminPackagesPage() {
 		<SectionWrapper className='p-6'>
 			<div className='flex items-center justify-between mb-8'>
 				<div>
-					<h2 className='text-3xl font-bold tracking-tight'>Packages</h2>
+					<h2 className='text-3xl font-bold tracking-tight'>
+						Packages
+					</h2>
 					<p className='text-muted-foreground'>
-						Manage special occasion packages (Valentine, Christmas, etc.)
+						Manage special occasion packages (Valentine, Christmas,
+						etc.)
 					</p>
 				</div>
 				<Dialog
@@ -410,7 +462,7 @@ export default function AdminPackagesPage() {
 						<div
 							key={pkg.id}
 							className={cn(
-								'group relative bg-card flex flex-col rounded-2xl shadow-sm border border-border/50 hover:border-primary/50 transition-all duration-300 overflow-hidden'
+								'group relative bg-card flex flex-col rounded-2xl shadow-sm border border-border/50 hover:border-primary/50 transition-all duration-300 overflow-hidden',
 							)}>
 							<div className='relative w-full h-48 bg-muted overflow-hidden'>
 								<ImageWithFallback
@@ -419,7 +471,10 @@ export default function AdminPackagesPage() {
 									className='object-cover w-full h-full group-hover:scale-110 transition-transform duration-500'
 								/>
 								<div className='absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2'>
-									<Link href={PAGES_DATA.admin_dashboard_package_page(pkg.id)}>
+									<Link
+										href={PAGES_DATA.admin_dashboard_package_page(
+											pkg.id,
+										)}>
 										<Button
 											size='icon'
 											variant='secondary'
@@ -438,7 +493,9 @@ export default function AdminPackagesPage() {
 										size='icon'
 										variant='destructive'
 										className='h-8 w-8 rounded-full'
-										onClick={() => setDeletingPackageId(pkg.id)}>
+										onClick={() =>
+											setDeletingPackageId(pkg.id)
+										}>
 										<Trash2 size={14} />
 									</Button>
 								</div>
@@ -449,7 +506,11 @@ export default function AdminPackagesPage() {
 										{pkg.name}
 									</h3>
 									<Badge
-										variant={pkg.isActive ? 'default' : 'secondary'}>
+										variant={
+											pkg.isActive
+												? 'default'
+												: 'secondary'
+										}>
 										{pkg.isActive ? 'Active' : 'Inactive'}
 									</Badge>
 								</div>
@@ -474,7 +535,9 @@ export default function AdminPackagesPage() {
 									{pkg.isPreorder && (
 										<div className='flex justify-between'>
 											<span>Pre-order:</span>
-											<span className='font-medium'>Yes</span>
+											<span className='font-medium'>
+												Yes
+											</span>
 										</div>
 									)}
 								</div>
@@ -509,8 +572,9 @@ export default function AdminPackagesPage() {
 					<AlertDialogHeader>
 						<AlertDialogTitle>Delete Package</AlertDialogTitle>
 						<AlertDialogDescription>
-							Are you sure you want to delete this package? This action
-							cannot be undone and may affect existing orders.
+							Are you sure you want to delete this package? This
+							action cannot be undone and may affect existing
+							orders.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
@@ -532,4 +596,3 @@ export default function AdminPackagesPage() {
 		</SectionWrapper>
 	);
 }
-

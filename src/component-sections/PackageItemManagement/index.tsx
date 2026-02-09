@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { usePackageAdminActions } from '@/api-hooks/usePackageActions';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -62,6 +62,23 @@ const packageItemFormSchema = z.object({
 	inStock: z.boolean().default(true),
 });
 
+export interface PackageItem {
+	id: string;
+	packageId: string;
+	categoryId: string;
+	name: string;
+	slug: string;
+	description?: string | null;
+	price: number;
+	currency: string;
+	images: string[];
+	isActive: boolean;
+	inStock: boolean;
+	createdAt: Date;
+	updatedAt: Date;
+	details?: any;
+}
+
 type PackageItemFormValues = z.infer<typeof packageItemFormSchema>;
 
 interface PackageItemManagementProps {
@@ -75,12 +92,16 @@ export default function PackageItemManagement({
 	categories,
 	onSuccess,
 }: PackageItemManagementProps) {
-	const { useGetPackageById, createPackageItem, updatePackageItem, deletePackageItem } =
-		usePackageAdminActions();
+	const {
+		useGetPackageById,
+		createPackageItem,
+		updatePackageItem,
+		deletePackageItem,
+	} = usePackageAdminActions();
 
 	const { data: packageData, refetch } = useGetPackageById(
 		{ id: packageId },
-		{ enabled: !!packageId }
+		{ enabled: !!packageId },
 	);
 
 	// Get all items from all categories
@@ -90,7 +111,7 @@ export default function PackageItemManagement({
 	}, [packageData]);
 
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-	const [editingItem, setEditingItem] = useState<any>(null);
+	const [editingItem, setEditingItem] = useState<PackageItem | null>(null);
 	const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
 	const [isUploading, setIsUploading] = useState(false);
 
@@ -160,7 +181,7 @@ export default function PackageItemManagement({
 			uploadFormData.append('file', file);
 			uploadFormData.append(
 				'folder',
-				vercelBlobFolderStructure.packageItemImages
+				vercelBlobFolderStructure.packageItemImages,
 			);
 
 			const response = await fetch('/api/upload', {
@@ -185,7 +206,7 @@ export default function PackageItemManagement({
 		const currentImages = form.getValues('images') || [];
 		form.setValue(
 			'images',
-			currentImages.filter((_: any, i: number) => i !== index)
+			currentImages.filter((_: any, i: number) => i !== index),
 		);
 	};
 
@@ -201,9 +222,9 @@ export default function PackageItemManagement({
 						images: editingItem.images || [],
 						isActive: editingItem.isActive ?? true,
 						inStock: editingItem.inStock ?? true,
-				  }
+					}
 				: undefined,
-		[editingItem]
+		[editingItem],
 	);
 
 	return (
@@ -219,7 +240,9 @@ export default function PackageItemManagement({
 					open={isCreateDialogOpen}
 					onOpenChange={setIsCreateDialogOpen}>
 					<DialogTrigger asChild>
-						<Button className='flex items-center gap-2' disabled={categories.length === 0}>
+						<Button
+							className='flex items-center gap-2'
+							disabled={categories.length === 0}>
 							<Plus size={18} />
 							Add Item
 						</Button>
@@ -252,12 +275,14 @@ export default function PackageItemManagement({
 			) : (
 				<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
 					{allItems.map((item) => {
-						const category = categories.find((c) => c.id === item.categoryId);
+						const category = categories.find(
+							(c) => c.id === item.categoryId,
+						);
 						return (
 							<div
 								key={item.id}
 								className={cn(
-									'p-4 border rounded-lg hover:border-primary/50 transition-colors'
+									'p-4 border rounded-lg hover:border-primary/50 transition-colors',
 								)}>
 								<div className='relative w-full aspect-square rounded-lg overflow-hidden bg-muted mb-3'>
 									{item.images && item.images.length > 0 ? (
@@ -275,7 +300,9 @@ export default function PackageItemManagement({
 								<div className='space-y-1'>
 									<div className='flex items-start justify-between'>
 										<div className='flex-1'>
-											<h4 className='font-semibold'>{item.name}</h4>
+											<h4 className='font-semibold'>
+												{item.name}
+											</h4>
 											{category && (
 												<p className='text-xs text-muted-foreground'>
 													{category.name}
@@ -290,28 +317,44 @@ export default function PackageItemManagement({
 												size='icon'
 												variant='ghost'
 												className='h-8 w-8'
-												onClick={() => setEditingItem(item)}>
+												onClick={() =>
+													setEditingItem(item)
+												}>
 												<Edit size={14} />
 											</Button>
 											<Button
 												size='icon'
 												variant='ghost'
 												className='h-8 w-8 text-destructive'
-												onClick={() => setDeletingItemId(item.id)}>
+												onClick={() =>
+													setDeletingItemId(item.id)
+												}>
 												<Trash2 size={14} />
 											</Button>
 										</div>
 									</div>
 									<div className='flex gap-2 mt-2'>
 										<Badge
-											variant={item.isActive ? 'default' : 'secondary'}
+											variant={
+												item.isActive
+													? 'default'
+													: 'secondary'
+											}
 											className='text-xs'>
-											{item.isActive ? 'Active' : 'Inactive'}
+											{item.isActive
+												? 'Active'
+												: 'Inactive'}
 										</Badge>
 										<Badge
-											variant={item.inStock ? 'default' : 'destructive'}
+											variant={
+												item.inStock
+													? 'default'
+													: 'destructive'
+											}
 											className='text-xs'>
-											{item.inStock ? 'In Stock' : 'Out of Stock'}
+											{item.inStock
+												? 'In Stock'
+												: 'Out of Stock'}
 										</Badge>
 									</div>
 								</div>
@@ -350,8 +393,8 @@ export default function PackageItemManagement({
 					<AlertDialogHeader>
 						<AlertDialogTitle>Delete Package Item</AlertDialogTitle>
 						<AlertDialogDescription>
-							Are you sure you want to delete this item? This action cannot
-							be undone.
+							Are you sure you want to delete this item? This
+							action cannot be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
@@ -394,7 +437,7 @@ function PackageItemForm({
 	onCancel: () => void;
 }) {
 	const form = useForm<PackageItemFormValues>({
-		resolver: zodResolver(packageItemFormSchema),
+		resolver: zodResolver(packageItemFormSchema) as any,
 		defaultValues: initialData || {
 			categoryId: '',
 			name: '',
@@ -408,10 +451,24 @@ function PackageItemForm({
 	});
 
 	const images = form.watch('images');
+	const name = form.watch('name');
+
+	// Auto-generate slug from name
+	useEffect(() => {
+		if (name && !initialData?.slug) {
+			const slug = name
+				.toLowerCase()
+				.replace(/[^a-z0-9]+/g, '-')
+				.replace(/^-+|-+$/g, '');
+			form.setValue('slug', slug);
+		}
+	}, [name, form, initialData?.slug]);
 
 	return (
-		<Form {...form}>
-			<form onSubmit={form.handleSubmit(onSubmit)} className='space-y-4'>
+		<Form {...(form as any)}>
+			<form
+				onSubmit={form.handleSubmit(onSubmit as any)}
+				className='space-y-4'>
 				<FormField
 					control={form.control}
 					name='categoryId'
@@ -445,7 +502,10 @@ function PackageItemForm({
 						<FormItem>
 							<FormLabel>Item Name</FormLabel>
 							<FormControl>
-								<Input placeholder='e.g., Sweet Teddy Hug' {...field} />
+								<Input
+									placeholder='e.g., Sweet Teddy Hug'
+									{...field}
+								/>
 							</FormControl>
 							<FormMessage />
 						</FormItem>
@@ -458,7 +518,10 @@ function PackageItemForm({
 						<FormItem>
 							<FormLabel>Item Slug</FormLabel>
 							<FormControl>
-								<Input placeholder='e.g., sweet-teddy-hug' {...field} />
+								<Input
+									placeholder='e.g., sweet-teddy-hug'
+									{...field}
+								/>
 							</FormControl>
 							<FormMessage />
 						</FormItem>
@@ -524,10 +587,14 @@ function PackageItemForm({
 										type='button'
 										variant='outline'
 										onClick={() =>
-											document.getElementById('image-upload')?.click()
+											document
+												.getElementById('image-upload')
+												?.click()
 										}
 										disabled={isUploading}>
-										{isUploading ? 'Uploading...' : 'Upload Image'}
+										{isUploading
+											? 'Uploading...'
+											: 'Upload Image'}
 									</Button>
 									{images && images.length > 0 && (
 										<div className='grid grid-cols-3 gap-2 mt-2'>
@@ -545,7 +612,12 @@ function PackageItemForm({
 														size='icon'
 														variant='destructive'
 														className='absolute top-1 right-1 h-6 w-6'
-														onClick={() => onRemoveImage(index, form)}>
+														onClick={() =>
+															onRemoveImage(
+																index,
+																form,
+															)
+														}>
 														<Trash2 size={12} />
 													</Button>
 												</div>
@@ -602,7 +674,7 @@ function PackageItemForm({
 						disabled={isPending}>
 						Cancel
 					</Button>
-					<Button type='submit' disabled={isPending}>
+					<Button type='submit' disabled={isPending || isUploading}>
 						{isPending ? 'Saving...' : 'Save'}
 					</Button>
 				</div>
@@ -610,4 +682,3 @@ function PackageItemForm({
 		</Form>
 	);
 }
-
