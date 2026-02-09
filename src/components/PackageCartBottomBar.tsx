@@ -45,8 +45,7 @@ const PackageCartBottomBar = ({
 	}
 
 	const handleCheckout = () => {
-		// Navigate to recipient details page
-		router.push(`/packages/${packageSlug}/recipient-details`);
+		router.push(`/packages/${packageSlug}/order-summary`);
 	};
 
 	return (
