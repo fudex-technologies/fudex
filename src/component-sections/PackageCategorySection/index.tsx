@@ -58,7 +58,7 @@ const PackageCategorySection: React.FC<PackageCategorySectionProps> = ({
 	// Calculate total price
 	const totalPrice = useMemo(() => {
 		if (!data?.category?.items) return 0;
-		
+
 		return data.category.items.reduce((sum, item) => {
 			const cartItem = getItem(item.id);
 			if (cartItem) {
@@ -74,7 +74,10 @@ const PackageCategorySection: React.FC<PackageCategorySectionProps> = ({
 				<Skeleton className='h-10 w-48' />
 				<div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4'>
 					{[1, 2, 3, 4, 5, 6].map((i) => (
-						<Skeleton key={i} className='aspect-square rounded-lg' />
+						<Skeleton
+							key={i}
+							className='aspect-square rounded-lg'
+						/>
 					))}
 				</div>
 			</div>
@@ -99,7 +102,9 @@ const PackageCategorySection: React.FC<PackageCategorySectionProps> = ({
 				<div className='flex items-center gap-3'>
 					<GoBackButton />
 					<div>
-						<h1 className='text-xl font-semibold'>{data.category.name}</h1>
+						<h1 className='text-xl font-semibold'>
+							{data.category.name}
+						</h1>
 						{data.category.description && (
 							<p className='text-sm text-foreground/60'>
 								{data.category.description}
@@ -126,13 +131,20 @@ const PackageCategorySection: React.FC<PackageCategorySectionProps> = ({
 											description: item.description || '',
 											price: item.price,
 											imageUrl:
-												item.images && item.images.length > 0
+												item.images &&
+												item.images.length > 0
 													? item.images[0]
 													: '/assets/empty-tray.png',
 										}}
 										initialQuantity={quantity}
-										onQuantityChange={(packageId, newQuantity) =>
-											handleQuantityChange(packageId, newQuantity)
+										onQuantityChange={(
+											itemId,
+											newQuantity,
+										) =>
+											handleQuantityChange(
+												itemId,
+												newQuantity,
+											)
 										}
 									/>
 								</div>
@@ -152,7 +164,8 @@ const PackageCategorySection: React.FC<PackageCategorySectionProps> = ({
 					<div className='w-full h-full flex items-center justify-between max-w-[1400px]'>
 						<div>
 							<p className='text-sm text-foreground/50'>
-								{getTotalItems()} item{getTotalItems() !== 1 ? 's' : ''} selected
+								{getTotalItems()} item
+								{getTotalItems() !== 1 ? 's' : ''} selected
 							</p>
 							<p className='text-xl font-semibold text-foreground'>
 								{formatCurency(totalPrice)}
@@ -162,7 +175,11 @@ const PackageCategorySection: React.FC<PackageCategorySectionProps> = ({
 							variant={'game'}
 							size={'lg'}
 							onClick={() => {
-								router.push(PAGES_DATA.package_order_summary_page(packageSlug));
+								router.push(
+									PAGES_DATA.package_order_summary_page(
+										packageSlug,
+									),
+								);
 							}}>
 							<ShoppingCart className='mr-2 h-4 w-4' />
 							View Cart
@@ -175,4 +192,3 @@ const PackageCategorySection: React.FC<PackageCategorySectionProps> = ({
 };
 
 export default PackageCategorySection;
-

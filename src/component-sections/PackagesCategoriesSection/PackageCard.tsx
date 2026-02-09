@@ -15,14 +15,23 @@ interface PackageCardProps {
 		imageUrl: string;
 	};
 	packageId?: string;
+	initialQuantity?: number;
+	onQuantityChange?: (id: string, quantity: number) => void;
 }
 
-const PackageCard = ({ singlePackage, packageId }: PackageCardProps) => {
+const PackageCard = ({
+	singlePackage,
+	packageId,
+	initialQuantity = 0,
+	onQuantityChange,
+}: PackageCardProps) => {
 	const { addItem, updateItem, getItem, items } = usePackageCartStore();
-	
+
 	// Get the cart item for this package item
 	const cartItem = getItem(singlePackage.id);
-	const [quantity, setQuantity] = useState(cartItem?.quantity || 0);
+	const [quantity, setQuantity] = useState(
+		cartItem?.quantity || initialQuantity || 0,
+	);
 
 	// Sync local state with cart store
 	useEffect(() => {
@@ -31,11 +40,17 @@ const PackageCard = ({ singlePackage, packageId }: PackageCardProps) => {
 	}, [items, singlePackage.id, getItem]);
 
 	const handleAddClick = () => {
-		addItem(singlePackage.id, 1);
+		if (onQuantityChange) {
+			onQuantityChange(singlePackage.id, 1);
+		} else {
+			addItem(singlePackage.id, 1);
+		}
 	};
 
 	const handleQuantityChange = (newQuantity: number) => {
-		if (newQuantity === 0 && cartItem) {
+		if (onQuantityChange) {
+			onQuantityChange(singlePackage.id, newQuantity);
+		} else if (newQuantity === 0 && cartItem) {
 			// Remove item if quantity is 0
 			updateItem(cartItem.id, 0);
 		} else if (cartItem) {
@@ -75,17 +90,15 @@ const PackageCard = ({ singlePackage, packageId }: PackageCardProps) => {
 							setCount={setQuantity}
 							countChangeEffect={handleQuantityChange}
 							min={0}
-className='max-w-[200px] py-2 gap-3'					
-	/>
+							className='max-w-[200px] py-2 gap-3'
+						/>
 					)}
 				</div>
 			</div>
 
 			{/* Product details */}
 			<div className='flex flex-col gap-1'>
-				<h3
-					className=' font-medium'
-					style={{ color: '#1a1a1a' }}>
+				<h3 className=' font-medium' style={{ color: '#1a1a1a' }}>
 					{singlePackage.name}
 				</h3>
 				<p
