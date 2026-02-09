@@ -35,6 +35,8 @@ model User {
   vendorPayouts     VendorPayout[]
   accounts          Account[]
   sessions          Session[]
+  packageOrders     PackageOrder[]
+  packagePayments   PackagePayment[]
 
   @@map("user")
 }
@@ -673,4 +675,164 @@ enum SettlementStatus {
 enum PricingType {
   FIXED // Traditional: price is for the whole item
   PER_UNIT // New: price is per unit (scoop, wrap, etc.)
+}
+
+// ========== PACKAGE SYSTEM MODELS ==========
+// Flexible package system for special occasions (Valentine, Christmas, etc.)
+
+model Package {
+  id              String            @id @default(uuid())
+  name            String            // e.g., "Valentine Packages"
+  slug            String            @unique
+  description     String?
+  coverImage      String?           // Cover image URL
+  isActive        Boolean           @default(true)
+  isPreorder      Boolean           @default(false) // If true, requires delivery date
+  deliveryDate    DateTime?         // Required if isPreorder is true
+  orderCloseDate  DateTime?         // When orders close (e.g., Feb 13 for Valentine)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  categories      PackageCategory[]
+  orders          PackageOrder[]
+  items           PackageItem[]
+
+  @@index([slug])
+  @@index([isActive])
+}
+
+model PackageCategory {
+  id          String        @id @default(uuid())
+  packageId   String
+  name        String        // e.g., "Love Spark", "Classic", "Premium"
+  slug        String        // e.g., "love-spark", "classic", "premium"
+  description String?
+  order       Int           @default(0) // For sorting categories
+  createdAt   DateTime      @default(now())
+  package     Package       @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  items       PackageItem[]
+
+  @@unique([packageId, slug])
+  @@index([packageId])
+}
+
+model PackageItem {
+  id                String            @id @default(uuid())
+  packageId         String
+  categoryId        String
+  name              String
+  slug              String
+  description       String?
+  price             Float
+  currency          String            @default("NGN")
+  images            String[]          @default([])
+  isActive          Boolean           @default(true)
+  inStock           Boolean           @default(true)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  // Additional details for package items
+  details           Json?             // Flexible JSON for any additional data (ingredients, sizes, etc.)
+  
+  category          PackageCategory   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  package           Package           @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  orderItems        PackageOrderItem[]
+
+  @@unique([packageId, slug])
+  @@index([packageId])
+  @@index([categoryId])
+  @@index([isActive])
+}
+
+model PackageOrder {
+  id                  String              @id @default(uuid())
+  userId              String
+  packageId           String
+  orderId             String?             // Link to main Order table if needed
+  status              OrderStatus         @default(PENDING)
+  
+  // Recipient details (different from user's address)
+  recipientName       String
+  recipientPhone      String
+  recipientAddressId  String?             // Optional: can use existing address or create new
+  recipientAddressLine1 String
+  recipientAddressLine2 String?
+  recipientCity       String
+  recipientState      String?
+  recipientAreaId     String?
+  recipientCustomArea String?
+  
+  // Sender details
+  senderName           String
+  
+  // Delivery details
+  deliveryDate        DateTime            // The date for delivery (from package if preorder)
+  timeSlot            String               // e.g., "08:00-10:00", "10:00-12:00"
+  
+  // Card customization
+  cardType            PackageCardType      @default(CUSTOM)
+  customCardMessage   String?             // User's custom message if cardType is CUSTOM
+  
+  // Pricing
+  totalAmount         Float
+  currency            String              @default("NGN")
+  deliveryFee         Float               @default(0)
+  serviceFee          Float               @default(0)
+  platformFee         Float              @default(0)
+  productAmount       Float               @default(0)
+  
+  // Metadata
+  notes               String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  
+  package             Package             @relation(fields: [packageId], references: [id])
+  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items               PackageOrderItem[]
+  payment             PackagePayment?
+
+  @@index([userId])
+  @@index([packageId])
+  @@index([status])
+  @@index([deliveryDate])
+}
+
+model PackageOrderItem {
+  id              String        @id @default(uuid())
+  packageOrderId  String
+  packageItemId   String
+  quantity        Int           @default(1)
+  unitPrice       Float
+  totalPrice      Float
+  packageOrder    PackageOrder  @relation(fields: [packageOrderId], references: [id], onDelete: Cascade)
+  packageItem     PackageItem   @relation(fields: [packageItemId], references: [id])
+
+  @@index([packageOrderId])
+  @@index([packageItemId])
+}
+
+model PackagePayment {
+  id          String        @id @default(uuid())
+  packageOrderId String     @unique
+  userId      String
+  amount      Float
+  currency    String        @default("NGN")
+  provider    String        @default("paystack")
+  providerRef String
+  status      PaymentStatus @default(PENDING)
+  paidAt      DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  metadata    Json?
+
+  packageOrder PackageOrder @relation(fields: [packageOrderId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([providerRef])
+  @@index([status])
+}
+
+enum PackageCardType {
+  ADMIN_CREATED  // Admin creates the card
+  CUSTOM         // User customizes the card themselves
 }

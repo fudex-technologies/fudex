@@ -16,6 +16,7 @@ import {
 	Users,
 	CreditCard,
 	Tag,
+	Gift,
 } from 'lucide-react';
 import TabComponent from '@/components/TabComponent';
 import { useState, useEffect, useMemo } from 'react';
@@ -47,6 +48,8 @@ export default function AdminDashboardLayout({
 				setActiveTab('settings');
 			} else if (path.includes('/categories')) {
 				setActiveTab('categories');
+			} else if (path.includes('/packages')) {
+				setActiveTab('packages');
 			} else if (path.includes('/settlements')) {
 				setActiveTab('settlements');
 			} else if (path.includes('/payouts')) {
@@ -144,6 +147,11 @@ export default function AdminDashboardLayout({
 							icon: <Tag size={18} />,
 						},
 						{
+							id: 'packages',
+							label: 'Packages',
+							icon: <Gift size={18} />,
+						},
+						{
 							id: 'settings',
 							label: 'Settings',
 							icon: <Settings size={18} />,
@@ -173,6 +181,8 @@ export default function AdminDashboardLayout({
 							router.push(
 								PAGES_DATA.admin_dashboard_categories_page,
 							);
+						} else if (id === 'packages') {
+							router.push(PAGES_DATA.admin_dashboard_packages_page);
 						} else if (id === 'vendors') {
 							router.push('/profile/admin-dashboard/vendors');
 						} else if (id === 'users') {

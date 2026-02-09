@@ -62,25 +62,25 @@ const VendorListSection = ({ title }: { title?: string }) => {
 	return (
 		<SectionWrapper className='w-full flex flex-col gap-3'>
 			<div className='flex items-center justify-between'>
-				{title && <h2 className='text-lg font-semibold '>{title}</h2>}
-				<div className='flex items-center gap-1 bg-secondary/50 p-1 rounded-lg'>
+				{/* {title && <h2 className='text-lg font-semibold '>{title}</h2>} */}
+				<div className='flex w-full max-w-sm items-center gap-1 bg-primary/10 p-2 rounded-full'>
 					<button
 						onClick={() => setActiveTab('all')}
-						className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+						className={`flex-1 px-5 py-3 text-sm font-medium rounded-full transition-all ${
 							activeTab === 'all'
-								? 'bg-background text-foreground shadow-sm'
+								? 'bg-primary text-primary-foreground shadow-sm'
 								: 'text-muted-foreground hover:text-foreground'
 						}`}>
-						All Spots
+						Available Food Spots
 					</button>
 					<button
 						onClick={() => setActiveTab('cakes')}
-						className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+						className={`flex-1 px-5 py-3 text-sm font-medium rounded-full transition-all ${
 							activeTab === 'cakes'
-								? 'bg-pink-100 text-pink-700 shadow-sm border border-pink-200'
-								: 'text-muted-foreground hover:text-pink-600'
+								? 'bg-primary text-primary-foreground shadow-sm'
+								: 'text-muted-foreground hover:text-foreground'
 						}`}>
-						Cake Spots 🍰
+						Cakes & Surprises
 					</button>
 				</div>
 			</div>
@@ -116,7 +116,7 @@ export default VendorListSection;
 export const VendorListSectionSkeleton = ({ title }: { title?: string }) => {
 	return (
 		<SectionWrapper className='w-full flex flex-col gap-3'>
-			{title && <h2 className='text-lg font-semibold '>{title}</h2>}
+			{/* {title && <h2 className='text-lg font-semibold '>{title}</h2>} */}
 			<div className='w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5'>
 				{Array.from({ length: 8 }).map((_, index) => (
 					<div key={index} className='flex flex-col gap-2'>

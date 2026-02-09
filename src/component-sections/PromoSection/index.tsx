@@ -58,7 +58,7 @@ const PromoSection = () => {
 						},
 					]}
 					buttonLabel='Pre-order a gift now'
-					link={`${PAGES_DATA.home_page}#vendors`}
+					link={`/packages/valentine-packages`}
 					buttonClassName={
 						'bg-[#FD98AA] hover:bg-[#FD98AA]/50 text-black'
 					}
