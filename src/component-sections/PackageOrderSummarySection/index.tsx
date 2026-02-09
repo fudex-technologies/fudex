@@ -175,12 +175,6 @@ const PackageOrderSummarySection = ({
 								<div className='flex items-center justify-between mt-2'>
 									<CounterComponent
 										count={cartItem.quantity}
-										setCount={(newCount) =>
-											handleQuantityChange(
-												cartItem.id,
-												newCount,
-											)
-										}
 										countChangeEffect={(newCount) =>
 											handleQuantityChange(
 												cartItem.id,
