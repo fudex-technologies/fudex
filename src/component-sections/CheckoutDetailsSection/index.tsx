@@ -42,6 +42,9 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 	const [noteToRider, setNoteToRider] = useState('');
 	const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false);
 	const [isAddPhoneDrawerOpen, setIsAddPhoneDrawerOpen] = useState(false);
+	const [deliveryType, setDeliveryType] = useState<'DELIVERY' | 'PICKUP'>(
+		'DELIVERY',
+	);
 	const packs = getVendorPacks(vendorId);
 
 	const { getProfile, getAddresses } = useProfileActions();
@@ -174,7 +177,12 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 		trpc.users.getServiceFee.queryOptions(undefined),
 	);
 
-	const deliveryFee = deliveryFeeData?.deliveryFee || 0;
+	const deliveryFee =
+		deliveryType === 'PICKUP' ||
+		referralPromoInitiated ||
+		orderPromoInitiated
+			? 0
+			: deliveryFeeData?.deliveryFee || 0;
 	const serviceFee = serviceFeeData?.serviceFee || 0;
 	const total = subTotal + deliveryFee + serviceFee;
 
@@ -288,6 +296,7 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 			addressId: selectedAddressId,
 			items,
 			notes: notes || undefined,
+			deliveryType,
 		});
 	};
 
@@ -374,39 +383,72 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 						</div>
 					</div>
 
-					{/* Delivery Address */}
+					{/* Delivery/Pickup Toggle */}
 					<div className='w-full flex flex-col'>
 						<div className='px-5 py-2 bg-muted text-muted-foreground'>
-							<p className='text-lg font-bold'>
-								Delivery address
-							</p>
+							<p className='text-lg font-bold'>Delivery Option</p>
 						</div>
-						<button
-							onClick={() => setIsAddressDialogOpen(true)}
-							className='flex items-center justify-between p-5 hover:bg-muted/50 transition-colors'>
-							<div className='flex gap-2 items-center flex-1'>
-								<PiMapPinAreaBold size={20} />
-								{selectedAddress ? (
-									<p className='text-left'>
-										{shortenText(
-											`${selectedAddress.line1}${
-												selectedAddress.line2
-													? ', ' +
-														selectedAddress.line2
-													: ''
-											}, ${selectedAddress.city}`,
-											40,
-										)}
-									</p>
-								) : (
-									<p className='text-foreground/50'>
-										Select address
-									</p>
-								)}
-							</div>
-							<ChevronRight size={14} />
-						</button>
+						<div className='p-5 flex gap-4'>
+							<button
+								onClick={() => setDeliveryType('DELIVERY')}
+								className={cn(
+									'flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all',
+									deliveryType === 'DELIVERY'
+										? 'border-primary bg-primary/5 text-primary'
+										: 'border-muted bg-transparent text-muted-foreground',
+								)}>
+								<FaBicycle size={24} />
+								<span className='font-bold'>Delivery</span>
+							</button>
+							<button
+								onClick={() => setDeliveryType('PICKUP')}
+								className={cn(
+									'flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all',
+									deliveryType === 'PICKUP'
+										? 'border-primary bg-primary/5 text-primary'
+										: 'border-muted bg-transparent text-muted-foreground',
+								)}>
+								<PiStorefrontBold size={24} />
+								<span className='font-bold'>Pickup</span>
+							</button>
+						</div>
 					</div>
+
+					{/* Delivery Address - Only show for Delivery */}
+					{deliveryType === 'DELIVERY' && (
+						<div className='w-full flex flex-col'>
+							<div className='px-5 py-2 bg-muted text-muted-foreground'>
+								<p className='text-lg font-bold'>
+									Delivery address
+								</p>
+							</div>
+							<button
+								onClick={() => setIsAddressDialogOpen(true)}
+								className='flex items-center justify-between p-5 hover:bg-muted/50 transition-colors'>
+								<div className='flex gap-2 items-center flex-1'>
+									<PiMapPinAreaBold size={20} />
+									{selectedAddress ? (
+										<p className='text-left'>
+											{shortenText(
+												`${selectedAddress.line1}${
+													selectedAddress.line2
+														? ', ' +
+															selectedAddress.line2
+														: ''
+												}, ${selectedAddress.city}`,
+												40,
+											)}
+										</p>
+									) : (
+										<p className='text-foreground/50'>
+											Select address
+										</p>
+									)}
+								</div>
+								<ChevronRight size={14} />
+							</button>
+						</div>
+					)}
 					{/* Phone number */}
 					<div className='w-full flex flex-col'>
 						<div className='px-5 py-2 bg-muted text-muted-foreground'>
@@ -538,13 +580,17 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 							<div className='flex items-center justify-between px-5'>
 								<p>Delivery fee</p>
 								<p className='font-semibold'>
-									{referralPromoInitiated
-										? 'Free (Referral Promo)'
-										: orderPromoInitiated
-											? 'Free (4th Order Promo)'
-											: isLoadingDeliveryFeeData
-												? 'Loading...'
-												: formatCurency(deliveryFee)}
+									{deliveryType === 'PICKUP'
+										? 'Free (Pickup)'
+										: referralPromoInitiated
+											? 'Free (Referral Promo)'
+											: orderPromoInitiated
+												? 'Free (4th Order Promo)'
+												: isLoadingDeliveryFeeData
+													? 'Loading...'
+													: formatCurency(
+															deliveryFee,
+														)}
 								</p>
 							</div>
 							<div className='flex items-center justify-between px-5'>
