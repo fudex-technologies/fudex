@@ -164,10 +164,10 @@ export default function OperatorCategoriesPage() {
 
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 	const [editingCategory, setEditingCategory] = useState<Category | null>(
-		null
+		null,
 	);
 	const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(
-		null
+		null,
 	);
 
 	const createMutation = createCategory({
@@ -207,7 +207,7 @@ export default function OperatorCategoriesPage() {
 			slug: editingCategory?.slug || '',
 			image: editingCategory?.image || '',
 		}),
-		[editingCategory]
+		[editingCategory],
 	);
 
 	if (isLoading) {
@@ -264,7 +264,7 @@ export default function OperatorCategoriesPage() {
 						<div
 							key={category.id}
 							className={cn(
-								'bg-muted text-muted-foreground flex flex-col gap-2 w-[100px] p-3 rounded-lg shadow-sm border cursor-pointer'
+								'bg-muted text-muted-foreground flex flex-col gap-2 w-[100px] p-3 rounded-lg shadow-sm border cursor-pointer',
 							)}>
 							<p className=''>{category.name}</p>
 							<div className='relative w-full'>

@@ -1,24 +1,77 @@
 'use client';
 
 import OngoingOrderItem from '@/components/order-components/OngoingOrderItem';
+import PackageOngoingOrderItem from '@/components/order-components/PackageOngoingOrderItem';
 import { Button } from '@/components/ui/button';
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
 import { useOrderingActions } from '@/api-hooks/useOrderingActions';
+import { usePackageActions } from '@/api-hooks/usePackageActions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PAGES_DATA } from '@/data/pagesData';
 import { useRouter } from 'next/navigation';
 import { OrderStatus } from '@prisma/client';
+import { useMemo } from 'react';
 
 export default function OngoingOrdersPage() {
 	const router = useRouter();
 	const { useListOngoingOrders } = useOrderingActions();
+	const { useGetMyPackageOrders } = usePackageActions();
 
 	// Get ongoing orders (PENDING, PAID, PREPARING, ASSIGNED)
-	const { data: ongoingOrders = [], isLoading } = useListOngoingOrders({
-		take: 50,
-	});
+	const { data: ongoingOrdersRaw = [], isLoading: isLoadingOrders } =
+		useListOngoingOrders({
+			take: 50,
+		});
 
-	const isEmpty = !isLoading && ongoingOrders.length === 0;
+	// Get ongoing package orders
+	// Package orders use same status enums generally
+	const { data: packageOrdersData, isLoading: isLoadingPackages } =
+		useGetMyPackageOrders({
+			limit: 50,
+		});
+
+	const packageOrders = packageOrdersData?.items || [];
+
+	const isLoading = isLoadingOrders || isLoadingPackages;
+
+	// Merge and sort orders
+	const combinedOrders = useMemo(() => {
+		const regularOrders = ongoingOrdersRaw.map((order) => ({
+			...order,
+			type: 'regular',
+		}));
+		const pkgOrders = packageOrders.map((order) => ({
+			...order,
+			type: 'package',
+		}));
+
+		// Filter package orders for ongoing status if needed
+		// Ongoing statuses: PENDING, PAID, PREPARING, ASSIGNED, ACCEPTED, READY, OUT_FOR_DELIVERY
+		const ongoingStatuses = [
+			'PENDING',
+			'PAID',
+			'PREPARING',
+			'ASSIGNED',
+			'ACCEPTED',
+			'READY',
+			'OUT_FOR_DELIVERY',
+		];
+
+		const filteredPkgOrders = pkgOrders.filter((order) =>
+			ongoingStatuses.includes(order.status),
+		);
+
+		const all = [...regularOrders, ...filteredPkgOrders];
+
+		// Sort by createdAt desc
+		return all.sort(
+			(a, b) =>
+				new Date(b.createdAt).getTime() -
+				new Date(a.createdAt).getTime(),
+		);
+	}, [ongoingOrdersRaw, packageOrders]);
+
+	const isEmpty = !isLoading && combinedOrders.length === 0;
 
 	// Map order status to component status
 	const getOrderStatus = (
@@ -106,9 +159,18 @@ export default function OngoingOrdersPage() {
 			{/* With data state */}
 			{!isEmpty && (
 				<div className='w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 px-5'>
-					{ongoingOrders.map((order) => {
+					{combinedOrders.map((order: any) => {
+						if (order.type === 'package') {
+							return (
+								<PackageOngoingOrderItem
+									key={order.id}
+									packageOrder={order}
+								/>
+							);
+						}
+
 						const itemCount = order.items.reduce(
-							(sum, item) => sum + item.quantity,
+							(sum: any, item: any) => sum + item.quantity,
 							0,
 						);
 						const displayOrderId = order.id

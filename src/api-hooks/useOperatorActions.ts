@@ -185,6 +185,42 @@ export function useOperatorActions() {
                     retry: false,
                 })
             ),
+
+        // Package Orders
+        useListPackageOrders: (input: { limit?: number; cursor?: string; status?: OrderStatus; search?: string } = { limit: 20 }) =>
+            useQuery(trpc.packages.admin.listPackageOrders.queryOptions(input)),
+
+        useInfiniteListPackageOrders: (input: { limit?: number; status?: OrderStatus; search?: string } = { limit: 20 }) =>
+            useInfiniteQuery(
+                trpc.packages.admin.listPackageOrders.infiniteQueryOptions(
+                    { ...input },
+                    {
+                        getNextPageParam: (lastPage: any) => lastPage.nextCursor,
+                    }
+                )
+            ),
+
+        useGetPackageOrderById: (input: { id: string }, options?: { enabled?: boolean }) =>
+            useQuery(
+                trpc.packages.admin.getPackageOrderById.queryOptions(input, {
+                    enabled: options?.enabled ?? !!input.id,
+                })
+            ),
+
+        updatePackageOrderStatus: (options?: UseAPICallerOptions) =>
+            useMutation(
+                trpc.packages.admin.updatePackageOrderStatus.mutationOptions({
+                    onSuccess: (data) => {
+                        if (!options?.silent) toast.success("Package order status updated");
+                        options?.onSuccess?.(data);
+                    },
+                    onError: (err: unknown) => {
+                        if (!options?.silent) toast.error("Failed to update package order status", { description: err instanceof Error ? err.message : String(err) });
+                        options?.onError?.(err);
+                    },
+                    retry: false,
+                })
+            ),
     };
 }
 

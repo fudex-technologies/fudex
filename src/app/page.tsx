@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { PiSlidersHorizontalFill } from 'react-icons/pi';
 import { PAGES_DATA } from '@/data/pagesData';
 import Link from 'next/link';
+import ValentineSpecialSection from '@/component-sections/ValentineSpecialSection';
 
 export default function Home() {
 	return (
@@ -40,6 +41,12 @@ export default function Home() {
 			<CategorySelectionSection />
 			<PromoSection />
 			{/* <PopularRestaurantsSection /> */}
+			<Suspense
+				fallback={
+					<div className='' />
+				}>
+				<ValentineSpecialSection />
+			</Suspense>
 			<Suspense
 				fallback={
 					<VendorListSectionSkeleton title={'Available Food Spots'} />
