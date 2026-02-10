@@ -43,7 +43,7 @@ export default function Home() {
 			{/* <PopularRestaurantsSection /> */}
 			<Suspense
 				fallback={
-					<div className='h-48 w-full animate-pulse bg-muted/20' />
+					<div className='' />
 				}>
 				<ValentineSpecialSection />
 			</Suspense>

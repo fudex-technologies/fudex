@@ -22,7 +22,8 @@ export default function ValentineSpecialSection() {
 	}, [data]);
 
 	if (isLoading) {
-		return <ValentineSpecialSkeleton />;
+		// return <ValentineSpecialSkeleton />;
+		return null;
 	}
 
 	// Don't show if no cake vendors

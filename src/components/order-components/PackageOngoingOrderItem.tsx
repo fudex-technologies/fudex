@@ -78,7 +78,7 @@ const PackageOngoingOrderItem = ({ packageOrder }: { packageOrder: any }) => {
 				reference: payment.providerRef,
 			});
 
-			if (result.status === 'COMPLETED' || result.status === 'PAID') {
+			if (result?.payment?.status === 'COMPLETED') {
 				toast.success('Payment confirmed! Updating status...', {
 					id: toastId,
 				});
@@ -86,7 +86,7 @@ const PackageOngoingOrderItem = ({ packageOrder }: { packageOrder: any }) => {
 				window.location.reload();
 			} else {
 				toast.error(
-					`Payment is still ${result.status.toLowerCase()}. Please try paying again if you haven't.`,
+					`Payment is still ${result?.payment?.status.toLowerCase()}. Please try paying again if you haven't.`,
 					{ id: toastId },
 				);
 			}
