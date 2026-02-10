@@ -1,7 +1,6 @@
 'use client';
 
 import VendorCard from '@/components/VendorCard';
-import SectionWrapper from '@/components/wrapers/SectionWrapper';
 import { useVendorProductActions } from '@/api-hooks/useVendorActions';
 import { useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';

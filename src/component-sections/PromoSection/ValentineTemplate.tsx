@@ -1,5 +1,6 @@
+"use client"
+
 import { buttonVariants } from '@/components/ui/button';
-import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
 import { cn } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
