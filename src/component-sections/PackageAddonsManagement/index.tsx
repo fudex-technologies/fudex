@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { usePackageAdminActions } from '@/api-hooks/usePackageActions';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Search, CheckWithUnderline } from 'lucide-react';
+import { Plus, Trash2, Search } from 'lucide-react';
 import {
 	Dialog,
 	DialogContent,
@@ -22,9 +22,7 @@ import {
 	AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { cn } from '@/lib/utils';
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
 import { formatCurency } from '@/lib/commonFunctions';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -165,8 +163,7 @@ export default function PackageAddonsManagement({
 																alt={
 																	productItem.name
 																}
-																fill
-																className='object-cover'
+																className='object-cover w-full h-full'
 															/>
 														)}
 													</div>
@@ -174,16 +171,18 @@ export default function PackageAddonsManagement({
 														<p className='font-medium text-sm'>
 															{
 																productItem
-																	.product
-																	.name
+																	?.product
+																	?.name
 															}{' '}
-															- {productItem.name}
+															-{' '}
+															{productItem?.name}
 														</p>
 														<p className='text-xs text-muted-foreground'>
 															{
 																productItem
-																	.product
-																	.vendor.name
+																	?.product
+																	?.vendor
+																	?.name
 															}
 														</p>
 													</div>
@@ -243,20 +242,25 @@ export default function PackageAddonsManagement({
 										<ImageWithFallback
 											src={addon.productItem.images[0]}
 											alt={addon.productItem.name}
-											fill
-											className='object-cover'
+											className='object-cover w-full h-full'
 										/>
 									)}
 								</div>
 								<div className='flex-1 min-w-0'>
 									<h4 className='font-semibold text-sm truncate'>
-										{addon.productItem.product.name}
+										{
+											addon?.productItem?.product?.vendor
+												?.name
+										}
 									</h4>
 									<p className='text-xs text-muted-foreground truncate'>
 										{addon.productItem.name}
 									</p>
 									<p className='text-xs text-muted-foreground truncate font-medium text-primary mt-0.5'>
-										{addon.productItem.product.vendor.name}
+										{
+											addon?.productItem?.product?.vendor
+												?.name
+										}
 									</p>
 								</div>
 							</div>
