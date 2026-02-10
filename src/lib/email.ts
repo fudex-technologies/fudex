@@ -678,3 +678,110 @@ export async function sendOperatorNewPackageOrderEmail(
     }
 }
 
+export async function sendCustomerPackageOrderEmail(
+    email: string,
+    customerName: string,
+    packageName: string,
+    orderId: string,
+    amount: number,
+    currency: string,
+    deliveryDate: Date,
+    timeSlot: string,
+    recipientName: string,
+    from: string
+) {
+    try {
+        const formattedDate = new Date(deliveryDate).toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+
+        // Use requested brand color
+        const PACKAGE_BRAND_COLOR = '#FF305A'; 
+
+        const { data, error } = await resend.emails.send({
+            from: `FUDEX <${from}>`,
+            to: [email],
+            subject: '📦 Order Confirmed: Your Package is on the way!',
+            html: `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Order Confirmed</title>
+                </head>
+                <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="background: ${PACKAGE_BRAND_COLOR}; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                        <h1 style="color: white; margin: 0; font-size: 28px;">Order Confirmed! 📦</h1>
+                    </div>
+                    
+                    <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
+                        <p style="font-size: 16px; margin-bottom: 20px;">Hello <strong>${customerName}</strong>,</p>
+                        
+                        <p style="font-size: 16px; margin-bottom: 20px;">
+                            Thank you for your order! We've received your payment and are getting your package ready.
+                        </p>
+                        
+                        <div style="background: white; border-left: 4px solid ${PACKAGE_BRAND_COLOR}; padding: 20px; margin: 30px 0; border-radius: 4px;">
+                            <p style="font-size: 16px; margin: 0 0 10px 0;">
+                                <strong>Order Summary:</strong>
+                            </p>
+                            <p style="font-size: 14px; margin: 0 0 5px 0; color: #555;">
+                                Package: <strong>${packageName}</strong>
+                            </p>
+                            <p style="font-size: 14px; margin: 0 0 5px 0; color: #555;">
+                                Order ID: <strong>#${orderId.slice(0, 8)}</strong>
+                            </p>
+                            <p style="font-size: 14px; margin: 0 0 5px 0; color: #555;">
+                                Amount Paid: <strong>${currency} ${amount.toLocaleString()}</strong>
+                            </p>
+                        </div>
+
+                        <div style="background: white; border-left: 4px solid ${PACKAGE_BRAND_COLOR}; padding: 20px; margin: 30px 0; border-radius: 4px;">
+                            <p style="font-size: 16px; margin: 0 0 10px 0;">
+                                <strong>Delivery Details:</strong>
+                            </p>
+                            <p style="font-size: 14px; margin: 0 0 5px 0; color: #555;">
+                                Recipient: <strong>${recipientName}</strong>
+                            </p>
+                            <p style="font-size: 14px; margin: 0 0 5px 0; color: #555;">
+                                Date: <strong>${formattedDate}</strong>
+                            </p>
+                            <p style="font-size: 14px; margin: 0; color: #555;">
+                                Time: <strong>${timeSlot}</strong>
+                            </p>
+                        </div>
+                        
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="${process.env.NEXT_PUBLIC_APP_URL}/orders" style="display: inline-block; background: ${PACKAGE_BRAND_COLOR}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Track Order</a>
+                        </div>
+                        
+                        <p style="font-size: 14px; color: #666; margin-bottom: 20px;">
+                            We'll let you know when your package is out for delivery.
+                        </p>
+                        
+                        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+                        
+                        <p style="font-size: 12px; color: #999; text-align: center;">
+                            © ${new Date().getFullYear()} FUDEX. All rights reserved.<br>
+                            This is an automated email, please do not reply.
+                        </p>
+                    </div>
+                </body>
+                </html>
+            `,
+        });
+
+        if (error) {
+            throw new Error(error.message);
+        }
+
+        return data;
+    } catch (error) {
+        console.error('Error sending email:', error);
+        throw error;
+    }
+}

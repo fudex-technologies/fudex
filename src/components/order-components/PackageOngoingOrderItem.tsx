@@ -24,8 +24,9 @@ const PackageOngoingOrderItem = ({ packageOrder }: { packageOrder: any }) => {
 		payment,
 	} = packageOrder;
 
-	const { createPackagePayment } = usePackageActions();
+	const { createPackagePayment, verifyPackagePayment } = usePackageActions();
 	const createPackagePaymentMutation = createPackagePayment();
+	const verifyPackagePaymentMutation = verifyPackagePayment();
 
 	const itemCount = items.reduce(
 		(sum: number, item: any) => sum + item.quantity,
@@ -58,20 +59,49 @@ const PackageOngoingOrderItem = ({ packageOrder }: { packageOrder: any }) => {
 		}
 	};
 
-	const handleCheckStatus = (e: React.MouseEvent<HTMLButtonElement>) => {
+	const handleCheckStatus = async (
+		e: React.MouseEvent<HTMLButtonElement>,
+	) => {
 		e.preventDefault();
 		e.stopPropagation();
 
-		if (!payment?.providerRef) return;
+		if (!payment?.providerRef) {
+			toast.error('No payment reference found to verify.');
+			return;
+		}
 
-		const baseUrl =
-			typeof window !== 'undefined'
-				? window.location.origin
-				: process.env.NEXT_PUBLIC_BASE_URL || '';
+		const toastId = toast.loading('Verifying payment status...');
 
-		// Use the package-specific callback route
-		const callbackUrl = `${baseUrl}/packages/orders/${id}/payment-callback?reference=${payment.providerRef}`;
-		window.location.href = callbackUrl;
+		try {
+			// Call verification directly
+			const result = await verifyPackagePaymentMutation.mutateAsync({
+				reference: payment.providerRef,
+			});
+
+			if (result.status === 'COMPLETED' || result.status === 'PAID') {
+				toast.success('Payment confirmed! Updating status...', {
+					id: toastId,
+				});
+				// Reload to show updated status
+				window.location.reload();
+			} else {
+				toast.error(
+					`Payment is still ${result.status.toLowerCase()}. Please try paying again if you haven't.`,
+					{ id: toastId },
+				);
+			}
+		} catch (error: any) {
+			console.error('Verification error:', error);
+			// Fallback to redirect if direct verification fails or errors
+			toast.dismiss(toastId);
+			const baseUrl =
+				typeof window !== 'undefined'
+					? window.location.origin
+					: process.env.NEXT_PUBLIC_BASE_URL || '';
+
+			const callbackUrl = `${baseUrl}/packages/orders/${id}/payment-callback?reference=${payment.providerRef}`;
+			window.location.href = callbackUrl;
+		}
 	};
 
 	const getStatusColor = (status: string) => {

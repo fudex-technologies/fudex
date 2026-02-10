@@ -83,8 +83,23 @@ export async function handlePackagePaymentCompletion(paymentId: string) {
                         const recipientAddress = `${packageOrder.recipientAddressLine1}, ${packageOrder.recipientCity}${packageOrder.recipientState ? ', ' + packageOrder.recipientState : ''}`;
 
                         // Import email function dynamically to avoid circular dependencies
-                        const { sendOperatorNewPackageOrderEmail } = await import("@/lib/email");
+                        const { sendOperatorNewPackageOrderEmail, sendCustomerPackageOrderEmail } = await import("@/lib/email");
 
+                        // Send Customer Email
+                        await sendCustomerPackageOrderEmail(
+                            customer.email!,
+                            customerName,
+                            packageOrder.package.name,
+                            packageOrderId,
+                            payment.amount,
+                            payment.currency,
+                            packageOrder.deliveryDate,
+                            packageOrder.timeSlot,
+                            packageOrder.recipientName,
+                            'orders@fudex.ng'
+                        ).catch((err) => console.error('[PackagePayment] Failed to send email to customer:', err));
+
+                        // Send Operator Email
                         await sendOperatorNewPackageOrderEmail(
                             operatorEmails,
                             packageOrder.package.name,
