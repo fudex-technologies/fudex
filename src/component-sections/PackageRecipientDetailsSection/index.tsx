@@ -307,7 +307,7 @@ const PackageRecipientDetailsSection = ({
 							type='submit'
 							variant={'game'}
 							size={'lg'}
-							className='w-full sm:w-auto'>
+							className='w-full sm:w-auto bg-[#FF305A]'>
 							Continue to Delivery
 						</Button>
 					</div>

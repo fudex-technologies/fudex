@@ -348,6 +348,8 @@ model ProductItem {
   product         Product?              @relation(fields: [productId], references: [id], onDelete: Cascade)
   vendor          Vendor                @relation(fields: [vendorId], references: [id], onDelete: Cascade)
   categories      ProductItemCategory[]
+  packageAddons   PackageAddon[]
+  packageOrderAddons PackageOrderAddon[]
 
   @@index([vendorId])
   @@index([price])
@@ -695,9 +697,26 @@ model Package {
   categories      PackageCategory[]
   orders          PackageOrder[]
   items           PackageItem[]
+  addons          PackageAddon[]
 
   @@index([slug])
   @@index([isActive])
+}
+
+model PackageAddon {
+  id            String      @id @default(uuid())
+  packageId     String
+  productItemId String
+  sortOrder     Int         @default(0)
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+
+  package       Package     @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  productItem   ProductItem @relation(fields: [productItemId], references: [id])
+
+  @@unique([packageId, productItemId])
+  @@index([packageId])
+  @@index([productItemId])
 }
 
 model PackageCategory {
@@ -789,6 +808,7 @@ model PackageOrder {
   user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   items               PackageOrderItem[]
   payment             PackagePayment?
+  addons              PackageOrderAddon[]
 
   @@index([userId])
   @@index([packageId])
@@ -824,12 +844,32 @@ model PackagePayment {
   updatedAt   DateTime      @updatedAt
   metadata    Json?
 
+  // Track if notifications have been sent to prevent duplicates
+  notificationsSent   Boolean   @default(false)
+  notificationsSentAt DateTime?
+
   packageOrder PackageOrder @relation(fields: [packageOrderId], references: [id], onDelete: Cascade)
   user         User         @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([providerRef])
   @@index([status])
+}
+
+model PackageOrderAddon {
+  id             String       @id @default(uuid())
+  packageOrderId String
+  productItemId  String
+  quantity       Int          @default(1)
+  unitPrice      Float
+  totalPrice     Float
+  name           String       // Snapshot of name
+
+  packageOrder   PackageOrder @relation(fields: [packageOrderId], references: [id], onDelete: Cascade)
+  productItem    ProductItem  @relation(fields: [productItemId], references: [id])
+  
+  @@index([packageOrderId])
+  @@index([productItemId])
 }
 
 enum PackageCardType {

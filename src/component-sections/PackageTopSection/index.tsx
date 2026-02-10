@@ -16,7 +16,7 @@ const PackageTopSection = ({ packageSlug }: { packageSlug: string }) => {
 	if (isLoading) {
 		return (
 			<div className='w-full flex flex-col items-center'>
-				<div className='h-[180px] w-full relative'>
+				<div className='h-[100px] w-full relative'>
 					<Skeleton className='w-full h-full' />
 				</div>
 				<Skeleton className='w-full max-w-sm sm:max-w-md h-16 rounded-b-3xl' />
@@ -35,7 +35,7 @@ const PackageTopSection = ({ packageSlug }: { packageSlug: string }) => {
 
 	return (
 		<div className='w-full flex flex-col items-center'>
-			<div className='h-[180px] w-full relative '>
+			<div className='h-[100px] w-full relative '>
 				<div
 					className={cn(
 						'w-full h-full relative overflow-hidden bg-muted',
@@ -53,7 +53,7 @@ const PackageTopSection = ({ packageSlug }: { packageSlug: string }) => {
 			</div>
 
 			{packageData.description && (
-				<div className='w-full max-w-sm sm:max-w-md p-3 rounded-b-3xl bg-[#FF305A] text-white text-center'>
+				<div className='w-full max-w-sm sm:max-w-md p-2 rounded-b-3xl bg-[#FF305A] text-white text-center text-sm'>
 					{packageData.description}
 					{orderCloseDate && (
 						<span className='block mt-1 text-sm'>

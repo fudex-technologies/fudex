@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { HeartIcon } from 'lucide-react';
 
 const PackageDeliveryDetailsSection = ({
 	packageSlug,
@@ -164,9 +165,10 @@ const PackageDeliveryDetailsSection = ({
 							type='submit'
 							variant={'game'}
 							size={'lg'}
-							className='w-full sm:w-auto'
+							className='w-full sm:w-auto bg-[#FF305A]'
 							disabled={!deliveryDate || !selectedTimeSlot}>
-							Continue to Card
+								<HeartIcon className='mr-2 h-4 w-4' />
+							Add a love note
 						</Button>
 					</div>
 				</div>

@@ -30,6 +30,19 @@ const PackagesCategoriesSection = ({
 		);
 	}, [packageData]);
 
+	// Prepare addons data for the bottom bar
+	const allAddonsData = useMemo(() => {
+		if (!packageData?.addons) return [];
+
+		return packageData.addons
+			.filter((addon) => addon.isActive && addon.productItem)
+			.map((addon) => ({
+				productItemId: addon.productItemId,
+				name: addon.productItem.product?.name || addon.productItem.name,
+				price: addon.productItem.price,
+			}));
+	}, [packageData]);
+
 	if (isLoading) {
 		return (
 			<div className='w-full space-y-5'>
@@ -96,6 +109,7 @@ const PackagesCategoriesSection = ({
 			<PackageCartBottomBar
 				packageSlug={packageSlug}
 				packageItemsData={allPackageItems}
+				addonsData={allAddonsData}
 				isPreorder={packageData?.isPreorder}
 			/>
 		</>

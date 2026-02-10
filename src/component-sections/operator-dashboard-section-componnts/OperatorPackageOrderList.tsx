@@ -1,0 +1,147 @@
+'use client';
+
+import { useOperatorActions } from '@/api-hooks/useOperatorActions';
+import { OrderStatus } from '@prisma/client';
+import { useInView } from 'react-intersection-observer';
+import { useEffect, useState } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
+import TabComponent from '@/components/TabComponent';
+import { Gift, Clock, CheckCircle2, XCircle, Package } from 'lucide-react';
+import OperatorPackageOrderCard from './OperatorPackageOrderCard';
+
+export default function OperatorPackageOrderList() {
+	const { useInfiniteListPackageOrders } = useOperatorActions();
+	const [activeTab, setActiveTab] = useState<string>('active');
+	const { ref, inView } = useInView();
+
+	const statusFilter = (tab: string): OrderStatus | undefined => {
+		switch (tab) {
+			case 'pending':
+				return OrderStatus.PENDING;
+			case 'paid':
+				return OrderStatus.PAID;
+			case 'preparing':
+				return OrderStatus.PREPARING;
+			case 'delivered':
+				return OrderStatus.DELIVERED;
+			case 'cancelled':
+				return OrderStatus.CANCELLED;
+			default:
+				return undefined;
+		}
+	};
+
+	const {
+		data,
+		fetchNextPage,
+		hasNextPage,
+		isFetchingNextPage,
+		isLoading,
+		refetch,
+	} = useInfiniteListPackageOrders({
+		limit: 10,
+		status: activeTab === 'all' ? undefined : statusFilter(activeTab),
+	});
+
+	useEffect(() => {
+		if (inView && hasNextPage && !isFetchingNextPage) {
+			fetchNextPage();
+		}
+	}, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+	const orders = data?.pages.flatMap((page) => page.items) || [];
+
+	// Client-side filtering for 'active' orders (not delivered/cancelled)
+	const filteredOrders =
+		activeTab === 'active'
+			? orders.filter(
+					(o) =>
+						o.status !== OrderStatus.DELIVERED &&
+						o.status !== OrderStatus.CANCELLED,
+				)
+			: orders;
+
+	return (
+		<div className='space-y-6'>
+			<div className='sticky top-16 z-20 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 py-2'>
+				<TabComponent
+					activeTab={activeTab}
+					setActiveTab={setActiveTab}
+					tabs={[
+						{
+							id: 'active',
+							label: 'Active',
+							icon: <Clock size={16} />,
+						},
+						{
+							id: 'paid',
+							label: 'Paid',
+							icon: <Package size={16} />,
+						},
+						{
+							id: 'preparing',
+							label: 'Preparing',
+							icon: <Gift size={16} />,
+						},
+						{
+							id: 'delivered',
+							label: 'Delivered',
+							icon: <CheckCircle2 size={16} />,
+						},
+						{
+							id: 'cancelled',
+							label: 'Cancelled',
+							icon: <XCircle size={16} />,
+						},
+						{
+							id: 'all',
+							label: 'All Orders',
+							icon: <Gift size={16} />,
+						},
+					]}
+					className='border-b-0 px-5'
+				/>
+			</div>
+
+			<div className='px-5 pb-10 space-y-4'>
+				{isLoading ? (
+					<div className='space-y-4'>
+						{Array.from({ length: 5 }).map((_, i) => (
+							<Skeleton
+								key={i}
+								className='h-48 w-full rounded-xl'
+							/>
+						))}
+					</div>
+				) : filteredOrders.length === 0 ? (
+					<div className='text-center py-20 bg-muted/30 rounded-2xl border-2 border-dashed'>
+						<Gift className='w-12 h-12 mx-auto mb-4 text-muted-foreground' />
+						<p className='text-muted-foreground'>
+							No package orders found in this category
+						</p>
+					</div>
+				) : (
+					<>
+						{filteredOrders.map((order) => (
+							<OperatorPackageOrderCard
+								key={order.id}
+								order={order}
+								onUpdate={refetch}
+							/>
+						))}
+
+						{hasNextPage && (
+							<div ref={ref} className='py-4 flex justify-center'>
+								{isFetchingNextPage ? (
+									<Skeleton className='h-20 w-full rounded-xl' />
+								) : (
+									<div className='h-1' />
+								)}
+							</div>
+						)}
+					</>
+				)}
+			</div>
+		</div>
+	);
+}

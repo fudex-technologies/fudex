@@ -25,7 +25,7 @@ const SinglePackageCategorySction = ({
 				<ScrollArea className='w-screen max-w-[1400px] whitespace-nowrap'>
 					<div className='flex w-max space-x-4 mx-5'>
 						{packages.map((singlepackage) => (
-							<div className='w-[200px]' key={singlepackage.id}>
+							<div className='w-[150px]' key={singlepackage.id}>
 								<PackageCard singlePackage={singlepackage} />
 							</div>
 						))}
