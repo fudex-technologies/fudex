@@ -180,7 +180,9 @@ const PackageCategorySection: React.FC<PackageCategorySectionProps> = ({
 										packageSlug,
 									),
 								);
-							}}>
+							}}
+							className='bg-[#FF305A]'
+							>
 							<ShoppingCart className='mr-2 h-4 w-4' />
 							View Cart
 						</Button>
