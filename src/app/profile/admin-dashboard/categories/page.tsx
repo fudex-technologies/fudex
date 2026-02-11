@@ -273,15 +273,15 @@ export default function AdminCategoriesPage() {
 						<div
 							key={category.id}
 							className={cn(
-								'group relative bg-card flex flex-col items-center p-4 rounded-2xl shadow-sm border border-border/50 hover:border-primary/50 transition-all duration-300',
+								'group relative bg-card flex flex-col items-center p-4 rounded-2xl shadow-sm border border-border/50 focus:border-primary/50 transition-all duration-300',
 							)}>
 							<div className='relative w-full aspect-square mb-4 bg-muted rounded-xl overflow-hidden'>
 								<ImageWithFallback
 									src={category?.image || ''}
 									alt={category.name}
-									className='object-cover w-full h-full group-hover:scale-110 transition-transform duration-500'
+									className='object-cover w-full h-full scale-110 transition-transform duration-500'
 								/>
-								<div className='absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2'>
+								<div className='absolute inset-0 bg-black/40 opacity-100 transition-opacity flex items-center justify-center gap-2'>
 									<Button
 										size='icon'
 										variant='secondary'
@@ -372,7 +372,7 @@ export default function AdminCategoriesPage() {
 									});
 								}
 							}}
-							className='bg-destructive text-destructive-foreground hover:bg-destructive/90'>
+							className='bg-destructive text-destructive-foreground focus:bg-destructive/90'>
 							Delete
 						</AlertDialogAction>
 					</AlertDialogFooter>
