@@ -79,7 +79,7 @@ const PackagesCategoriesSection = ({
 				<PackageCartInitializer packageId={packageData.id} />
 			)}
 
-			<div className='w-full space-y-5 pb-24'>
+			<div className='w-full space-y-1 pb-24'>
 				{packageData.categories.map((category) => {
 					// Transform package items to match the expected format
 					const packages = (category.items || []).map((item) => ({

@@ -48,7 +48,7 @@ export default function Home() {
 				}>
 				<ValentineSpecialSection />
 			</Suspense> */}
-			<SectionWrapper className='w-full flex items-center  gap-5 justify-center'>
+			{/* <SectionWrapper className='w-full flex items-center  gap-5 justify-center'>
 				<ValentineTemplate
 					slides={[
 						{
@@ -81,7 +81,7 @@ export default function Home() {
 					className={'bg-[#8D021B] w-full!'}
 					firstSectionClassName={'flex-1'}
 				/>
-			</SectionWrapper>
+			</SectionWrapper> */}
 
 			<Suspense
 				fallback={

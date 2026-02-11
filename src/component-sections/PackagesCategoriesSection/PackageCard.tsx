@@ -5,6 +5,7 @@ import PlusIcon from '../../../public/assets/plus-icon.svg';
 import CounterComponent from '@/components/CounterComponent';
 import { formatCurency } from '@/lib/commonFunctions';
 import { usePackageCartStore } from '@/store/package-cart-store';
+import Image from 'next/image';
 
 interface PackageCardProps {
 	singlePackage: {
@@ -63,14 +64,17 @@ const PackageCard = ({
 	};
 
 	return (
-		<div className='flex flex-col gap-2'>
+		<div className='w-full flex flex-col gap-2'>
 			{/* Image container with plus button */}
-			<div className='relative w-full aspect-[2/1.7] rounded-lg overflow-hidden bg-muted'>
-				<img
-					src={singlePackage.imageUrl}
-					alt={singlePackage.name}
-					className='w-full h-full object-cover'
-				/>
+			<div className='relative w-full aspect-square rounded-lg overflow-hidden bg-muted'>
+				<div className="w-full h-full relative">
+					<Image
+						src={singlePackage.imageUrl}
+						alt={singlePackage.name}
+						fill 
+						className='w-full h-full object-cover object-center'
+					/>
+				</div>
 
 				{/* Plus button or Counter */}
 				<div className='absolute bottom-2 right-2'>

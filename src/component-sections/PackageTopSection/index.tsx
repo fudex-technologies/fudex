@@ -2,8 +2,6 @@
 
 import GoBackButton from '@/components/GoBackButton';
 import { cn } from '@/lib/utils';
-import Image from 'next/image';
-import React from 'react';
 import { usePackageActions } from '@/api-hooks/usePackageActions';
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -35,7 +33,7 @@ const PackageTopSection = ({ packageSlug }: { packageSlug: string }) => {
 
 	return (
 		<div className='w-full flex flex-col items-center'>
-			<div className='h-[100px] w-full relative '>
+			<div className='h-[120px] w-full relative '>
 				<div
 					className={cn(
 						'w-full h-full relative overflow-hidden bg-muted',
@@ -43,7 +41,7 @@ const PackageTopSection = ({ packageSlug }: { packageSlug: string }) => {
 					<ImageWithFallback
 						src={coverImage}
 						alt={packageData.name}
-						className={cn('object-cover w-full')}
+						className={cn('object-cover w-full object-center')}
 						// fallbackSrc='/assets/valentinebackground.png'
 					/>
 				</div>
