@@ -147,7 +147,7 @@ const ProfileMenusSection = () => {
 						},
 					]}
 				/>
-				{/* <MenuListComponent
+				<MenuListComponent
 					menuTitle='Payment'
 					menuItems={[
 						{
@@ -155,9 +155,10 @@ const ProfileMenusSection = () => {
 							title: 'Wallet',
 							show: true,
 							protected: true,
+							link: PAGES_DATA.profile_wallet_page,
 						},
 					]}
-				/> */}
+				/>
 
 				<MenuListComponent
 					menuTitle='More'

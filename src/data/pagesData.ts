@@ -27,6 +27,8 @@ export const PAGES_DATA = {
     profile_favorites_page: `/profile/favorites`,
     profile_notifications_page: `/profile/notifications`,
     profile_referral_page: `/profile/referral`,
+    profile_wallet_page: `/profile/wallet`,
+    profile_wallet_transactions_page: `/profile/wallet/transactions`,
     profile_faqs_page: `/profile/faqs`,
 
     profile_verify_phone_page: `/profile/verify-phone`,
@@ -44,6 +46,7 @@ export const PAGES_DATA = {
     admin_dashboard_categories_page: `/profile/admin-dashboard/categories`,
     admin_dashboard_packages_page: `/profile/admin-dashboard/packages`,
     admin_dashboard_package_page: (id: string) => `/profile/admin-dashboard/packages/${id}`,
+    admin_dashboard_wallets_page: `/profile/admin-dashboard/wallets`,
 
     // operator dashboard pages
     operator_dashboard_page: `/profile/operator-dashboard`,

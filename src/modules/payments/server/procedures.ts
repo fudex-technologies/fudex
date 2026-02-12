@@ -10,6 +10,7 @@ import { NotificationService } from "@/modules/notifications/server/service";
 import { PAGES_DATA } from "@/data/pagesData";
 import prisma from "@/lib/prisma";
 import { handlePaymentCompletion } from "@/lib/payment-completion";
+import { WalletTransactionSource, WalletTransactionType } from "@prisma/client";
 
 export const paymentRouter = createTRPCRouter({
 	// Create a payment record for an order and initialize Paystack transaction
@@ -109,6 +110,43 @@ export const paymentRouter = createTRPCRouter({
 				throw new Error("Invalid order amount");
 			}
 
+			// Calculate external amount after wallet deduction
+			const walletDebits = await ctx.prisma.walletTransaction.aggregate({
+				where: {
+					sourceId: order.id,
+					sourceType: WalletTransactionSource.ORDER_PAYMENT,
+					type: WalletTransactionType.DEBIT
+				},
+				_sum: { amount: true }
+			});
+			const walletUsed = walletDebits._sum.amount?.toNumber() || 0;
+			const externalAmount = Math.max(0, order.totalAmount - walletUsed);
+
+			// If already fully paid by wallet
+			if (externalAmount <= 0) {
+				const payment = await ctx.prisma.payment.create({
+					data: {
+						orderId: order.id,
+						userId,
+						amount: 0,
+						currency: order.currency,
+						provider: "wallet",
+						providerRef: `WALLET-FULL-${order.id}`,
+						status: "COMPLETED",
+						paidAt: new Date(),
+					},
+				});
+
+				// Handle payment completion logic
+				await handlePaymentCompletion(payment.id);
+
+				return {
+					payment,
+					checkoutUrl: null,
+					reference: payment.providerRef,
+				};
+			}
+
 			// Generate unique reference
 			const reference = `FUDEX-${Date.now()}-${uuidv4().substring(0, 8).toUpperCase()}`;
 
@@ -133,7 +171,7 @@ export const paymentRouter = createTRPCRouter({
 			try {
 				paystackResponse = await initializePaystackTransaction({
 					email: userEmail,
-					amount: order.totalAmount,
+					amount: externalAmount,
 					reference,
 					callback_url: callbackUrl,
 					metadata: {
@@ -166,7 +204,7 @@ export const paymentRouter = createTRPCRouter({
 				data: {
 					orderId: order.id,
 					userId,
-					amount: order.totalAmount,
+					amount: externalAmount,
 					currency: order.currency,
 					provider: "paystack",
 					providerRef: paystackResponse.data.reference,

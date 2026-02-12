@@ -29,6 +29,7 @@ import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import AddressesDrawer from './AddressesDrawer';
 import AddPhoneNumberDrawer from './AddPhoneNumberDrawer';
+import WalletPaymentSelection from '@/components/Checkout/WalletPaymentSelection';
 import { useProfileActions } from '@/api-hooks/useProfileActions';
 import { isVendorOpen } from '@/lib/vendorUtils';
 
@@ -45,6 +46,7 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 	const [deliveryType, setDeliveryType] = useState<'DELIVERY' | 'PICKUP'>(
 		'DELIVERY',
 	);
+	const [walletAmount, setWalletAmount] = useState(0);
 	const packs = getVendorPacks(vendorId);
 
 	const { getProfile, getAddresses } = useProfileActions();
@@ -184,7 +186,8 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 			? 0
 			: deliveryFeeData?.deliveryFee || 0;
 	const serviceFee = serviceFeeData?.serviceFee || 0;
-	const total = subTotal + deliveryFee + serviceFee;
+	const subTotalWithFees = subTotal + deliveryFee + serviceFee;
+	const total = Math.max(0, subTotalWithFees - walletAmount);
 
 	// Create order mutation
 	const createOrderMutation = useOrderingActions().createOrder({
@@ -200,6 +203,7 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 			createPaymentMutation.mutate({
 				orderId: order.id,
 				callbackUrl,
+				// walletAmount,
 			});
 		},
 		onError: (err) => {
@@ -297,6 +301,7 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 			items,
 			notes: notes || undefined,
 			deliveryType,
+			walletAmount,
 		});
 	};
 
@@ -565,6 +570,22 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 					{/* Payment Summary */}
 					<div className='w-full flex flex-col'>
 						<div className='px-5 py-2 bg-muted text-muted-foreground'>
+							<p className='text-lg font-bold'>Payment Method</p>
+						</div>
+						<div className='p-5'>
+							<WalletPaymentSelection
+								onWalletAmountChange={setWalletAmount}
+								walletAmount={walletAmount}
+								totalAmount={
+									subTotal + deliveryFee + serviceFee
+								}
+							/>
+						</div>
+					</div>
+
+					{/* Payment Summary */}
+					<div className='w-full flex flex-col'>
+						<div className='px-5 py-2 bg-muted text-muted-foreground'>
 							<p className='text-lg font-bold'>Payment Summary</p>
 						</div>
 						<div className='py-5 space-y-2'>
@@ -601,9 +622,9 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 										: formatCurency(serviceFee)}
 								</p>
 							</div>
-							<div className='flex items-center justify-between px-5'>
-								<p className='font-semibold'>Total</p>
-								<p className='font-semibold'>
+							<div className='flex items-center justify-between px-5 font-bold text-primary'>
+								<p>Total to Pay</p>
+								<p>
 									{isLoadingDeliveryFeeData ||
 									isLoadingServiceFee
 										? 'Loading...'

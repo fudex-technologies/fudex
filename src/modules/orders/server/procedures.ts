@@ -1,10 +1,11 @@
 import { createTRPCRouter, protectedProcedure, publicProcedure, adminProcedure, vendorProcedure } from "@/trpc/init";
-import { OrderStatus, UserRole } from "@prisma/client";
+import { OrderStatus, UserRole, WalletTransactionSource } from "@prisma/client";
 import { z } from "zod";
 import { calculateDeliveryFee, getServiceFee } from "@/lib/deliveryFeeCalculator";
 import { NotificationService } from "@/modules/notifications/server/service";
 import { PAGES_DATA } from "@/data/pagesData";
-import { sendOperatorNewOrderEmail } from "@/lib/email";
+import { WalletService } from "@/modules/wallet/server/service";
+import { RefundService } from "@/modules/wallet/server/refund.service";
 
 
 export const orderRouter = createTRPCRouter({
@@ -24,6 +25,7 @@ export const orderRouter = createTRPCRouter({
                 ),
                 notes: z.string().optional(),
                 deliveryType: z.enum(["DELIVERY", "PICKUP"]).optional().default("DELIVERY"),
+                walletAmount: z.number().optional().default(0),
             })
         )
         .mutation(async ({ ctx, input }) => {
@@ -191,6 +193,10 @@ export const orderRouter = createTRPCRouter({
             // Calculate total amount including delivery and service fees
             const totalAmount = orderSubTotal + deliveryFee + serviceFee;
 
+            if (input.walletAmount > totalAmount) {
+                throw new Error("Wallet amount cannot exceed total order amount");
+            }
+
             // Persist order + items + addons in a single transaction
             const created = await ctx.prisma.$transaction(async (prisma) => {
                 const order = await prisma.order.create({
@@ -232,6 +238,17 @@ export const orderRouter = createTRPCRouter({
                             },
                         });
                     }
+                }
+
+                // Handle wallet debit
+                if (input.walletAmount > 0) {
+                    await WalletService.debitWallet({
+                        userId,
+                        amount: input.walletAmount,
+                        sourceType: WalletTransactionSource.ORDER_PAYMENT,
+                        sourceId: order.id,
+                        reference: `WALLET-PAY-ORDER-${order.id}`,
+                    }, prisma as any);
                 }
 
                 // return full order with items and addons
@@ -548,6 +565,13 @@ export const orderRouter = createTRPCRouter({
                 data: { status: input.status }
             });
 
+            // Handle Refund if cancelled
+            if (input.status === "CANCELLED") {
+                await RefundService.refundOrder(input.id).catch(err => {
+                    console.error(`[Refund] Error refunding order ${input.id}:`, err);
+                });
+            }
+
             // If delivered, check payout eligibility
             if (input.status === "DELIVERED") {
                 await ensureOrderPayoutEligibility(ctx.prisma, input.id);
@@ -596,6 +620,13 @@ export const orderRouter = createTRPCRouter({
                 where: { id: input.id },
                 data: { status: input.status }
             });
+
+            // Handle Refund if cancelled
+            if (input.status === "CANCELLED") {
+                await RefundService.refundOrder(input.id).catch(err => {
+                    console.error(`[Refund] Error refunding order ${input.id}:`, err);
+                });
+            }
 
             // If delivered, check payout eligibility
             if (input.status === "DELIVERED") {

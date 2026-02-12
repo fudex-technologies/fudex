@@ -373,6 +373,42 @@ export function useAdminActions() {
                     retry: false,
                 })
             ),
+
+        // ========== WALLET MANAGEMENT ==========
+
+        useInfiniteListWalletTransactions: (input: { limit?: number; userId?: string; sourceType?: any } = {}) =>
+            useInfiniteQuery(
+                trpc.admin.listWalletTransactionsInfinite.infiniteQueryOptions(
+                    { ...input },
+                    {
+                        getNextPageParam: (lastPage: any) => lastPage.nextCursor,
+                    }
+                )
+            ),
+
+        useInfiniteListUsersWithBalances: (input: { limit?: number; q?: string } = {}) =>
+            useInfiniteQuery(
+                trpc.admin.listUsersWithBalancesInfinite.infiniteQueryOptions(
+                    { ...input },
+                    {
+                        getNextPageParam: (lastPage: any) => lastPage.nextCursor,
+                    }
+                )
+            ),
+
+        adminCreditWallet: (options?: UseAPICallerOptions) =>
+            useMutation(
+                trpc.wallet.adminCredit.mutationOptions({
+                    onSuccess: (data) => {
+                        if (!options?.silent) toast.success("Wallet credited successfully");
+                        options?.onSuccess?.(data);
+                    },
+                    onError: (err: unknown) => {
+                        if (!options?.silent) toast.error("Failed to credit wallet", { description: err instanceof Error ? err.message : String(err) });
+                        options?.onError?.(err);
+                    },
+                    retry: false,
+                })
+            ),
     };
 }
-

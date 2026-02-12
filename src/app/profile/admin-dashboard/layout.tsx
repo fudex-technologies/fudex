@@ -17,6 +17,7 @@ import {
 	CreditCard,
 	Tag,
 	Gift,
+	Wallet,
 } from 'lucide-react';
 import TabComponent from '@/components/TabComponent';
 import { useState, useEffect, useMemo } from 'react';
@@ -62,6 +63,8 @@ export default function AdminDashboardLayout({
 				setActiveTab('users');
 			} else if (path.includes('/vendors')) {
 				setActiveTab('vendors');
+			} else if (path.includes('/wallets')) {
+				setActiveTab('wallets');
 			} else if (path.includes('/areas')) {
 				setActiveTab('areas');
 			} else {
@@ -142,6 +145,11 @@ export default function AdminDashboardLayout({
 							icon: <BsBicycle size={18} />,
 						},
 						{
+							id: 'wallets',
+							label: 'Wallets',
+							icon: <Wallet size={18} />,
+						},
+						{
 							id: 'categories',
 							label: 'Categories',
 							icon: <Tag size={18} />,
@@ -175,6 +183,8 @@ export default function AdminDashboardLayout({
 							router.push(
 								PAGES_DATA.admin_dashboard_settlements_page,
 							);
+						} else if (id === 'wallets') {
+							router.push('/profile/admin-dashboard/wallets');
 						} else if (id === 'areas') {
 							router.push(PAGES_DATA.admin_dashboard_areas_page);
 						} else if (id === 'categories') {
@@ -182,7 +192,9 @@ export default function AdminDashboardLayout({
 								PAGES_DATA.admin_dashboard_categories_page,
 							);
 						} else if (id === 'packages') {
-							router.push(PAGES_DATA.admin_dashboard_packages_page);
+							router.push(
+								PAGES_DATA.admin_dashboard_packages_page,
+							);
 						} else if (id === 'vendors') {
 							router.push('/profile/admin-dashboard/vendors');
 						} else if (id === 'users') {

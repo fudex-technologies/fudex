@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyPaystackWebhook } from "@/lib/paystack";
 import prisma from "@/lib/prisma";
 import { handlePaymentCompletion } from "@/lib/payment-completion";
+import { WalletService } from "@/modules/wallet/server/service";
+import { handlePackagePaymentCompletion } from "@/lib/package-payment-completion";
 
 /**
  * Paystack Webhook Handler
@@ -74,80 +76,117 @@ async function handleSuccessfulPayment(data: any) {
 		throw new Error("Missing reference in webhook data");
 	}
 
-	// Find payment by reference
-	const payment = await prisma.payment.findFirst({
+	// 1. Check if it's a Wallet Funding attempt
+	const funding = await prisma.walletFunding.findUnique({
 		where: { providerRef: reference },
-		include: { order: true },
 	});
 
-	if (!payment) {
-		console.error(`Payment not found for reference: ${reference}`);
+	if (funding) {
+		console.log(`[Webhook] Processing Wallet Funding for reference: ${reference}`);
+		await WalletService.completeFunding(reference, data.paid_at ? new Date(data.paid_at) : new Date());
 		return;
 	}
 
-	// Validate amount
-	const expectedAmount = payment.amount * 100; // Convert to kobo
-	if (data.amount !== expectedAmount) {
-		console.error(
-			`[Webhook] Amount mismatch for payment ${payment.id}: expected ${expectedAmount}, got ${data.amount}`
-		);
-		return;
-	}
+	// 2. Check if it's a Standard Order Payment
+	const payment = await prisma.payment.findFirst({
+		where: { providerRef: reference },
+	});
 
-	// Update paidAt if provided and not already set
-	if (data.paid_at && !payment.paidAt) {
-		await prisma.payment.update({
-			where: { id: payment.id },
-			data: {
-				paidAt: new Date(data.paid_at),
-			},
-		});
-	}
-
-	// Handle payment completion (updates status and sends notifications if needed)
-	try {
-		const result = await handlePaymentCompletion(payment.id);
-		if (result.alreadyCompleted) {
-			console.log(`[Webhook] Payment ${payment.id} was already completed, skipping duplicate processing`);
-		} else {
-			console.log(`[Webhook] Payment ${payment.id} marked as successful and notifications sent`);
+	if (payment) {
+		// Validate amount
+		const expectedAmount = payment.amount * 100; // Convert to kobo
+		if (data.amount !== expectedAmount) {
+			console.error(`[Webhook] Amount mismatch for payment ${payment.id}: expected ${expectedAmount}, got ${data.amount}`);
+			return;
 		}
-	} catch (error) {
-		console.error(`[Webhook] Error handling payment completion for ${payment.id}:`, error);
-		// Don't throw - webhook should return success even if notification fails
+
+		// Update paidAt if provided and not already set
+		if (data.paid_at && !payment.paidAt) {
+			await prisma.payment.update({
+				where: { id: payment.id },
+				data: { paidAt: new Date(data.paid_at) },
+			});
+		}
+
+		// Handle payment completion
+		await handlePaymentCompletion(payment.id).catch(err => {
+			console.error(`[Webhook] Error handling payment completion for ${payment.id}:`, err);
+		});
+		return;
 	}
+
+	// 3. Check if it's a Package Order Payment
+	const packagePayment = await prisma.packagePayment.findFirst({
+		where: { providerRef: reference },
+	});
+
+	if (packagePayment) {
+		// Validate amount
+		const expectedAmount = packagePayment.amount * 100; // Convert to kobo
+		if (data.amount !== expectedAmount) {
+			console.error(`[Webhook] Amount mismatch for package payment ${packagePayment.id}: expected ${expectedAmount}, got ${data.amount}`);
+			return;
+		}
+
+		// Update paidAt if provided and not already set
+		if (data.paid_at && !packagePayment.paidAt) {
+			await prisma.packagePayment.update({
+				where: { id: packagePayment.id },
+				data: { paidAt: new Date(data.paid_at) },
+			});
+		}
+
+		// Handle package payment completion
+		await handlePackagePaymentCompletion(packagePayment.id).catch(err => {
+			console.error(`[Webhook] Error handling package payment completion for ${packagePayment.id}:`, err);
+		});
+		return;
+	}
+
+	console.error(`[Webhook] No record found for reference: ${reference}`);
 }
 
 /**
  * Handle failed payment
  */
-async function handleFailedPayment(data: {
-	reference: string;
-}) {
+async function handleFailedPayment(data: { reference: string }) {
 	const reference = data.reference;
+	if (!reference) throw new Error("Missing reference in webhook data");
 
-	if (!reference) {
-		throw new Error("Missing reference in webhook data");
-	}
-
-	// Find payment by reference
-	const payment = await prisma.payment.findFirst({
+	// 1. Try Wallet Funding
+	const funding = await prisma.walletFunding.findUnique({
 		where: { providerRef: reference },
 	});
-
-	if (!payment) {
-		console.error(`Payment not found for reference: ${reference}`);
+	if (funding) {
+		await prisma.walletFunding.update({
+			where: { id: funding.id },
+			data: { status: "FAILED" },
+		});
 		return;
 	}
 
-	// Update payment status
-	await prisma.payment.update({
-		where: { id: payment.id },
-		data: {
-			status: "FAILED",
-		},
+	// 2. Try Standard Payment
+	const payment = await prisma.payment.findFirst({
+		where: { providerRef: reference },
 	});
+	if (payment) {
+		await prisma.payment.update({
+			where: { id: payment.id },
+			data: { status: "FAILED" },
+		});
+		return;
+	}
 
-	// console.log(`Payment ${payment.id} marked as failed`);
+	// 3. Try Package Payment
+	const packagePayment = await prisma.packagePayment.findFirst({
+		where: { providerRef: reference },
+	});
+	if (packagePayment) {
+		await prisma.packagePayment.update({
+			where: { id: packagePayment.id },
+			data: { status: "FAILED" },
+		});
+		return;
+	}
 }
 
