@@ -5,6 +5,7 @@ import PlusIcon from '../../../public/assets/plus-icon.svg';
 import CounterComponent from '@/components/CounterComponent';
 import { formatCurency } from '@/lib/commonFunctions';
 import { usePackageCartStore } from '@/store/package-cart-store';
+import Image from 'next/image';
 
 interface PackageCardProps {
 	singlePackage: {
@@ -63,24 +64,27 @@ const PackageCard = ({
 	};
 
 	return (
-		<div className='flex flex-col gap-2'>
+		<div className='w-full flex flex-col gap-2'>
 			{/* Image container with plus button */}
 			<div className='relative w-full aspect-square rounded-lg overflow-hidden bg-muted'>
-				<img
-					src={singlePackage.imageUrl}
-					alt={singlePackage.name}
-					className='w-full h-full object-cover'
-				/>
+				<div className="w-full h-full relative">
+					<Image
+						src={singlePackage.imageUrl}
+						alt={singlePackage.name}
+						fill 
+						className='w-full h-full object-cover object-center'
+					/>
+				</div>
 
 				{/* Plus button or Counter */}
 				<div className='absolute bottom-2 right-2'>
 					{quantity === 0 ? (
 						<button
 							onClick={handleAddClick}
-							className='w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm hover:shadow-md transition-shadow'
+							className='w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm hover:shadow-md transition-shadow'
 							aria-label='Add to cart'>
 							<PlusIcon
-								className='w-[15px] h-[15px]'
+								className='w-3 h-3'
 								style={{ color: '#1a1a1a' }}
 							/>
 						</button>
@@ -90,7 +94,7 @@ const PackageCard = ({
 							setCount={setQuantity}
 							countChangeEffect={handleQuantityChange}
 							min={0}
-							className='max-w-[200px] py-2 gap-3'
+							className='max-w-[150px] py-1 gap-3'
 						/>
 					)}
 				</div>

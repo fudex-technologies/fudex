@@ -92,8 +92,8 @@ const PackageCardCustomizationSection = ({
 								/>
 								<Label
 									htmlFor='admin-created'
-									className='flex-1 cursor-pointer space-y-1'>
-									<div className='font-medium'>
+									className='flex-1 flex-col text-start cursor-pointer space-y-1'>
+									<div className='font-medium w-full text-start'>
 										Let us create a custom card for you
 									</div>
 									<div className='text-sm text-foreground/60'>
@@ -112,8 +112,8 @@ const PackageCardCustomizationSection = ({
 								/>
 								<Label
 									htmlFor='custom'
-									className='flex-1 cursor-pointer space-y-1'>
-									<div className='font-medium'>
+									className='flex-1 flex-col text-start cursor-pointer space-y-1'>
+									<div className='font-medium w-full text-start'>
 										Customize it yourself
 									</div>
 									<div className='text-sm text-foreground/60'>
@@ -161,7 +161,7 @@ const PackageCardCustomizationSection = ({
 							type='submit'
 							variant={'game'}
 							size={'lg'}
-							className='w-full sm:w-auto'
+							className='w-full sm:w-auto bg-[#FF305A]'
 							disabled={!cardType}>
 							Continue to Checkout
 						</Button>

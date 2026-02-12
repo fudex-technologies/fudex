@@ -112,6 +112,24 @@ export function usePackageActions() {
                     retry: false,
                 })
             ),
+
+        verifyPackagePayment: (options?: UseAPICallerOptions) =>
+            useMutation(
+                trpc.packages.public.verifyPackagePayment.mutationOptions({
+                    onSuccess: (data) => {
+                        if (!options?.silent) toast.success("Payment verified successfully");
+                        options?.onSuccess?.(data);
+                    },
+                    onError: (err: unknown) => {
+                        if (!options?.silent)
+                            toast.error("Failed to verify payment", {
+                                description: err instanceof Error ? err.message : String(err),
+                            });
+                        options?.onError?.(err);
+                    },
+                    retry: false,
+                })
+            ),
     };
 }
 
@@ -302,6 +320,85 @@ export function usePackageAdminActions() {
                         options?.onError?.(err);
                     },
                     retry: false,
+                })
+            ),
+
+        // ========== PACKAGE ADDON MANAGEMENT ==========
+        useAddPackageAddon: (options?: UseAPICallerOptions) =>
+            useMutation(
+                trpc.packages.admin.addPackageAddon.mutationOptions({
+                    onSuccess: (data) => {
+                        if (!options?.silent) toast.success("Package addon added successfully");
+                        options?.onSuccess?.(data);
+                    },
+                    onError: (err: unknown) => {
+                        if (!options?.silent)
+                            toast.error("Failed to add package addon", {
+                                description: err instanceof Error ? err.message : String(err),
+                            });
+                        options?.onError?.(err);
+                    },
+                })
+            ),
+
+        useRemovePackageAddon: (options?: UseAPICallerOptions) =>
+            useMutation(
+                trpc.packages.admin.removePackageAddon.mutationOptions({
+                    onSuccess: (data) => {
+                        if (!options?.silent) toast.success("Package addon removed successfully");
+                        options?.onSuccess?.(data);
+                    },
+                    onError: (err: unknown) => {
+                        if (!options?.silent)
+                            toast.error("Failed to remove package addon", {
+                                description: err instanceof Error ? err.message : String(err),
+                            });
+                        options?.onError?.(err);
+                    },
+                })
+            ),
+
+        useTogglePackageAddonStatus: (options?: UseAPICallerOptions) =>
+            useMutation(
+                trpc.packages.admin.togglePackageAddonStatus.mutationOptions({
+                    onSuccess: (data) => {
+                        if (!options?.silent) toast.success("Package addon status updated");
+                        options?.onSuccess?.(data);
+                    },
+                    onError: (err: unknown) => {
+                        if (!options?.silent)
+                            toast.error("Failed to update status", {
+                                description: err instanceof Error ? err.message : String(err),
+                            });
+                        options?.onError?.(err);
+                    },
+                })
+            ),
+
+        useUpdatePackageAddonOrder: (options?: UseAPICallerOptions) =>
+            useMutation(
+                trpc.packages.admin.updatePackageAddonOrder.mutationOptions({
+                    onSuccess: (data) => {
+                        if (!options?.silent) toast.success("Addon order updated");
+                        options?.onSuccess?.(data);
+                    },
+                    onError: (err: unknown) => {
+                        if (!options?.silent)
+                            toast.error("Failed to update order", {
+                                description: err instanceof Error ? err.message : String(err),
+                            });
+                        options?.onError?.(err);
+                    },
+                })
+            ),
+
+        useSearchProductItemsForAddon: (
+            input: { query?: string; limit?: number },
+            options?: { enabled?: boolean }
+        ) =>
+            useQuery(
+                trpc.packages.admin.searchProductItemsForAddon.queryOptions(input, {
+                    enabled: options?.enabled ?? true,
                 })
             ),
     };

@@ -1,4 +1,4 @@
-import { createTRPCRouter, adminProcedure, publicProcedure, protectedProcedure } from "@/trpc/init";
+import { createTRPCRouter, adminProcedure, publicProcedure, protectedProcedure, operatorProcedure } from "@/trpc/init";
 import { z } from "zod";
 import { calculateDeliveryFee, getServiceFee } from "@/lib/deliveryFeeCalculator";
 import { v4 as uuidv4 } from "uuid";
@@ -6,6 +6,10 @@ import {
     initializePaystackTransaction,
     verifyPaystackTransaction,
 } from "@/lib/paystack";
+import { TRPCError } from "@trpc/server";
+import { OrderStatus, WalletTransactionSource } from "@prisma/client";
+import { WalletService } from "@/modules/wallet/server/service";
+import { RefundService } from "@/modules/wallet/server/refund.service";
 
 // ========== ADMIN PROCEDURES ==========
 export const packageAdminRouter = createTRPCRouter({
@@ -154,8 +158,101 @@ export const packageAdminRouter = createTRPCRouter({
                         },
                         orderBy: { order: "asc" },
                     },
+                    addons: {
+                        include: {
+                            productItem: {
+                                include: {
+                                    product: {
+                                        select: {
+                                            vendor: {
+                                                select: {
+                                                    name: true,
+                                                    id: true,
+                                                    slug: true
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        orderBy: { sortOrder: "asc" },
+                    },
                 },
             });
+        }),
+
+    // ========== PACKAGE ADDON MANAGEMENT ==========
+    addPackageAddon: adminProcedure
+        .input(z.object({
+            packageId: z.string(),
+            productItemId: z.string(),
+        }))
+        .mutation(async ({ ctx, input }) => {
+            const existing = await ctx.prisma.packageAddon.findUnique({
+                where: {
+                    packageId_productItemId: {
+                        packageId: input.packageId,
+                        productItemId: input.productItemId,
+                    }
+                }
+            });
+
+            if (existing) {
+                throw new Error("This product is already an addon for this package");
+            }
+
+            // Get max sort order
+            const maxOrder = await ctx.prisma.packageAddon.findFirst({
+                where: { packageId: input.packageId },
+                orderBy: { sortOrder: 'desc' },
+                select: { sortOrder: true }
+            });
+
+            return ctx.prisma.packageAddon.create({
+                data: {
+                    packageId: input.packageId,
+                    productItemId: input.productItemId,
+                    sortOrder: (maxOrder?.sortOrder ?? -1) + 1,
+                }
+            });
+        }),
+
+    removePackageAddon: adminProcedure
+        .input(z.object({
+            id: z.string(),
+        }))
+        .mutation(async ({ ctx, input }) => {
+            return ctx.prisma.packageAddon.delete({
+                where: { id: input.id }
+            });
+        }),
+
+    togglePackageAddonStatus: adminProcedure
+        .input(z.object({
+            id: z.string(),
+            isActive: z.boolean(),
+        }))
+        .mutation(async ({ ctx, input }) => {
+            return ctx.prisma.packageAddon.update({
+                where: { id: input.id },
+                data: { isActive: input.isActive }
+            });
+        }),
+
+    updatePackageAddonOrder: adminProcedure
+        .input(z.object({
+            packageId: z.string(),
+            addonIds: z.array(z.string()),
+        }))
+        .mutation(async ({ ctx, input }) => {
+            const updates = input.addonIds.map((id, index) =>
+                ctx.prisma.packageAddon.update({
+                    where: { id },
+                    data: { sortOrder: index }
+                })
+            );
+            return await ctx.prisma.$transaction(updates);
         }),
 
     // ========== CATEGORY MANAGEMENT ==========
@@ -337,6 +434,236 @@ export const packageAdminRouter = createTRPCRouter({
                 where: { id: input.id },
             });
         }),
+
+    // Search product items for addons
+    searchProductItemsForAddon: adminProcedure
+        .input(z.object({
+            query: z.string().optional(),
+            limit: z.number().min(1).max(50).default(20),
+        }))
+        .query(async ({ ctx, input }) => {
+            const { query, limit } = input;
+
+            const where: any = {};
+
+            if (query) {
+                where.OR = [
+                    { name: { contains: query, mode: "insensitive" } },
+                    { product: { name: { contains: query, mode: "insensitive" } } },
+                    { product: { vendor: { name: { contains: query, mode: "insensitive" } } } },
+                ];
+            }
+
+            return ctx.prisma.productItem.findMany({
+                where,
+                take: limit,
+                include: {
+                    product: {
+                        select: {
+                            id: true,
+                            name: true,
+                            vendor: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                }
+                            }
+                        }
+                    }
+                },
+                orderBy: { product: { name: 'asc' } }
+            });
+        }),
+
+    // ========== OPERATOR PACKAGE ORDER MANAGEMENT ==========
+    // List package orders (for operators)
+    listPackageOrders: operatorProcedure
+        .input(
+            z.object({
+                limit: z.number().min(1).max(100).default(50),
+                cursor: z.string().nullish(),
+                status: z.nativeEnum(OrderStatus).optional(),
+                search: z.string().optional(),
+            }).optional()
+        )
+        .query(async ({ ctx, input }) => {
+            const limit = input?.limit ?? 50;
+            const cursor = input?.cursor;
+            const status = input?.status;
+            const search = input?.search;
+
+            const where: any = {};
+
+            if (status) {
+                where.status = status;
+            }
+
+            if (search) {
+                where.OR = [
+                    { id: { contains: search, mode: "insensitive" } },
+                    { recipientName: { contains: search, mode: "insensitive" } },
+                    { package: { name: { contains: search, mode: "insensitive" } } },
+                ];
+            }
+
+            const items = await ctx.prisma.packageOrder.findMany({
+                take: limit + 1,
+                cursor: cursor ? { id: cursor } : undefined,
+                where,
+                orderBy: { createdAt: "desc" },
+                include: {
+                    package: {
+                        select: {
+                            id: true,
+                            name: true,
+                            slug: true,
+                            coverImage: true,
+                        },
+                    },
+                    user: {
+                        select: {
+                            id: true,
+                            firstName: true,
+                            lastName: true,
+                            email: true,
+                            phone: true,
+                        },
+                    },
+                    payment: {
+                        select: {
+                            id: true,
+                            status: true,
+                            amount: true,
+                            currency: true,
+                            paidAt: true,
+                        },
+                    },
+                    _count: {
+                        select: {
+                            addons: true
+                        }
+                    }
+                },
+            });
+
+            let nextCursor: typeof cursor | undefined = undefined;
+            if (items.length > limit) {
+                const nextItem = items.pop();
+                nextCursor = nextItem?.id;
+            }
+
+            return {
+                items,
+                nextCursor,
+            };
+        }),
+
+    // Get package order by ID (for operators)
+    getPackageOrderById: operatorProcedure
+        .input(z.object({ id: z.string() }))
+        .query(async ({ ctx, input }) => {
+            const order = await ctx.prisma.packageOrder.findUnique({
+                where: { id: input.id },
+                include: {
+                    package: true,
+                    user: {
+                        select: {
+                            id: true,
+                            firstName: true,
+                            lastName: true,
+                            email: true,
+                            phone: true,
+                        },
+                    },
+                    items: {
+                        include: {
+                            packageItem: {
+                                include: {
+                                    category: true,
+                                },
+                            },
+                        },
+                    },
+                    addons: {
+                        include: {
+                            productItem: {
+                                include: {
+                                    product: {
+                                        select: {
+                                            vendor: {
+                                                select: {
+                                                    id: true,
+                                                    name: true,
+                                                    slug: true,
+                                                    addresses: true,
+                                                    phone: true
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    payment: true,
+                },
+            });
+
+            if (!order) {
+                throw new Error("Package order not found");
+            }
+
+            return order;
+        }),
+
+    // Update package order status (for operators)
+    updatePackageOrderStatus: operatorProcedure
+        .input(
+            z.object({
+                id: z.string(),
+                status: z.nativeEnum(OrderStatus),
+            })
+        )
+        .mutation(async ({ ctx, input }) => {
+            const { id, status } = input;
+
+            // Validate status transition
+            const currentOrder = await ctx.prisma.packageOrder.findUnique({
+                where: { id },
+                select: { status: true },
+            });
+
+            if (!currentOrder) {
+                throw new Error("Package order not found");
+            }
+
+            // Update order status
+            const updated = await ctx.prisma.packageOrder.update({
+                where: { id },
+                data: { status },
+                include: {
+                    package: true,
+                    user: {
+                        select: {
+                            id: true,
+                            firstName: true,
+                            lastName: true,
+                            email: true,
+                        },
+                    },
+                    payment: true,
+                },
+            });
+
+            // Handle Refund if cancelled
+            if (status === "CANCELLED") {
+                await RefundService.refundPackageOrder(id).catch(err => {
+                    console.error(`[Refund] Error refunding package order ${id}:`, err);
+                });
+            }
+
+            return updated;
+        }),
 });
 
 // ========== PUBLIC PROCEDURES ==========
@@ -380,6 +707,28 @@ export const packagePublicRouter = createTRPCRouter({
                         },
                         orderBy: { order: "asc" },
                     },
+                    addons: {
+                        where: { isActive: true, productItem: { isActive: true } },
+                        include: {
+                            productItem: {
+                                include: {
+                                    product: {
+                                        select: {
+                                            name: true,
+                                            description: true,
+                                            vendor: {
+                                                select: {
+                                                    name: true,
+                                                    slug: true
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        orderBy: { sortOrder: "asc" }
+                    }
                 },
             });
 
@@ -490,6 +839,14 @@ export const packagePublicRouter = createTRPCRouter({
                 customCardMessage: z.string().optional(),
                 // Notes
                 notes: z.string().optional(),
+                // Addons
+                addons: z.array(
+                    z.object({
+                        productItemId: z.string(),
+                        quantity: z.number().min(1),
+                    })
+                ).optional().default([]),
+                walletAmount: z.number().optional().default(0),
             })
         )
         .mutation(async ({ ctx, input }) => {
@@ -498,12 +855,18 @@ export const packagePublicRouter = createTRPCRouter({
             // Validate package exists and is active
             const packageData = await ctx.prisma.package.findUnique({
                 where: { id: input.packageId },
+                include: {
+                    addons: {
+                        where: { isActive: true },
+                        include: { productItem: true },
+                    },
+                },
             });
             if (!packageData || !packageData.isActive) {
                 throw new Error("Package not found or inactive");
             }
 
-            // Validate all package items exist and are active
+            // Validate package items exist and are active
             const packageItems = await ctx.prisma.packageItem.findMany({
                 where: {
                     id: { in: input.items.map((i) => i.packageItemId) },
@@ -520,6 +883,39 @@ export const packagePublicRouter = createTRPCRouter({
             // Create a map for quick lookup
             const itemsMap = new Map(packageItems.map((item) => [item.id, item]));
 
+            // Validate and calculate addons
+            const addonsMap = new Map(packageData.addons.map((addon) => [addon.productItemId, addon]));
+            let addonsTotal = 0;
+            const validAddons: Array<{
+                productItemId: string;
+                name: string;
+                quantity: number;
+                unitPrice: number;
+                totalPrice: number;
+            }> = [];
+
+            if (input.addons && input.addons.length > 0) {
+                for (const addonInput of input.addons) {
+                    const addonConfig = addonsMap.get(addonInput.productItemId);
+                    if (!addonConfig) {
+                        throw new Error(`Invalid addon selected: ${addonInput.productItemId}`);
+                    }
+                    if (!addonConfig.productItem.isActive || !addonConfig.productItem.inStock) {
+                        throw new Error(`Addon ${addonConfig.productItem.name} is not available`);
+                    }
+
+                    const totalPrice = addonConfig.productItem.price * addonInput.quantity;
+                    addonsTotal += totalPrice;
+                    validAddons.push({
+                        productItemId: addonInput.productItemId,
+                        name: addonConfig.productItem.name,
+                        quantity: addonInput.quantity,
+                        unitPrice: addonConfig.productItem.price,
+                        totalPrice: totalPrice,
+                    });
+                }
+            }
+
             // Calculate totals
             let productAmount = 0;
             for (const orderItem of input.items) {
@@ -527,6 +923,8 @@ export const packagePublicRouter = createTRPCRouter({
                 if (!packageItem) continue;
                 productAmount += packageItem.price * orderItem.quantity;
             }
+
+            productAmount += addonsTotal; // Add addons to product amount
 
             // Calculate delivery fee (use recipient area if available)
             const deliveryFee = await calculateDeliveryFee(
@@ -536,6 +934,10 @@ export const packagePublicRouter = createTRPCRouter({
             const serviceFee = await getServiceFee(ctx.prisma);
 
             const totalAmount = productAmount + deliveryFee + serviceFee;
+
+            if (input.walletAmount > totalAmount) {
+                throw new Error("Wallet amount cannot exceed total order amount");
+            }
 
             // Create package order
             const packageOrder = await ctx.prisma.packageOrder.create({
@@ -573,18 +975,44 @@ export const packagePublicRouter = createTRPCRouter({
                             };
                         }),
                     },
+                    addons: {
+                        create: validAddons.map((addon) => ({
+                            productItemId: addon.productItemId,
+                            quantity: addon.quantity,
+                            unitPrice: addon.unitPrice,
+                            totalPrice: addon.totalPrice,
+                            name: addon.name,
+                        })),
+                    },
                 },
+            });
+            // Handle wallet debit
+            if (input.walletAmount > 0) {
+                await WalletService.debitWallet({
+                    userId,
+                    amount: input.walletAmount,
+                    sourceType: WalletTransactionSource.PACKAGE_PAYMENT,
+                    sourceId: packageOrder.id,
+                    reference: `WALLET-PAY-PKG-${packageOrder.id}`,
+                }, ctx.prisma as any);
+            }
+
+            return ctx.prisma.packageOrder.findUnique({
+                where: { id: packageOrder.id },
                 include: {
                     items: {
                         include: {
                             packageItem: true,
                         },
                     },
+                    addons: {
+                        include: {
+                            productItem: true,
+                        },
+                    },
                     package: true,
                 },
             });
-
-            return packageOrder;
         }),
 
     // Get user's package orders
@@ -762,6 +1190,44 @@ export const packagePublicRouter = createTRPCRouter({
                 throw new Error("Invalid order amount");
             }
 
+            // Calculate external amount after wallet deduction
+            const walletDebits = await ctx.prisma.walletTransaction.aggregate({
+                where: {
+                    sourceId: packageOrder.id,
+                    sourceType: "PACKAGE_PAYMENT",
+                    type: "DEBIT"
+                },
+                _sum: { amount: true }
+            });
+            const walletUsed = walletDebits._sum.amount?.toNumber() || 0;
+            const externalAmount = Math.max(0, packageOrder.totalAmount - walletUsed);
+
+            // If already fully paid by wallet
+            if (externalAmount <= 0) {
+                const payment = await ctx.prisma.packagePayment.create({
+                    data: {
+                        packageOrderId: packageOrder.id,
+                        userId,
+                        amount: 0,
+                        currency: packageOrder.currency,
+                        provider: "wallet",
+                        providerRef: `WALLET-FULL-PKG-${packageOrder.id}`,
+                        status: "COMPLETED",
+                        paidAt: new Date(),
+                    },
+                });
+
+                // Import handlePackagePaymentCompletion
+                const { handlePackagePaymentCompletion } = await import("@/lib/package-payment-completion");
+                await handlePackagePaymentCompletion(payment.id);
+
+                return {
+                    payment,
+                    checkoutUrl: null,
+                    reference: payment.providerRef,
+                };
+            }
+
             // Generate unique reference
             const reference = `PKG-${Date.now()}-${uuidv4().substring(0, 8).toUpperCase()}`;
 
@@ -786,7 +1252,7 @@ export const packagePublicRouter = createTRPCRouter({
             try {
                 paystackResponse = await initializePaystackTransaction({
                     email: userEmail,
-                    amount: packageOrder.totalAmount,
+                    amount: externalAmount,
                     reference,
                     callback_url: callbackUrl,
                     metadata: {
@@ -819,7 +1285,7 @@ export const packagePublicRouter = createTRPCRouter({
                 data: {
                     packageOrderId: packageOrder.id,
                     userId,
-                    amount: packageOrder.totalAmount,
+                    amount: externalAmount,
                     currency: packageOrder.currency,
                     provider: "paystack",
                     providerRef: paystackResponse.data.reference,
@@ -831,6 +1297,140 @@ export const packagePublicRouter = createTRPCRouter({
                 payment,
                 checkoutUrl: paystackResponse.data.authorization_url,
                 reference: paystackResponse.data.reference,
+            };
+        }),
+
+    // Verify package payment
+    verifyPackagePayment: protectedProcedure
+        .input(
+            z.object({
+                reference: z.string(),
+            })
+        )
+        .mutation(async ({ ctx, input }) => {
+            const userId = ctx.user!.id;
+
+            // Find payment by reference
+            const payment = await ctx.prisma.packagePayment.findFirst({
+                where: {
+                    providerRef: input.reference,
+                },
+                include: {
+                    packageOrder: {
+                        include: {
+                            package: true,
+                        },
+                    },
+                },
+            });
+
+            if (!payment) {
+                throw new TRPCError({
+                    code: "NOT_FOUND",
+                    message: "Payment not found",
+                });
+            }
+
+            // Verify ownership
+            if (payment.userId !== userId) {
+                throw new TRPCError({
+                    code: "FORBIDDEN",
+                    message: "You are not authorized to verify this payment",
+                });
+            }
+
+            // If already completed, return success
+            if (payment.status === "COMPLETED") {
+                return {
+                    success: true,
+                    message: "Payment already verified",
+                    payment,
+                    packageOrder: payment.packageOrder,
+                };
+            }
+
+            // Verify with Paystack
+            let verification;
+            try {
+                verification = await verifyPaystackTransaction(input.reference);
+            } catch (error) {
+                console.error("[PackagePayment] Paystack verification error:", error);
+                throw new TRPCError({
+                    code: "INTERNAL_SERVER_ERROR",
+                    message: "Failed to verify payment with payment provider",
+                });
+            }
+
+            if (!verification.status || !verification.data) {
+                throw new TRPCError({
+                    code: "BAD_REQUEST",
+                    message: verification.message || "Payment verification failed",
+                });
+            }
+
+            const paystackData = verification.data;
+
+            // Check if payment was successful
+            if (paystackData.status !== "success") {
+                // Update payment status to FAILED
+                await ctx.prisma.packagePayment.update({
+                    where: { id: payment.id },
+                    data: { status: "FAILED" },
+                });
+
+                throw new TRPCError({
+                    code: "BAD_REQUEST",
+                    message: "Payment was not successful",
+                });
+            }
+
+            // Validate amount matches
+            const paidAmount = paystackData.amount / 100; // Paystack returns amount in kobo
+            if (Math.abs(paidAmount - payment.amount) > 0.01) {
+                console.error(
+                    `[PackagePayment] Amount mismatch: expected ${payment.amount}, got ${paidAmount}`
+                );
+                throw new TRPCError({
+                    code: "BAD_REQUEST",
+                    message: "Payment amount mismatch",
+                });
+            }
+
+            // Import payment completion handler
+            const { handlePackagePaymentCompletion } = await import(
+                "@/lib/package-payment-completion"
+            );
+
+            // Handle payment completion (updates status, sends notifications)
+            try {
+                await handlePackagePaymentCompletion(payment.id);
+            } catch (error) {
+                console.error("[PackagePayment] Payment completion error:", error);
+                // Don't throw error here - payment was successful, just log the notification failure
+            }
+
+            // Fetch updated payment and order
+            const updatedPayment = await ctx.prisma.packagePayment.findUnique({
+                where: { id: payment.id },
+                include: {
+                    packageOrder: {
+                        include: {
+                            package: true,
+                            items: {
+                                include: {
+                                    packageItem: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            });
+
+            return {
+                success: true,
+                message: "Payment verified successfully",
+                payment: updatedPayment,
+                packageOrder: updatedPayment?.packageOrder,
             };
         }),
 });

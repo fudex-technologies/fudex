@@ -13,29 +13,49 @@ interface PackageCartBottomBarProps {
 		name: string;
 		price: number;
 	}>;
+	addonsData?: Array<{
+		productItemId: string;
+		name: string;
+		price: number;
+	}>;
 	isPreorder?: boolean;
 }
 
 const PackageCartBottomBar = ({
 	packageSlug,
 	packageItemsData = [],
+	addonsData = [],
 	isPreorder = false,
 }: PackageCartBottomBarProps) => {
 	const router = useRouter();
-	const { items, getTotalItems, isEmpty } = usePackageCartStore();
+	const { items, addons, getTotalItems, isEmpty } = usePackageCartStore();
 
 	// Calculate total amount
 	const totalAmount = useMemo(() => {
-		return items.reduce((sum, cartItem) => {
+		let total = 0;
+
+		// Add package items total
+		items.forEach((cartItem) => {
 			const packageItem = packageItemsData.find(
-				(item) => item.id === cartItem.packageItemId
+				(item) => item.id === cartItem.packageItemId,
 			);
 			if (packageItem) {
-				return sum + packageItem.price * cartItem.quantity;
+				total += packageItem.price * cartItem.quantity;
 			}
-			return sum;
-		}, 0);
-	}, [items, packageItemsData]);
+		});
+
+		// Add addons total
+		addons.forEach((cartAddon) => {
+			const addonItem = addonsData.find(
+				(item) => item.productItemId === cartAddon.productItemId,
+			);
+			if (addonItem) {
+				total += addonItem.price * cartAddon.quantity;
+			}
+		});
+
+		return total;
+	}, [items, addons, packageItemsData, addonsData]);
 
 	const totalItems = getTotalItems();
 
@@ -66,7 +86,7 @@ const PackageCartBottomBar = ({
 					<Button
 						onClick={handleCheckout}
 						size='lg'
-						className='min-w-[180px]'>
+						className='min-w-[180px] bg-[#FF305A]'>
 						{isPreorder ? 'Pre-order' : 'Order Now'}
 					</Button>
 				</div>

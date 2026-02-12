@@ -468,9 +468,9 @@ export default function AdminPackagesPage() {
 								<ImageWithFallback
 									src={pkg.coverImage || ''}
 									alt={pkg.name}
-									className='object-cover w-full h-full group-hover:scale-110 transition-transform duration-500'
+									className='object-cover w-full h-full scale-110 transition-transform duration-500'
 								/>
-								<div className='absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2'>
+								<div className='absolute inset-0 bg-black/40 opacity-100 transition-opacity flex items-center justify-center gap-2'>
 									<Link
 										href={PAGES_DATA.admin_dashboard_package_page(
 											pkg.id,

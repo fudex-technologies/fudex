@@ -10,7 +10,7 @@ export default async function PackageLandingPage({ params }: Props) {
 	const { packageSlug } = await params;
 
 	return (
-		<PageWrapper className={'pt-0 relative'}>
+		<PageWrapper className={'pt-0 relative pb-20'}>
 			<PackageTopSection packageSlug={packageSlug} />
 			<PackagesCategoriesSection packageSlug={packageSlug} />
 		</PageWrapper>

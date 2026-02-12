@@ -42,6 +42,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PackageCategoryManagement from '@/component-sections/PackageCategoryManagement';
 import PackageItemManagement from '@/component-sections/PackageItemManagement';
+import PackageAddonsManagement from '@/component-sections/PackageAddonsManagement';
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
 import { format } from 'date-fns';
 import Link from 'next/link';
@@ -145,6 +146,9 @@ export default function AdminPackageDetailPage({ params }: Props) {
 						Categories ({packageData.categories?.length || 0})
 					</TabsTrigger>
 					<TabsTrigger value='items'>Items</TabsTrigger>
+					<TabsTrigger value='addons'>
+						Addons ({packageData.addons?.length || 0})
+					</TabsTrigger>
 				</TabsList>
 				<TabsContent value='categories' className='mt-6'>
 					<PackageCategoryManagement
@@ -156,6 +160,12 @@ export default function AdminPackageDetailPage({ params }: Props) {
 					<PackageItemManagement
 						packageId={packageId}
 						categories={packageData.categories || []}
+						onSuccess={refetch}
+					/>
+				</TabsContent>
+				<TabsContent value='addons' className='mt-6'>
+					<PackageAddonsManagement
+						packageId={packageId}
 						onSuccess={refetch}
 					/>
 				</TabsContent>

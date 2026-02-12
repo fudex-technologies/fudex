@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation';
 import PageWrapper from '@/components/wrapers/PageWrapper';
 import GoBackButton from '@/components/GoBackButton';
 import { PAGES_DATA } from '@/data/pagesData';
-import { ShoppingBag, Users, Tag, Store } from 'lucide-react';
+import { ShoppingBag, Users, Tag, Store, Gift } from 'lucide-react';
 import TabComponent from '@/components/TabComponent';
 import { useState, useEffect } from 'react';
 import { useTRPC } from '@/trpc/client';
@@ -27,7 +27,7 @@ export default function OperatorDashboardLayout({
 	const { data: isOperator, isPending: isOperatorPending } = useQuery(
 		trpc.operators.checkOperatorRole.queryOptions(undefined, {
 			enabled: !!session,
-		})
+		}),
 	);
 
 	useEffect(() => {
@@ -41,6 +41,8 @@ export default function OperatorDashboardLayout({
 				setActiveTab('categories');
 			} else if (path.includes('/vendors')) {
 				setActiveTab('vendors');
+			} else if (path.includes('/package-orders')) {
+				setActiveTab('package-orders');
 			} else {
 				setActiveTab('orders');
 			}
@@ -52,7 +54,9 @@ export default function OperatorDashboardLayout({
 			<PageWrapper>
 				<div className='flex items-center gap-3 px-5 py-4 border-b'>
 					<GoBackButton />
-					<h1 className='text-xl font-semibold'>Operator Dashboard</h1>
+					<h1 className='text-xl font-semibold'>
+						Operator Dashboard
+					</h1>
 				</div>
 				<div className='p-5'>Loading...</div>
 			</PageWrapper>
@@ -84,6 +88,11 @@ export default function OperatorDashboardLayout({
 							icon: <ShoppingBag size={18} />,
 						},
 						{
+							id: 'package-orders',
+							label: 'Package Orders',
+							icon: <Gift size={18} />,
+						},
+						{
 							id: 'rider-requests',
 							label: 'Rider Requests',
 							icon: <BsBicycle size={18} />,
@@ -106,7 +115,9 @@ export default function OperatorDashboardLayout({
 					]}
 					className={'border-b mb-0! p-0'}
 					onTabChange={(id) => {
-						router.push(`${PAGES_DATA.operator_dashboard_page}/${id}`);
+						router.push(
+							`${PAGES_DATA.operator_dashboard_page}/${id}`,
+						);
 					}}
 				/>
 			</div>
@@ -115,4 +126,3 @@ export default function OperatorDashboardLayout({
 		</PageWrapper>
 	);
 }
-

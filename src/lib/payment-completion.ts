@@ -2,6 +2,7 @@ import prisma from "@/lib/prisma";
 import { NotificationService } from "@/modules/notifications/server/service";
 import { sendVendorNewOrderEmail, sendOperatorNewOrderEmail } from "@/lib/email";
 import { PAGES_DATA } from "@/data/pagesData";
+import { PayoutTransferStatus } from "@prisma/client";
 
 /**
  * Shared function to handle payment completion (status update + notifications)
@@ -58,7 +59,7 @@ export async function handlePaymentCompletion(paymentId: string) {
 						orderId: payment.orderId,
 						amount: payment.order.productAmount,
 						currency: payment.order.currency,
-						status: "PENDING"
+						status: PayoutTransferStatus.PENDING
 					}
 				});
 			}

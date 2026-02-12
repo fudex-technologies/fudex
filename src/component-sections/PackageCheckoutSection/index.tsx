@@ -7,6 +7,7 @@ import { PAGES_DATA } from '@/data/pagesData';
 import { usePackageCheckoutStore } from '@/store/package-checkout-store';
 import { usePackageCartStore } from '@/store/package-cart-store';
 import { usePackageActions } from '@/api-hooks/usePackageActions';
+import { useVendorProductActions } from '@/api-hooks/useVendorActions';
 import { Button } from '@/components/ui/button';
 import GoBackButton from '@/components/GoBackButton';
 import { formatCurency } from '@/lib/commonFunctions';
@@ -21,29 +22,32 @@ import {
 } from '@/components/ui/accordion';
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
 import { useTRPC } from '@/trpc/client';
-// Service fee calculation - simplified for client-side preview
-// Actual calculation happens server-side in createPackageOrder
-const calculateServiceFee = (amount: number): number => {
-	// Default service fee calculation (5% or minimum 100)
-	return Math.max(amount * 0.05, 100);
-};
+import WalletPaymentSelection from '@/components/Checkout/WalletPaymentSelection';
+import { useState } from 'react';
 
-const PackageCheckoutSection = ({
-	packageSlug,
-}: {
-	packageSlug: string;
-}) => {
+const PackageCheckoutSection = ({ packageSlug }: { packageSlug: string }) => {
 	const router = useRouter();
 	const { data: session } = useSession();
 	const checkoutStore = usePackageCheckoutStore();
-	const { items: cartItems, packageId, clearCart } = usePackageCartStore();
+	const {
+		items: cartItems,
+		addons: cartAddons,
+		packageId,
+		clearCart,
+	} = usePackageCartStore();
 	const { useGetPackageBySlug, createPackageOrder, createPackagePayment } =
 		usePackageActions();
 	const trpc = useTRPC();
+	const [walletAmount, setWalletAmount] = useState(0);
 
-	const { data: packageData, isLoading: isLoadingPackage } = useGetPackageBySlug({
-		slug: packageSlug,
-	});
+	const { usePublicPlatformSettings } = useVendorProductActions();
+	const { data: platformSettings, isLoading: isLoadingSettings } =
+		usePublicPlatformSettings();
+
+	const { data: packageData, isLoading: isLoadingPackage } =
+		useGetPackageBySlug({
+			slug: packageSlug,
+		});
 
 	// Get package items map
 	const packageItemsMap = useMemo(() => {
@@ -58,28 +62,55 @@ const PackageCheckoutSection = ({
 		return map;
 	}, [packageData]);
 
+	// Create addons map
+	const addonsMap = useMemo(() => {
+		if (!packageData?.addons) return new Map();
+		const map = new Map();
+		packageData.addons.forEach((addon) => {
+			map.set(addon.productItemId, addon.productItem);
+		});
+		return map;
+	}, [packageData]);
+
 	// Calculate totals
 	const productAmount = useMemo(() => {
 		let total = 0;
+		// Package items
 		cartItems.forEach((cartItem) => {
 			const packageItem = packageItemsMap.get(cartItem.packageItemId);
 			if (packageItem) {
 				total += packageItem.price * cartItem.quantity;
 			}
 		});
+		// Addons
+		cartAddons.forEach((cartAddon) => {
+			const addon = addonsMap.get(cartAddon.productItemId);
+			if (addon) {
+				total += addon.price * cartAddon.quantity;
+			}
+		});
 		return total;
-	}, [cartItems, packageItemsMap]);
+	}, [cartItems, packageItemsMap, cartAddons, addonsMap]);
 
-	// Calculate delivery fee - using a default for now
-	// In production, this should call the actual calculateDeliveryFee function server-side
-	// For client-side, we'll use a reasonable default
+	// Calculate delivery fee from platform settings
 	const deliveryFee = useMemo(() => {
-		// Default delivery fee - actual calculation happens server-side in createPackageOrder
-		return checkoutStore.recipientAreaId ? 500 : 1000;
-	}, [checkoutStore.recipientAreaId]);
+		if (!platformSettings) return 1000; // Fallback
+		const baseDeliveryFee =
+			((platformSettings as any)?.BASE_DELIVERY_FEE as number) ?? 1000;
+		return baseDeliveryFee;
+	}, [platformSettings]);
 
-	const serviceFee = calculateServiceFee(productAmount);
-	const totalAmount = productAmount + deliveryFee + serviceFee;
+	// Calculate service fee from platform settings
+	const serviceFee = useMemo(() => {
+		if (!platformSettings) return 0;
+		const systemServiceFee = (platformSettings as any)?.SERVICE_FEE;
+
+		if (!systemServiceFee) return 0;
+		return systemServiceFee;
+	}, [productAmount, platformSettings]);
+
+	const subTotalWithFees = productAmount + deliveryFee + serviceFee;
+	const totalAmount = Math.max(0, subTotalWithFees - walletAmount);
 
 	// Create order mutation
 	const createOrderMutation = createPackageOrder({
@@ -94,11 +125,13 @@ const PackageCheckoutSection = ({
 			createPaymentMutation.mutate({
 				packageOrderId: order.id,
 				callbackUrl,
+				// walletAmount,
 			});
 		},
 		onError: (err) => {
 			toast.error('Failed to create order', {
-				description: err instanceof Error ? err.message : 'Unknown error',
+				description:
+					err instanceof Error ? err.message : 'Unknown error',
 			});
 		},
 		silent: false,
@@ -116,13 +149,14 @@ const PackageCheckoutSection = ({
 				window.location.href = data.checkoutUrl;
 			} else {
 				toast.error(
-					'Payment initialization failed - no checkout URL received'
+					'Payment initialization failed - no checkout URL received',
 				);
 			}
 		},
 		onError: (err) => {
 			toast.error('Failed to create payment', {
-				description: err instanceof Error ? err.message : 'Unknown error',
+				description:
+					err instanceof Error ? err.message : 'Unknown error',
 			});
 		},
 		silent: false,
@@ -161,14 +195,22 @@ const PackageCheckoutSection = ({
 			quantity: cartItem.quantity,
 		}));
 
+		// Prepare order addons
+		const orderAddons = cartAddons.map((cartAddon) => ({
+			productItemId: cartAddon.productItemId,
+			quantity: cartAddon.quantity,
+		}));
+
 		// Create order
 		createOrderMutation.mutate({
 			packageId: packageData.id,
 			items: orderItems,
+			addons: orderAddons,
 			recipientName: checkoutStore.recipientName,
 			recipientPhone: checkoutStore.recipientPhone,
 			recipientAddressLine1: checkoutStore.recipientAddressLine1,
-			recipientAddressLine2: checkoutStore.recipientAddressLine2 || undefined,
+			recipientAddressLine2:
+				checkoutStore.recipientAddressLine2 || undefined,
 			recipientCity: checkoutStore.recipientCity,
 			recipientState: checkoutStore.recipientState || undefined,
 			recipientAreaId: checkoutStore.recipientAreaId || undefined,
@@ -179,10 +221,11 @@ const PackageCheckoutSection = ({
 			cardType: checkoutStore.cardType!,
 			customCardMessage: checkoutStore.customCardMessage || undefined,
 			notes: checkoutStore.notes || undefined,
+			walletAmount,
 		});
 	};
 
-	if (isLoadingPackage) {
+	if (isLoadingPackage || isLoadingSettings) {
 		return (
 			<div className='w-full p-5 space-y-5'>
 				<Skeleton className='h-10 w-48' />
@@ -197,7 +240,9 @@ const PackageCheckoutSection = ({
 				<p className='text-foreground/50'>Your cart is empty</p>
 				<Button
 					variant='outline'
-					onClick={() => router.push(PAGES_DATA.package_page(packageSlug))}
+					onClick={() =>
+						router.push(PAGES_DATA.package_page(packageSlug))
+					}
 					className='mt-4'>
 					Browse Packages
 				</Button>
@@ -218,11 +263,15 @@ const PackageCheckoutSection = ({
 				{/* Order Items Summary */}
 				<Accordion type='single' collapsible className='w-full'>
 					<AccordionItem value='items'>
-						<AccordionTrigger>Package Items ({cartItems.length})</AccordionTrigger>
+						<AccordionTrigger>
+							Package Items ({cartItems.length})
+						</AccordionTrigger>
 						<AccordionContent>
 							<div className='space-y-3 pt-2'>
 								{cartItems.map((cartItem) => {
-									const packageItem = packageItemsMap.get(cartItem.packageItemId);
+									const packageItem = packageItemsMap.get(
+										cartItem.packageItemId,
+									);
 									if (!packageItem) return null;
 
 									return (
@@ -232,22 +281,33 @@ const PackageCheckoutSection = ({
 											<div className='relative w-16 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0'>
 												<ImageWithFallback
 													src={
-														packageItem.images && packageItem.images.length > 0
-															? packageItem.images[0]
+														packageItem.images &&
+														packageItem.images
+															.length > 0
+															? packageItem
+																	.images[0]
 															: '/assets/empty-tray.png'
 													}
 													alt={packageItem.name}
-													className='object-cover'
+													className='w-14 h-14 rounded-lg object-cover shrink-0'
 												/>
 											</div>
 											<div className='flex-1'>
-												<p className='font-medium text-sm'>{packageItem.name}</p>
+												<p className='font-medium text-sm'>
+													{packageItem.name}
+												</p>
 												<p className='text-xs text-foreground/60'>
-													Qty: {cartItem.quantity} × {formatCurency(packageItem.price)}
+													Qty: {cartItem.quantity} ×{' '}
+													{formatCurency(
+														packageItem.price,
+													)}
 												</p>
 											</div>
 											<p className='font-semibold text-sm'>
-												{formatCurency(packageItem.price * cartItem.quantity)}
+												{formatCurency(
+													packageItem.price *
+														cartItem.quantity,
+												)}
 											</p>
 										</div>
 									);
@@ -264,22 +324,28 @@ const PackageCheckoutSection = ({
 						<AccordionContent>
 							<div className='space-y-2 pt-2 text-sm'>
 								<p>
-									<strong>Sender:</strong> {checkoutStore.senderName}
+									<strong>Sender:</strong>{' '}
+									{checkoutStore.senderName}
 								</p>
 								<p>
-									<strong>Recipient:</strong> {checkoutStore.recipientName}
+									<strong>Recipient:</strong>{' '}
+									{checkoutStore.recipientName}
 								</p>
 								<p>
-									<strong>Phone:</strong> {checkoutStore.recipientPhone}
+									<strong>Phone:</strong>{' '}
+									{checkoutStore.recipientPhone}
 								</p>
 								<p>
-									<strong>Address:</strong> {checkoutStore.recipientAddressLine1}
+									<strong>Address:</strong>{' '}
+									{checkoutStore.recipientAddressLine1}
 									{checkoutStore.recipientAddressLine2 &&
 										`, ${checkoutStore.recipientAddressLine2}`}
 								</p>
 								<p>
-									<strong>City:</strong> {checkoutStore.recipientCity}
-									{checkoutStore.recipientState && `, ${checkoutStore.recipientState}`}
+									<strong>City:</strong>{' '}
+									{checkoutStore.recipientCity}
+									{checkoutStore.recipientState &&
+										`, ${checkoutStore.recipientState}`}
 								</p>
 							</div>
 						</AccordionContent>
@@ -295,12 +361,16 @@ const PackageCheckoutSection = ({
 								{checkoutStore.deliveryDate && (
 									<p>
 										<strong>Date:</strong>{' '}
-										{format(checkoutStore.deliveryDate, 'EEEE, MMMM do, yyyy')}
+										{format(
+											checkoutStore.deliveryDate,
+											'EEEE, MMMM do, yyyy',
+										)}
 									</p>
 								)}
 								{checkoutStore.timeSlot && (
 									<p>
-										<strong>Time Slot:</strong> {checkoutStore.timeSlot}
+										<strong>Time Slot:</strong>{' '}
+										{checkoutStore.timeSlot}
 									</p>
 								)}
 							</div>
@@ -327,7 +397,9 @@ const PackageCheckoutSection = ({
 												Your Message:
 											</p>
 											<p className='whitespace-pre-wrap'>
-												{checkoutStore.customCardMessage}
+												{
+													checkoutStore.customCardMessage
+												}
 											</p>
 										</div>
 									)}
@@ -335,6 +407,15 @@ const PackageCheckoutSection = ({
 						</AccordionContent>
 					</AccordionItem>
 				</Accordion>
+
+				{/* Wallet Payment Selection */}
+				<div className='pt-2'>
+					<WalletPaymentSelection
+						onWalletAmountChange={setWalletAmount}
+						walletAmount={walletAmount}
+						totalAmount={productAmount + deliveryFee + serviceFee}
+					/>
+				</div>
 
 				{/* Fees Breakdown */}
 				<div className='border-t pt-4 space-y-2'>
@@ -350,8 +431,8 @@ const PackageCheckoutSection = ({
 						<span>Service Fee</span>
 						<span>{formatCurency(serviceFee)}</span>
 					</div>
-					<div className='flex justify-between font-semibold text-lg pt-2 border-t'>
-						<span>Total</span>
+					<div className='flex justify-between font-bold text-lg pt-2 border-t text-primary'>
+						<span>Total to Pay</span>
 						<span>{formatCurency(totalAmount)}</span>
 					</div>
 				</div>
@@ -374,8 +455,10 @@ const PackageCheckoutSection = ({
 							createOrderMutation.isPending ||
 							createPaymentMutation.isPending ||
 							!checkoutStore.isCheckoutComplete()
-						}>
-						{createOrderMutation.isPending || createPaymentMutation.isPending
+						}
+						className='bg-[#FF305A]'>
+						{createOrderMutation.isPending ||
+						createPaymentMutation.isPending
 							? 'Processing...'
 							: 'Proceed to Payment'}
 					</Button>
@@ -386,4 +469,3 @@ const PackageCheckoutSection = ({
 };
 
 export default PackageCheckoutSection;
-

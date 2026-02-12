@@ -160,6 +160,7 @@ export const vendorRouter = createTRPCRouter({
                 // Add random seed parameter
                 params.push(input.randomSeed.toString());
                 const randomSeedParam = paramIndex;
+                paramIndex++;
 
                 if (input.categorySlug) {
                     params.push(input.categorySlug);
@@ -245,17 +246,16 @@ export const vendorRouter = createTRPCRouter({
                 };
             }
 
-            const where: any = input.q ? {
-                OR: [
-                    { name: { contains: input.q, mode: "insensitive" } },
-                    { description: { contains: input.q, mode: "insensitive" } }
-                ],
-                AND: {
-                    approvalStatus: 'APPROVED'
-                }
-            } : {
+            const where: any = {
                 approvalStatus: 'APPROVED'
             };
+
+            if (input.q) {
+                where.OR = [
+                    { name: { contains: input.q, mode: "insensitive" } },
+                    { description: { contains: input.q, mode: "insensitive" } }
+                ];
+            }
 
             if (input?.ratingFilter) {
                 where.reviewsAverage = {
@@ -264,12 +264,13 @@ export const vendorRouter = createTRPCRouter({
                             input.ratingFilter === "4.0+" ? 4 :
                                 input.ratingFilter === "4.5+" ? 4.5 : 0
                 }
-                if (input.categorySlug) {
-                    where.vendorCategories = {
-                        some: {
-                            category: {
-                                slug: input.categorySlug
-                            }
+            }
+
+            if (input.categorySlug) {
+                where.vendorCategories = {
+                    some: {
+                        category: {
+                            slug: input.categorySlug
                         }
                     }
                 }

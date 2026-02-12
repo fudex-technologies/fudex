@@ -1,5 +1,6 @@
+"use client"
+
 import { buttonVariants } from '@/components/ui/button';
-import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
 import { cn } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
@@ -47,7 +48,7 @@ const ValentineTemplate = ({
 	return (
 		<div
 			className={cn(
-				'noise-effect w-[95vw] sm:w-full min-w-xs max-w-sm rounded-xl h-[170px] overflow-hidden flex items-center p-0 relative',
+				'noise-effect w-[90vw] sm:w-full min-w-xs max-w-sm rounded-xl h-[170px] overflow-hidden flex items-center p-0 relative',
 				className,
 			)}
 			style={{
@@ -69,10 +70,10 @@ const ValentineTemplate = ({
 			/>
 			<div
 				className={cn(
-					'w-full p-5 pb-0 flex flex-col relative z-10 justify-end',
+					'w-full h-full p-5 pb-0 flex flex-col relative z-10 justify-end',
 					firstSectionClassName,
 				)}>
-				<div className='flex flex-col text-white w-full overflow-hidden h-10 '>
+				<div className='flex flex-col text-white w-full overflow-hidden h-10 absolute top-5 left-5'>
 					<AnimatePresence mode='wait'>
 						<motion.div
 							key={currentSlideIndex}
@@ -98,7 +99,7 @@ const ValentineTemplate = ({
 							buttonVariants({
 								size: 'lg',
 							}),
-							'rounded-full bg-foreground text-background py-6 hover:bg-foreground/50 hover:text-background w-fit ',
+							'rounded-full bg-foreground text-background py-6 hover:bg-foreground/50 hover:text-background w-fit my-5',
 							buttonClassName,
 						)}>
 						{buttonLabel}
@@ -114,7 +115,7 @@ const ValentineTemplate = ({
 								className='w-full'>
 								<Image
 									width={200}
-									height={100}
+									height={200}
 									src={currentSlide.image}
 									className='w-full h-auto object-top max-w-[200px] sm:max-w-none'
 									alt='promo'

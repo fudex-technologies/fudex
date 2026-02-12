@@ -1,7 +1,6 @@
 'use client';
 
 import VendorCard from '@/components/VendorCard';
-import SectionWrapper from '@/components/wrapers/SectionWrapper';
 import { useVendorProductActions } from '@/api-hooks/useVendorActions';
 import { useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -22,14 +21,15 @@ export default function ValentineSpecialSection() {
 	}, [data]);
 
 	if (isLoading) {
-		return <ValentineSpecialSkeleton />;
+		// return <ValentineSpecialSkeleton />;
+		return null;
 	}
 
 	// Don't show if no cake vendors
 	if (vendors.length === 0) return null;
 
 	return (
-		<div className='w-full flex flex-col gap-3 pb-5 mt-4'>
+		<div className='w-full flex flex-col gap-3'>
 			<div className='px-5 flex flex-col gap-1'>
 				<div className='flex items-center gap-2'>
 					<h2 className='text-lg font-bold text-pink-600'>
@@ -58,7 +58,7 @@ export default function ValentineSpecialSection() {
 
 function ValentineSpecialSkeleton() {
 	return (
-		<div className='w-full flex flex-col gap-3 pb-5 mt-4'>
+		<div className='w-full flex flex-col gap-3'>
 			<div className='px-5'>
 				<Skeleton className='h-6 w-48 mb-1' />
 				<Skeleton className='h-3 w-64' />

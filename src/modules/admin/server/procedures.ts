@@ -1,5 +1,6 @@
 import { createTRPCRouter, adminProcedure } from "@/trpc/init";
 import { z } from "zod";
+import { WalletTransactionSource } from "@prisma/client";
 
 export const adminRouter = createTRPCRouter({
     // ========== USER MANAGEMENT ==========
@@ -900,5 +901,108 @@ export const adminRouter = createTRPCRouter({
             return ctx.prisma.category.delete({
                 where: { id: input.id }
             });
+        }),
+
+    // ========== WALLET MANAGEMENT ==========
+
+    // List all wallet transactions across the platform
+    listWalletTransactionsInfinite: adminProcedure
+        .input(z.object({
+            limit: z.number().min(1).max(100).default(50),
+            cursor: z.string().nullish(),
+            userId: z.string().optional(),
+            sourceType: z.nativeEnum(WalletTransactionSource).optional(),
+        }))
+        .query(async ({ ctx, input }) => {
+            const { limit, cursor, userId, sourceType } = input;
+
+            const where: any = {};
+            if (userId) {
+                const wallet = await ctx.prisma.wallet.findUnique({ where: { userId } });
+                if (wallet) where.walletId = wallet.id;
+                else return { items: [], nextCursor: undefined };
+            }
+            if (sourceType) where.sourceType = sourceType;
+
+            const items = await ctx.prisma.walletTransaction.findMany({
+                where,
+                take: limit + 1,
+                cursor: cursor ? { id: cursor } : undefined,
+                orderBy: { createdAt: "desc" },
+                include: {
+                    wallet: {
+                        include: {
+                            user: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    email: true
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            let nextCursor: typeof cursor | undefined = undefined;
+            if (items.length > limit) {
+                const nextItem = items.pop();
+                nextCursor = nextItem!.id;
+            }
+
+            return {
+                items: items.map(item => ({
+                    ...item,
+                    amount: item.amount.toNumber(),
+                })),
+                nextCursor,
+            };
+        }),
+
+    // List users with their wallet balances
+    listUsersWithBalancesInfinite: adminProcedure
+        .input(z.object({
+            limit: z.number().min(1).max(100).default(50),
+            cursor: z.string().nullish(),
+            q: z.string().optional()
+        }))
+        .query(async ({ ctx, input }) => {
+            const { limit, cursor, q } = input;
+
+            const where: any = {};
+            if (q) {
+                where.OR = [
+                    { name: { contains: q, mode: "insensitive" } },
+                    { email: { contains: q, mode: "insensitive" } },
+                    { phone: { contains: q, mode: "insensitive" } }
+                ];
+            }
+
+            const items = await ctx.prisma.user.findMany({
+                where,
+                take: limit + 1,
+                cursor: cursor ? { id: cursor } : undefined,
+                orderBy: { createdAt: "desc" },
+                include: {
+                    wallet: true
+                }
+            });
+
+            let nextCursor: typeof cursor | undefined = undefined;
+            if (items.length > limit) {
+                const nextItem = items.pop();
+                nextCursor = nextItem!.id;
+            }
+
+            return {
+                items: items.map(user => ({
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    walletBalance: user.wallet?.balance.toNumber() ?? 0,
+                    walletActive: user.wallet?.isActive ?? false,
+                })),
+                nextCursor,
+            };
         }),
 });
