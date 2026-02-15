@@ -22,6 +22,8 @@ import {
 } from '@/components/ui/accordion';
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
 import { useTRPC } from '@/trpc/client';
+import WalletPaymentSelection from '@/components/Checkout/WalletPaymentSelection';
+import { useState } from 'react';
 
 const PackageCheckoutSection = ({ packageSlug }: { packageSlug: string }) => {
 	const router = useRouter();
@@ -36,6 +38,7 @@ const PackageCheckoutSection = ({ packageSlug }: { packageSlug: string }) => {
 	const { useGetPackageBySlug, createPackageOrder, createPackagePayment } =
 		usePackageActions();
 	const trpc = useTRPC();
+	const [walletAmount, setWalletAmount] = useState(0);
 
 	const { usePublicPlatformSettings } = useVendorProductActions();
 	const { data: platformSettings, isLoading: isLoadingSettings } =
@@ -106,7 +109,8 @@ const PackageCheckoutSection = ({ packageSlug }: { packageSlug: string }) => {
 		return systemServiceFee;
 	}, [productAmount, platformSettings]);
 
-	const totalAmount = productAmount + deliveryFee + serviceFee;
+	const subTotalWithFees = productAmount + deliveryFee + serviceFee;
+	const totalAmount = Math.max(0, subTotalWithFees - walletAmount);
 
 	// Create order mutation
 	const createOrderMutation = createPackageOrder({
@@ -121,6 +125,7 @@ const PackageCheckoutSection = ({ packageSlug }: { packageSlug: string }) => {
 			createPaymentMutation.mutate({
 				packageOrderId: order.id,
 				callbackUrl,
+				// walletAmount,
 			});
 		},
 		onError: (err) => {
@@ -216,6 +221,7 @@ const PackageCheckoutSection = ({ packageSlug }: { packageSlug: string }) => {
 			cardType: checkoutStore.cardType!,
 			customCardMessage: checkoutStore.customCardMessage || undefined,
 			notes: checkoutStore.notes || undefined,
+			walletAmount,
 		});
 	};
 
@@ -283,7 +289,7 @@ const PackageCheckoutSection = ({ packageSlug }: { packageSlug: string }) => {
 															: '/assets/empty-tray.png'
 													}
 													alt={packageItem.name}
-													className='object-cover'
+													className='w-14 h-14 rounded-lg object-cover shrink-0'
 												/>
 											</div>
 											<div className='flex-1'>
@@ -402,6 +408,15 @@ const PackageCheckoutSection = ({ packageSlug }: { packageSlug: string }) => {
 					</AccordionItem>
 				</Accordion>
 
+				{/* Wallet Payment Selection */}
+				<div className='pt-2'>
+					<WalletPaymentSelection
+						onWalletAmountChange={setWalletAmount}
+						walletAmount={walletAmount}
+						totalAmount={productAmount + deliveryFee + serviceFee}
+					/>
+				</div>
+
 				{/* Fees Breakdown */}
 				<div className='border-t pt-4 space-y-2'>
 					<div className='flex justify-between text-sm'>
@@ -416,8 +431,8 @@ const PackageCheckoutSection = ({ packageSlug }: { packageSlug: string }) => {
 						<span>Service Fee</span>
 						<span>{formatCurency(serviceFee)}</span>
 					</div>
-					<div className='flex justify-between font-semibold text-lg pt-2 border-t'>
-						<span>Total</span>
+					<div className='flex justify-between font-bold text-lg pt-2 border-t text-primary'>
+						<span>Total to Pay</span>
 						<span>{formatCurency(totalAmount)}</span>
 					</div>
 				</div>

@@ -58,6 +58,7 @@
     "react-hook-form": "^7.70.0",
     "react-icons": "^5.5.0",
     "react-intersection-observer": "^10.0.0",
+    "react-paystack": "^6.0.0",
     "recharts": "^3.7.0",
     "resend": "^6.7.0",
     "sharp": "^0.34.5",

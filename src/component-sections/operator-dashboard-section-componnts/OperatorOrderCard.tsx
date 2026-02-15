@@ -21,6 +21,17 @@ import {
 import { Label } from '@/components/ui/label';
 import { useState } from 'react';
 import { useOperatorActions } from '@/api-hooks/useOperatorActions';
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
 
 interface OperatorOrderCardProps {
 	order: any;
@@ -37,10 +48,14 @@ export default function OperatorOrderCard({
 	const [selectedRiderId, setSelectedRiderId] = useState<string>(
 		order.assignedRiderId || '',
 	);
+	const [statusToUpdate, setStatusToUpdate] = useState<OrderStatus | null>(
+		null,
+	);
 
 	const updateStatusMutation = updateOrderStatus({
 		onSuccess: () => {
 			onUpdate?.();
+			setStatusToUpdate(null);
 		},
 	});
 
@@ -51,7 +66,16 @@ export default function OperatorOrderCard({
 	});
 
 	const handleStatusChange = (status: OrderStatus) => {
-		updateStatusMutation.mutate({ orderId: order.id, status });
+		setStatusToUpdate(status);
+	};
+
+	const confirmStatusChange = () => {
+		if (statusToUpdate) {
+			updateStatusMutation.mutate({
+				orderId: order.id,
+				status: statusToUpdate,
+			});
+		}
 	};
 
 	const handleAssignRider = () => {
@@ -409,6 +433,56 @@ export default function OperatorOrderCard({
 					</Button>
 				</div>
 			</div>
+
+			<AlertDialog
+				open={!!statusToUpdate}
+				onOpenChange={(open) => !open && setStatusToUpdate(null)}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>
+							Update Order Status?
+						</AlertDialogTitle>
+						<AlertDialogDescription>
+							Are you sure you want to change the status of order{' '}
+							<span className='font-bold italic'>
+								#{displayOrderId}
+							</span>{' '}
+							to{' '}
+							<span className='font-bold uppercase'>
+								{statusToUpdate}
+							</span>
+							?
+							{statusToUpdate === OrderStatus.CANCELLED && (
+								<p className='mt-2 text-destructive font-semibold'>
+									Note: This will trigger an automatic refund
+									to the customer's wallet.
+								</p>
+							)}
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel
+							disabled={updateStatusMutation.isPending}>
+							Cancel
+						</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={(e) => {
+								e.preventDefault();
+								confirmStatusChange();
+							}}
+							disabled={updateStatusMutation.isPending}
+							className={
+								statusToUpdate === OrderStatus.CANCELLED
+									? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
+									: ''
+							}>
+							{updateStatusMutation.isPending
+								? 'Updating...'
+								: 'Confirm Change'}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</div>
 	);
 }

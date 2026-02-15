@@ -7,7 +7,9 @@ import {
     verifyPaystackTransaction,
 } from "@/lib/paystack";
 import { TRPCError } from "@trpc/server";
-import { OrderStatus } from "@prisma/client";
+import { OrderStatus, WalletTransactionSource } from "@prisma/client";
+import { WalletService } from "@/modules/wallet/server/service";
+import { RefundService } from "@/modules/wallet/server/refund.service";
 
 // ========== ADMIN PROCEDURES ==========
 export const packageAdminRouter = createTRPCRouter({
@@ -636,7 +638,7 @@ export const packageAdminRouter = createTRPCRouter({
             }
 
             // Update order status
-            return ctx.prisma.packageOrder.update({
+            const updated = await ctx.prisma.packageOrder.update({
                 where: { id },
                 data: { status },
                 include: {
@@ -652,6 +654,15 @@ export const packageAdminRouter = createTRPCRouter({
                     payment: true,
                 },
             });
+
+            // Handle Refund if cancelled
+            if (status === "CANCELLED") {
+                await RefundService.refundPackageOrder(id).catch(err => {
+                    console.error(`[Refund] Error refunding package order ${id}:`, err);
+                });
+            }
+
+            return updated;
         }),
 });
 
@@ -835,6 +846,7 @@ export const packagePublicRouter = createTRPCRouter({
                         quantity: z.number().min(1),
                     })
                 ).optional().default([]),
+                walletAmount: z.number().optional().default(0),
             })
         )
         .mutation(async ({ ctx, input }) => {
@@ -923,6 +935,10 @@ export const packagePublicRouter = createTRPCRouter({
 
             const totalAmount = productAmount + deliveryFee + serviceFee;
 
+            if (input.walletAmount > totalAmount) {
+                throw new Error("Wallet amount cannot exceed total order amount");
+            }
+
             // Create package order
             const packageOrder = await ctx.prisma.packageOrder.create({
                 data: {
@@ -969,6 +985,20 @@ export const packagePublicRouter = createTRPCRouter({
                         })),
                     },
                 },
+            });
+            // Handle wallet debit
+            if (input.walletAmount > 0) {
+                await WalletService.debitWallet({
+                    userId,
+                    amount: input.walletAmount,
+                    sourceType: WalletTransactionSource.PACKAGE_PAYMENT,
+                    sourceId: packageOrder.id,
+                    reference: `WALLET-PAY-PKG-${packageOrder.id}`,
+                }, ctx.prisma as any);
+            }
+
+            return ctx.prisma.packageOrder.findUnique({
+                where: { id: packageOrder.id },
                 include: {
                     items: {
                         include: {
@@ -983,8 +1013,6 @@ export const packagePublicRouter = createTRPCRouter({
                     package: true,
                 },
             });
-
-            return packageOrder;
         }),
 
     // Get user's package orders
@@ -1162,6 +1190,44 @@ export const packagePublicRouter = createTRPCRouter({
                 throw new Error("Invalid order amount");
             }
 
+            // Calculate external amount after wallet deduction
+            const walletDebits = await ctx.prisma.walletTransaction.aggregate({
+                where: {
+                    sourceId: packageOrder.id,
+                    sourceType: "PACKAGE_PAYMENT",
+                    type: "DEBIT"
+                },
+                _sum: { amount: true }
+            });
+            const walletUsed = walletDebits._sum.amount?.toNumber() || 0;
+            const externalAmount = Math.max(0, packageOrder.totalAmount - walletUsed);
+
+            // If already fully paid by wallet
+            if (externalAmount <= 0) {
+                const payment = await ctx.prisma.packagePayment.create({
+                    data: {
+                        packageOrderId: packageOrder.id,
+                        userId,
+                        amount: 0,
+                        currency: packageOrder.currency,
+                        provider: "wallet",
+                        providerRef: `WALLET-FULL-PKG-${packageOrder.id}`,
+                        status: "COMPLETED",
+                        paidAt: new Date(),
+                    },
+                });
+
+                // Import handlePackagePaymentCompletion
+                const { handlePackagePaymentCompletion } = await import("@/lib/package-payment-completion");
+                await handlePackagePaymentCompletion(payment.id);
+
+                return {
+                    payment,
+                    checkoutUrl: null,
+                    reference: payment.providerRef,
+                };
+            }
+
             // Generate unique reference
             const reference = `PKG-${Date.now()}-${uuidv4().substring(0, 8).toUpperCase()}`;
 
@@ -1186,7 +1252,7 @@ export const packagePublicRouter = createTRPCRouter({
             try {
                 paystackResponse = await initializePaystackTransaction({
                     email: userEmail,
-                    amount: packageOrder.totalAmount,
+                    amount: externalAmount,
                     reference,
                     callback_url: callbackUrl,
                     metadata: {
@@ -1219,7 +1285,7 @@ export const packagePublicRouter = createTRPCRouter({
                 data: {
                     packageOrderId: packageOrder.id,
                     userId,
-                    amount: packageOrder.totalAmount,
+                    amount: externalAmount,
                     currency: packageOrder.currency,
                     provider: "paystack",
                     providerRef: paystackResponse.data.reference,
@@ -1242,7 +1308,7 @@ export const packagePublicRouter = createTRPCRouter({
             })
         )
         .mutation(async ({ ctx, input }) => {
-            const userId = ctx.session.user.id;
+            const userId = ctx.user!.id;
 
             // Find payment by reference
             const payment = await ctx.prisma.packagePayment.findFirst({
