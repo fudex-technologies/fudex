@@ -3,6 +3,7 @@ import { createTRPCRouter, protectedProcedure, adminProcedure } from "@/trpc/ini
 import { WalletTransactionSource } from "@prisma/client";
 import { WalletService } from "./service";
 import prisma from "@/lib/prisma";
+import { verifyPaystackTransaction } from "@/lib/paystack";
 
 export const walletRouter = createTRPCRouter({
     getBalance: protectedProcedure.query(async ({ ctx }) => {
@@ -97,5 +98,37 @@ export const walletRouter = createTRPCRouter({
                 sourceType: WalletTransactionSource.ADMIN_ADJUSTMENT,
                 reference: `ADMIN-${userId}-${Date.now()}`,
             });
+        }),
+
+    verifyFunding: protectedProcedure
+        .input(
+            z.object({
+                reference: z.string(),
+            })
+        )
+        .mutation(async ({ input }) => {
+            const { reference } = input;
+
+            // 1. Verify with Paystack
+            const verification = await verifyPaystackTransaction(reference);
+
+            if (!verification.status || verification.data.status !== "success") {
+                throw new Error(
+                    verification.message || "Payment verification failed"
+                );
+            }
+
+            // 2. Complete funding (this handles idempotency and balance update)
+            const result = await WalletService.completeFunding(
+                reference,
+                verification.data.paid_at
+                    ? new Date(verification.data.paid_at)
+                    : new Date()
+            );
+
+            return {
+                success: true,
+                alreadyProcessed: result.alreadyProcessed,
+            };
         }),
 });

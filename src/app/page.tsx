@@ -42,47 +42,6 @@ export default function Home() {
 			<CategorySelectionSection />
 			<PromoSection />
 			{/* <PopularRestaurantsSection /> */}
-			{/* <Suspense
-				fallback={
-					<div className='' />
-				}>
-				<ValentineSpecialSection />
-			</Suspense> */}
-			{/* <SectionWrapper className='w-full flex items-center  gap-5 justify-center'>
-				<ValentineTemplate
-					slides={[
-						{
-							textLine1: (
-								<>
-									{' '}
-									Let your loved one open the <br /> door to
-									a{' '}
-								</>
-							),
-							textLine2: 'beautiful surprise.',
-							image: '/assets/valentine1.png',
-						},
-						{
-							textLine1: (
-								<>
-									Show up for your loved ones, <br /> even
-									from afar.
-								</>
-							),
-							textLine2: 'Send them gifts.',
-							image: '/assets/valentine2.png',
-						},
-					]}
-					buttonLabel='Pre-order a gift now'
-					link={`/packages/valentine-packages`}
-					buttonClassName={
-						'bg-[#FD98AA] hover:bg-[#FD98AA]/50 text-black'
-					}
-					className={'bg-[#8D021B] w-full!'}
-					firstSectionClassName={'flex-1'}
-				/>
-			</SectionWrapper> */}
-
 			<Suspense
 				fallback={
 					<VendorListSectionSkeleton title={'Available Food Spots'} />

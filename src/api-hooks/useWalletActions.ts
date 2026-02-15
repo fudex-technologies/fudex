@@ -67,5 +67,22 @@ export function useWalletActions() {
                     retry: false,
                 })
             ),
+
+        useVerifyFunding: (options?: UseAPICallerOptions) =>
+            useMutation(
+                trpc.wallet.verifyFunding.mutationOptions({
+                    onSuccess: (data) => {
+                        options?.onSuccess?.(data);
+                    },
+                    onError: (err: unknown) => {
+                        if (!options?.silent)
+                            toast.error("Failed to verify funding", {
+                                description: err instanceof Error ? err.message : String(err),
+                            });
+                        options?.onError?.(err);
+                    },
+                    retry: false,
+                })
+            ),
     };
 }

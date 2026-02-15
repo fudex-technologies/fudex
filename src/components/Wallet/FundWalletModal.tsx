@@ -10,7 +10,7 @@ import {
 	DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { usePaystackPayment } from 'react-paystack';
 
@@ -24,9 +24,17 @@ export default function FundWalletModal({
 	setOpen,
 }: FundWalletModalProps) {
 	const [amount, setAmount] = useState<string>('');
-	const { initializeFunding, useGetBalance } = useWalletActions();
+	const {
+		initializeFunding,
+		useGetBalance,
+		useVerifyFunding,
+		useGetTransactions,
+	} = useWalletActions();
 	const { refetch: refetchBalance } = useGetBalance();
+	// Also get transactions refetch
+	const { refetch: refetchTransactions } = useGetTransactions();
 	const initFundingMutation = initializeFunding();
+	const verifyFundingMutation = useVerifyFunding();
 
 	const handleProceedToPayment = () => {
 		const numAmount = parseFloat(amount);
@@ -39,19 +47,7 @@ export default function FundWalletModal({
 			{ amount: numAmount },
 			{
 				onSuccess: (data) => {
-					// Initialize Paystack payment
-					const config = {
-						reference: data.providerRef,
-						email: data.email,
-						amount: data.amount * 100, // Paystack works in kobo
-						publicKey:
-							process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
-					};
-
-					// We need to use a separate component for Paystack because of the hook rules
-					// but since it's a small app, we'll use a trick or just create a sub-component
-					// For now, let's just use the direct initialization if possible or provide feedback
-					// Actually, react-paystack hooks should be used at the top level of a component
+					console.log('Funding initialized:', data.providerRef);
 				},
 			},
 		);
@@ -105,21 +101,75 @@ export default function FundWalletModal({
 						amount={parseFloat(amount)}
 						providerRef={initFundingMutation.data?.providerRef}
 						email={initFundingMutation.data?.email}
-						onSuccess={() => {
-							setOpen(false);
+						onSuccess={(response: any) => {
+							toast.success(
+								'Payment successful! Verifying with server...',
+							);
 							setAmount('');
-							refetchBalance();
-							toast.success('Wallet funding successful!');
+
+							const reference = response.reference;
+
+							verifyFundingMutation.mutate(
+								{ reference },
+								{
+									onSuccess: () => {
+										toast.success(
+											'Wallet funded successfully!',
+										);
+										// Poll for balance and transactions update to be sure
+										let attempts = 0;
+										const maxAttempts = 5;
+										const interval = setInterval(
+											async () => {
+												attempts++;
+												await Promise.all([
+													refetchBalance(),
+													refetchTransactions(),
+												]);
+												if (attempts >= maxAttempts) {
+													clearInterval(interval);
+													setOpen(false);
+												}
+											},
+											2000,
+										);
+									},
+									onError: () => {
+										// Even if verification mutation fails, still poll
+										// as the webhook might have worked
+										let attempts = 0;
+										const maxAttempts = 5;
+										const interval = setInterval(
+											async () => {
+												attempts++;
+												await Promise.all([
+													refetchBalance(),
+													refetchTransactions(),
+												]);
+												if (attempts >= maxAttempts) {
+													clearInterval(interval);
+													setOpen(false);
+												}
+											},
+											2000,
+										);
+									},
+								},
+							);
 						}}
 						onClose={() => {
 							toast.info('Payment cancelled');
 						}}>
 						<Button
 							onClick={handleProceedToPayment}
-							disabled={initFundingMutation.isPending}
+							disabled={
+								initFundingMutation.isPending ||
+								verifyFundingMutation.isPending
+							}
 							className='w-full h-12 rounded-xl bg-primary text-primary-foreground font-bold text-lg'>
-							{initFundingMutation.isPending
-								? 'Initializing...'
+							{initFundingMutation.isPending ||
+							verifyFundingMutation.isPending
+								? 'Processing...'
 								: 'Proceed to Payment'}
 						</Button>
 					</PaystackWrapper>
@@ -140,30 +190,41 @@ function PaystackWrapper({
 	const config = {
 		reference: providerRef || '',
 		email: email || '',
-		amount: amount * 100,
+		amount: Math.round(amount * 100),
 		publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
 	};
 
 	const initializePayment = usePaystackPayment(config);
 
-	const handleSuccess = (reference: any) => {
-		onSuccess(reference);
-	};
+	const handleSuccess = useCallback(
+		(reference: any) => {
+			onSuccess(reference);
+		},
+		[onSuccess],
+	);
 
-	const handleClose = () => {
+	const handleClose = useCallback(() => {
 		onClose();
-	};
+	}, [onClose]);
 
-	if (providerRef) {
-		// Trigger payment automatically when we have the ref
-		// In a real scenario, you might want to wait for user to click or use useEffect
-		setTimeout(() => {
+	useEffect(() => {
+		if (providerRef && amount > 0 && email) {
+			console.log(
+				`[PaystackWrapper] Triggering payment for ref: ${providerRef}`,
+			);
 			initializePayment({
 				onSuccess: handleSuccess,
 				onClose: handleClose,
 			});
-		}, 100);
-	}
+		}
+	}, [
+		providerRef,
+		amount,
+		email,
+		initializePayment,
+		handleSuccess,
+		handleClose,
+	]);
 
 	return children;
 }

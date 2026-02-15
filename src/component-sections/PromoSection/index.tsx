@@ -33,39 +33,6 @@ const PromoSection = () => {
 	return (
 		<SectionWrapper className='w-full p-0! overflow-hidden flex items-center justify-center'>
 			<PromoCarousel>
-				<ValentineTemplate
-					slides={[
-						{
-							textLine1: (
-								<>
-									{' '}
-									Let your loved one open the <br /> door to
-									a{' '}
-								</>
-							),
-							textLine2: 'beautiful surprise.',
-							image: '/assets/valentine1.png',
-						},
-						{
-							textLine1: (
-								<>
-									Show up for your loved ones, <br /> even
-									from afar.
-								</>
-							),
-							textLine2: 'Send them gifts.',
-							image: '/assets/valentine2.png',
-						},
-					]}
-					buttonLabel='Pre-order a gift now'
-					link={`/packages/valentine-packages`}
-					buttonClassName={
-						'bg-[#FD98AA] hover:bg-[#FD98AA]/50 text-black'
-					}
-					className={'bg-[#8D021B]'}
-					firstSectionClassName={'flex-1'}
-				/>
-
 				{!session ? (
 					<PromoTemplate
 						textLine1='Refer 5 friends and get'
@@ -107,17 +74,6 @@ const PromoSection = () => {
 						buttonLabel='Order Now!'
 					/>
 				) : null}
-
-				{/* <PromoTemplate
-					textLine1='Make 3 Orders, get '
-					textLine2='1 Free Too-Fit Joggers'
-					buttonLabel='Order Now!'
-					backgroundImagePath='/assets/toofitimage.jpg'
-					link={`${PAGES_DATA.home_page}#vendors`}
-					buttonClassName={
-						'bg-[#603DEB] hover:bg-[#603DEB]/50 text-white'
-					}
-				/> */}
 			</PromoCarousel>
 		</SectionWrapper>
 	);
