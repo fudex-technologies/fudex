@@ -7,15 +7,18 @@ export const useDashboardStore = create(
         combine(
             {
                 hasSeenOnboarding: false,
+                showBalance: true,
             },
             (set) => ({
                 setHasSeenOnboarding: (hasSeen: boolean) => set({ hasSeenOnboarding: hasSeen }),
+                setShowBalance: (show: boolean) => set({ showBalance: show }),
             })
         ),
         {
             name: 'dashboard-store',
             partialize: (state) => ({
                 hasSeenOnboarding: state.hasSeenOnboarding,
+                showBalance: state.showBalance,
             }),
         }
     )

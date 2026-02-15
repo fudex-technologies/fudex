@@ -14,10 +14,10 @@ import { ChevronRight } from 'lucide-react';
 
 export default function WalletPage() {
 	const { useGetTransactions } = useWalletActions();
-	const { data: transactions, isLoading } = useGetTransactions({ limit: 5 });
+	const { data: transactions, isLoading } = useGetTransactions({ limit: 7 });
 
 	return (
-		<PageWrapper className='flex flex-col items-center bg-foreground/5 min-h-screen'>
+		<PageWrapper className='flex flex-col items-center  min-h-screen'>
 			<div className='flex items-center gap-10 w-full px-5 py-4 bg-background border-b'>
 				<GoBackButton />
 				<h1 className='font-semibold text-xl'>My Wallet</h1>
@@ -61,7 +61,7 @@ export default function WalletPage() {
 								))
 							) : (
 								<div className='flex flex-col items-center justify-center py-10 text-foreground/40 gap-2'>
-									<div className='w-16 h-16 rounded-full bg-foreground/5 flex items-center justify-center'>
+									<div className='w-16 h-16 rounded-full  flex items-center justify-center'>
 										<ChevronRight
 											size={24}
 											className='rotate-90'
