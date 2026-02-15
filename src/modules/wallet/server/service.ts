@@ -1,5 +1,6 @@
 import prisma from '@/lib/prisma';
 import { Prisma, WalletTransactionType, WalletTransactionSource, WalletFundingStatus } from '@prisma/client';
+import { sendWalletTransactionEmail } from '@/lib/email';
 
 export class WalletService {
     /**
@@ -80,11 +81,20 @@ export class WalletService {
             return { success: true, transaction, alreadyProcessed: false };
         };
 
+        let result;
         if (tx) {
-            return execute(tx);
+            result = await execute(tx);
         } else {
-            return prisma.$transaction(execute);
+            result = await prisma.$transaction(execute);
         }
+
+        if (result.success && !result.alreadyProcessed) {
+            // Trigger notification email (don't await to avoid blocking)
+            WalletService.notifyUserOfTransaction(params.userId, params.amount, WalletTransactionType.CREDIT, params.sourceType, params.reference)
+                .catch((err: unknown) => console.error('[WalletService] Credit notification error:', err));
+        }
+
+        return result;
     }
 
     /**
@@ -159,10 +169,51 @@ export class WalletService {
             return { success: true, transaction, alreadyProcessed: false };
         };
 
+        let result;
         if (tx) {
-            return execute(tx);
+            result = await execute(tx);
         } else {
-            return prisma.$transaction(execute);
+            result = await prisma.$transaction(execute);
+        }
+
+        if (result.success && !result.alreadyProcessed) {
+            // Trigger notification email
+            WalletService.notifyUserOfTransaction(params.userId, params.amount, WalletTransactionType.DEBIT, params.sourceType, params.reference)
+                .catch((err: unknown) => console.error('[WalletService] Debit notification error:', err));
+        }
+
+        return result;
+    }
+
+    /**
+     * Send email notification for wallet transaction
+     */
+    private static async notifyUserOfTransaction(
+        userId: string,
+        amount: number | Prisma.Decimal,
+        type: WalletTransactionType,
+        source: WalletTransactionSource,
+        reference: string
+    ) {
+        try {
+            const user = await prisma.user.findUnique({
+                where: { id: userId },
+                select: { email: true, name: true }
+            });
+
+            if (!user || !user.email) return;
+
+            await sendWalletTransactionEmail({
+                email: user.email,
+                userName: user.name || 'Fudex User',
+                amount: amount.toString(),
+                type: type,
+                source: source,
+                reference: reference,
+                from: process.env.MAIL_SENDER || 'no-reply@fudex.ng'
+            });
+        } catch (error) {
+            console.error('[WalletService] Failed to send transaction email:', error);
         }
     }
 

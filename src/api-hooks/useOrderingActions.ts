@@ -72,6 +72,21 @@ export function useOrderingActions() {
             })
         );
 
+    const cancelOrder = (options?: UseAPICallerOptions) =>
+        useMutation(
+            trpc.orders.cancelOrder.mutationOptions({
+                onSuccess: (data) => {
+                    if (!options?.silent) toast.success("Order cancelled and refund triggered");
+                    options?.onSuccess?.(data);
+                },
+                onError: (err: unknown) => {
+                    if (!options?.silent) toast.error("Failed to cancel order", { description: err instanceof Error ? err.message : String(err) });
+                    options?.onError?.(err);
+                },
+                retry: false,
+            })
+        );
+
 
     const useGetNumberOfMyDeliveredOrders = () => {
         const { data } = useQuery(trpc.orders.listMyOrders.queryOptions({ status: ["DELIVERED"] }))
@@ -96,6 +111,7 @@ export function useOrderingActions() {
         createPayment,
         verifyPayment,
         confirmOrderDelivery,
+        cancelOrder,
 
         // queries
         useGetOrder: (input: { id: string }) =>

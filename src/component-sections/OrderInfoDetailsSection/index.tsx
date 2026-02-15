@@ -157,7 +157,10 @@ const OrderInfoDetailsSection = ({ orderId }: { orderId: string }) => {
 				<div className='bottom-0 left-0 fixed w-screen flex justify-center'>
 					<div className='w-full max-w-lg bg-background border-t border-t-[#85858540] h-[100px] text-[#858585] px-5 flex justify-center'>
 						<div className='w-full h-full flex items-center justify-between max-w-[1400px] gap-5'>
-							<CancelOrderModal />
+							<CancelOrderModal
+								orderId={order.id}
+								status={order.status}
+							/>
 							<Button
 								variant={'outline'}
 								className='flex-1 max-w-xs py-6 border-primary text-primary'>

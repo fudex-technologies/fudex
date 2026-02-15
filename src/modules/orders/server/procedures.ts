@@ -647,6 +647,47 @@ export const orderRouter = createTRPCRouter({
 
             return updated;
         }),
+
+    cancelOrder: protectedProcedure
+        .input(z.object({
+            orderId: z.string()
+        }))
+        .mutation(async ({ ctx, input }) => {
+            const userId = ctx.user!.id;
+
+            // 1. Find and verify order
+            const order = await ctx.prisma.order.findUnique({
+                where: {
+                    id: input.orderId,
+                    userId,
+                },
+            });
+
+            if (!order) throw new Error("Order not found");
+
+            // 2. Business Logic: Only allow cancellation if order is PENDING or PAID
+            // Once it's PREPARING, it's usually too late, but we follow the user's specific "not yet accepted or preparing"
+            const nonCancellableStates: OrderStatus[] = [
+                "PREPARING", "READY", "ASSIGNED", "OUT_FOR_DELIVERY", "DELIVERED"
+            ];
+
+            if (nonCancellableStates.includes(order.status)) {
+                throw new Error(`Order cannot be cancelled as it is already being ${order.status.toLowerCase().replace('_', ' ')}`);
+            }
+
+            // 3. Update order status
+            const updated = await ctx.prisma.order.update({
+                where: { id: input.orderId },
+                data: { status: "CANCELLED" }
+            });
+
+            // 4. Trigger Refund
+            await RefundService.refundOrder(input.orderId).catch(err => {
+                console.error(`[Refund] Error refunding customer cancelled order ${input.orderId}:`, err);
+            });
+
+            return updated;
+        }),
 });
 
 /**
