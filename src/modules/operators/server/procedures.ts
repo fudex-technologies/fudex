@@ -2,6 +2,7 @@ import { createTRPCRouter, operatorProcedure, protectedProcedure } from "@/trpc/
 import { z } from "zod";
 import { OrderStatus, RiderRequestStatus } from "@prisma/client";
 import { normalizePhoneNumber } from "@/lib/commonFunctions";
+import { RefundService } from "@/modules/wallet/server/refund.service";
 
 export const operatorRouter = createTRPCRouter({
     // Check if user is an operator
@@ -196,8 +197,19 @@ export const operatorRouter = createTRPCRouter({
             status: z.nativeEnum(OrderStatus)
         }))
         .mutation(async ({ ctx, input }) => {
-            // Permission check can be added here if needed to restrict to certain orders
-            return ctx.prisma.order.update({ where: { id: input.orderId }, data: { status: input.status } });
+            const updated = await ctx.prisma.order.update({
+                where: { id: input.orderId },
+                data: { status: input.status }
+            });
+
+            // Handle Refund if cancelled
+            if (input.status === "CANCELLED") {
+                await RefundService.refundOrder(input.orderId).catch(err => {
+                    console.error(`[Refund] Error refunding operator cancelled order ${input.orderId}:`, err);
+                });
+            }
+
+            return updated;
         }),
 
     listRiders: operatorProcedure

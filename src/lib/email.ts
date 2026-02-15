@@ -699,7 +699,7 @@ export async function sendCustomerPackageOrderEmail(
         });
 
         // Use requested brand color
-        const PACKAGE_BRAND_COLOR = '#FF305A'; 
+        const PACKAGE_BRAND_COLOR = '#FF305A';
 
         const { data, error } = await resend.emails.send({
             from: `FUDEX <${from}>`,
@@ -783,5 +783,99 @@ export async function sendCustomerPackageOrderEmail(
     } catch (error) {
         console.error('Error sending email:', error);
         throw error;
+    }
+}
+
+export async function sendWalletTransactionEmail(params: {
+    email: string;
+    userName: string;
+    amount: number | string;
+    type: 'CREDIT' | 'DEBIT';
+    source: string;
+    reference: string;
+    from: string;
+}) {
+    try {
+        const isCredit = params.type === 'CREDIT';
+        const color = isCredit ? BRAND_COLOR : '#ef4444'; // Green for credit, Red for debit
+        const subject = isCredit ? '💰 Wallet Credit Alert' : '💸 Wallet Debit Alert';
+
+        let message = '';
+        switch (params.source) {
+            case 'REFUND':
+                message = 'Your refund has been successfully processed and credited to your FUDEX wallet.';
+                break;
+            case 'WALLET_FUNDING':
+                message = 'Your wallet top-up was successful. The funds are now available in your FUDEX wallet.';
+                break;
+            case 'ADMIN_ADJUSTMENT':
+                message = 'An administrative adjustment has been made to your FUDEX wallet balance.';
+                break;
+            case 'REFERRAL_BONUS':
+                message = 'Congratulations! You\'ve received a referral bonus in your FUDEX wallet.';
+                break;
+            default:
+                message = isCredit
+                    ? 'A credit transaction has been processed for your FUDEX wallet.'
+                    : 'A debit transaction has been processed from your FUDEX wallet.';
+        }
+
+        const { data, error } = await resend.emails.send({
+            from: `FUDEX <${params.from}>`,
+            to: [params.email],
+            subject: `${subject} - ${params.reference}`,
+            html: `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Wallet Transaction</title>
+                </head>
+                <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="background: ${isCredit ? BRAND_GRADIENT : 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)'}; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                        <h1 style="color: white; margin: 0; font-size: 28px;">${isCredit ? 'Wallet Credited' : 'Wallet Debited'}</h1>
+                    </div>
+                    
+                    <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
+                        <p style="font-size: 16px; margin-bottom: 20px;">Hello <strong>${params.userName}</strong>,</p>
+                        
+                        <p style="font-size: 16px; margin-bottom: 20px;">${message}</p>
+                        
+                        <div style="background: white; border: 2px solid ${color}; border-radius: 8px; padding: 20px; text-align: center; margin: 30px 0;">
+                            <p style="font-size: 14px; color: #666; margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: 1px;">Transaction Amount</p>
+                            <p style="font-size: 32px; font-weight: bold; color: ${color}; margin: 0;">${isCredit ? '+' : '-'}NGN ${Number(params.amount).toLocaleString()}</p>
+                        </div>
+                        
+                        <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 30px; border: 1px solid #eee;">
+                            <p style="font-size: 12px; color: #666; margin: 0;">Reference: <strong>${params.reference}</strong></p>
+                            <p style="font-size: 12px; color: #666; margin: 5px 0 0 0;">Date: <strong>${new Date().toLocaleString()}</strong></p>
+                        </div>
+                        
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="${process.env.NEXT_PUBLIC_APP_URL}${PAGES_DATA.profile_wallet_page}" style="display: inline-block; background: ${BRAND_COLOR}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">View Wallet History</a>
+                        </div>
+                        
+                        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+                        
+                        <p style="font-size: 12px; color: #999; text-align: center;">
+                            © ${new Date().getFullYear()} FUDEX. All rights reserved.<br>
+                            This is an automated email, please do not reply.
+                        </p>
+                    </div>
+                </body>
+                </html>
+            `,
+        });
+
+        if (error) {
+            throw new Error(error.message);
+        }
+
+        return data;
+    } catch (error) {
+        console.error('Error sending wallet notification email:', error);
+        // Don't throw, we don't want to crash the transaction process if email fails
+        return null;
     }
 }

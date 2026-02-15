@@ -10,10 +10,40 @@ import {
 	DialogTrigger,
 } from '../ui/dialog';
 import { Button } from '../ui/button';
+import { useOrderingActions } from '@/api-hooks/useOrderingActions';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { PAGES_DATA } from '@/data/pagesData';
+import { OrderStatus } from '@prisma/client';
 
-const CancelOrderModal = () => {
+const CancelOrderModal = ({
+	orderId,
+	status,
+}: {
+	orderId: string;
+	status?: OrderStatus;
+}) => {
+	const { cancelOrder } = useOrderingActions();
+	const [open, setOpen] = useState(false);
+	const router = useRouter();
+	const cancelMutation = cancelOrder({
+		onSuccess: () => {
+			setOpen(false);
+			router.push(PAGES_DATA.profile_wallet_page);
+		},
+	});
+
+	const handleCancel = () => {
+		cancelMutation.mutate({ orderId });
+	};
+
+	const isCancellable =
+		status === OrderStatus.PENDING || status === OrderStatus.PAID;
+
+	if (!isCancellable && status) return null;
+
 	return (
-		<Dialog>
+		<Dialog open={open} onOpenChange={setOpen}>
 			<DialogTrigger asChild>
 				<Button variant={'ghost'} className='flex-1 max-w-xs py-6'>
 					Cancel order
@@ -25,20 +55,25 @@ const CancelOrderModal = () => {
 						Cancel order?
 					</DialogTitle>
 					<DialogDescription>
-						This order is already being prepared and may not be
-						refundable. Do you want to continue?
+						Are you sure you want to cancel this order? A full
+						refund will be issued to your wallet immediately.
 					</DialogDescription>
 				</DialogHeader>
 				<DialogFooter className='flex flex-col gap-2'>
 					<Button
-						type='submit'
+						type='button'
+						onClick={handleCancel}
+						disabled={cancelMutation.isPending}
 						className='flex-1 border-destructive text-destructive py-3'
 						variant={'outline'}
 						size={'lg'}>
-						Yes, Cancel Order
+						{cancelMutation.isPending
+							? 'Cancelling...'
+							: 'Yes, Cancel Order'}
 					</Button>
 					<Button
-						type='submit'
+						type='button'
+						onClick={() => setOpen(false)}
 						className='flex-1 py-3'
 						variant={'ghost'}
 						size={'lg'}>
