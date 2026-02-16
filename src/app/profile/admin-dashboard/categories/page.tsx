@@ -44,6 +44,10 @@ const categoryFormSchema = z.object({
 	name: z.string().min(1, 'Category name is required'),
 	slug: z.string().optional(),
 	image: z.string().optional(),
+	arrangementIndex: z
+		.number()
+		.int()
+		.min(0, 'Index must be a positive number'),
 });
 
 type CategoryFormValues = z.infer<typeof categoryFormSchema>;
@@ -67,6 +71,7 @@ function CategoryForm({
 			name: '',
 			slug: '',
 			image: '',
+			arrangementIndex: 0,
 		},
 	});
 
@@ -96,6 +101,30 @@ function CategoryForm({
 								<Input
 									placeholder='unique identifier for category e.g swallow'
 									{...field}
+								/>
+							</FormControl>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
+				<FormField
+					control={form.control}
+					name='arrangementIndex'
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>
+								Arrangement Index (Display Order)
+							</FormLabel>
+							<FormControl>
+								<Input
+									type='number'
+									placeholder='0'
+									{...field}
+									onChange={(e) =>
+										field.onChange(
+											parseInt(e.target.value) || 0,
+										)
+									}
 								/>
 							</FormControl>
 							<FormMessage />
@@ -206,6 +235,7 @@ export default function AdminCategoriesPage() {
 			name: editingCategory?.name || '',
 			slug: editingCategory?.slug || '',
 			image: editingCategory?.image || '',
+			arrangementIndex: editingCategory?.arrangementIndex || 0,
 		}),
 		[editingCategory],
 	);
@@ -303,7 +333,7 @@ export default function AdminCategoriesPage() {
 								</div>
 							</div>
 							<p className='font-semibold text-center line-clamp-1'>
-								{category.name}
+								{category.name} ({category.arrangementIndex})
 							</p>
 							<p className='text-[10px] text-muted-foreground mt-1'>
 								{category._count?.vendors || 0} Vendors

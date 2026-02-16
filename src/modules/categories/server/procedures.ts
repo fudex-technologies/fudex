@@ -6,7 +6,10 @@ export const categoryRouter = createTRPCRouter({
     .input(z.object({ take: z.number().optional().default(100) }).optional())
     .query(({ ctx, input }) => {
       const take = input?.take ?? 100;
-      return ctx.prisma.category.findMany({ take, orderBy: { name: 'asc' } });
+      return ctx.prisma.category.findMany({
+        take,
+        orderBy: [{ arrangementIndex: "asc" }, { id: "asc" }]
+      });
     }),
 
   create: operatorProcedure
@@ -22,7 +25,7 @@ export const categoryRouter = createTRPCRouter({
       const take = input?.take ?? 100;
       return ctx.prisma.category.findMany({
         take,
-        orderBy: { name: 'asc' },
+        orderBy: [{ arrangementIndex: "asc" }, { id: "asc" }],
         include: { _count: { select: { vendors: true, items: true } } },
       });
     }),
