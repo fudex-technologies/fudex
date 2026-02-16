@@ -76,7 +76,7 @@ export function useOrderingActions() {
         useMutation(
             trpc.orders.cancelOrder.mutationOptions({
                 onSuccess: (data) => {
-                    if (!options?.silent) toast.success("Order cancelled and refund triggered");
+                    if (!options?.silent) toast.success("Order cancelled");
                     options?.onSuccess?.(data);
                 },
                 onError: (err: unknown) => {

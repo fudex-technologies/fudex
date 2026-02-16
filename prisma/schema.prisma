@@ -345,12 +345,12 @@ model ProductItem {
   // Packaging fee (only applicable for PER_UNIT items)
   packagingFee Float? // Fee per pack (e.g., ₦200 per container)
 
-  orderItems      OrderItem[]
-  orderItemAddons OrderItemAddon[]
-  product         Product?              @relation(fields: [productId], references: [id], onDelete: Cascade)
-  vendor          Vendor                @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  categories      ProductItemCategory[]
-  packageAddons   PackageAddon[]
+  orderItems         OrderItem[]
+  orderItemAddons    OrderItemAddon[]
+  product            Product?              @relation(fields: [productId], references: [id], onDelete: Cascade)
+  vendor             Vendor                @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  categories         ProductItemCategory[]
+  packageAddons      PackageAddon[]
   packageOrderAddons PackageOrderAddon[]
 
   @@index([vendorId])
@@ -359,15 +359,17 @@ model ProductItem {
 }
 
 model Category {
-  id        String                @id @default(uuid())
-  name      String                @unique
-  slug      String                @unique
-  createdAt DateTime              @default(now())
-  image     String?
-  items     ProductItemCategory[]
-  vendors   VendorCategory[]
+  id               String                @id @default(uuid())
+  name             String                @unique
+  slug             String                @unique
+  createdAt        DateTime              @default(now())
+  image            String?
+  arrangementIndex Int                   @default(0)
+  items            ProductItemCategory[]
+  vendors          VendorCategory[]
 
   @@index([name])
+  @@index([arrangementIndex])
 }
 
 model ProductItemCategory {
@@ -685,36 +687,36 @@ enum PricingType {
 // Flexible package system for special occasions (Valentine, Christmas, etc.)
 
 model Package {
-  id              String            @id @default(uuid())
-  name            String            // e.g., "Valentine Packages"
-  slug            String            @unique
-  description     String?
-  coverImage      String?           // Cover image URL
-  isActive        Boolean           @default(true)
-  isPreorder      Boolean           @default(false) // If true, requires delivery date
-  deliveryDate    DateTime?         // Required if isPreorder is true
-  orderCloseDate  DateTime?         // When orders close (e.g., Feb 13 for Valentine)
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  categories      PackageCategory[]
-  orders          PackageOrder[]
-  items           PackageItem[]
-  addons          PackageAddon[]
+  id             String            @id @default(uuid())
+  name           String // e.g., "Valentine Packages"
+  slug           String            @unique
+  description    String?
+  coverImage     String? // Cover image URL
+  isActive       Boolean           @default(true)
+  isPreorder     Boolean           @default(false) // If true, requires delivery date
+  deliveryDate   DateTime? // Required if isPreorder is true
+  orderCloseDate DateTime? // When orders close (e.g., Feb 13 for Valentine)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  categories     PackageCategory[]
+  orders         PackageOrder[]
+  items          PackageItem[]
+  addons         PackageAddon[]
 
   @@index([slug])
   @@index([isActive])
 }
 
 model PackageAddon {
-  id            String      @id @default(uuid())
+  id            String   @id @default(uuid())
   packageId     String
   productItemId String
-  sortOrder     Int         @default(0)
-  isActive      Boolean     @default(true)
-  createdAt     DateTime    @default(now())
+  sortOrder     Int      @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
 
-  package       Package     @relation(fields: [packageId], references: [id], onDelete: Cascade)
-  productItem   ProductItem @relation(fields: [productItemId], references: [id])
+  package     Package     @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  productItem ProductItem @relation(fields: [productItemId], references: [id])
 
   @@unique([packageId, productItemId])
   @@index([packageId])
@@ -724,8 +726,8 @@ model PackageAddon {
 model PackageCategory {
   id          String        @id @default(uuid())
   packageId   String
-  name        String        // e.g., "Love Spark", "Classic", "Premium"
-  slug        String        // e.g., "love-spark", "classic", "premium"
+  name        String // e.g., "Love Spark", "Classic", "Premium"
+  slug        String // e.g., "love-spark", "classic", "premium"
   description String?
   order       Int           @default(0) // For sorting categories
   createdAt   DateTime      @default(now())
@@ -737,26 +739,26 @@ model PackageCategory {
 }
 
 model PackageItem {
-  id                String            @id @default(uuid())
-  packageId         String
-  categoryId        String
-  name              String
-  slug              String
-  description       String?
-  price             Float
-  currency          String            @default("NGN")
-  images            String[]          @default([])
-  isActive          Boolean           @default(true)
-  inStock           Boolean           @default(true)
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  
+  id          String   @id @default(uuid())
+  packageId   String
+  categoryId  String
+  name        String
+  slug        String
+  description String?
+  price       Float
+  currency    String   @default("NGN")
+  images      String[] @default([])
+  isActive    Boolean  @default(true)
+  inStock     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
   // Additional details for package items
-  details           Json?             // Flexible JSON for any additional data (ingredients, sizes, etc.)
-  
-  category          PackageCategory   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  package           Package           @relation(fields: [packageId], references: [id], onDelete: Cascade)
-  orderItems        PackageOrderItem[]
+  details Json? // Flexible JSON for any additional data (ingredients, sizes, etc.)
+
+  category   PackageCategory    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  package    Package            @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  orderItems PackageOrderItem[]
 
   @@unique([packageId, slug])
   @@index([packageId])
@@ -765,52 +767,52 @@ model PackageItem {
 }
 
 model PackageOrder {
-  id                  String              @id @default(uuid())
-  userId              String
-  packageId           String
-  orderId             String?             // Link to main Order table if needed
-  status              OrderStatus         @default(PENDING)
-  
+  id        String      @id @default(uuid())
+  userId    String
+  packageId String
+  orderId   String? // Link to main Order table if needed
+  status    OrderStatus @default(PENDING)
+
   // Recipient details (different from user's address)
-  recipientName       String
-  recipientPhone      String
-  recipientAddressId  String?             // Optional: can use existing address or create new
+  recipientName         String
+  recipientPhone        String
+  recipientAddressId    String? // Optional: can use existing address or create new
   recipientAddressLine1 String
   recipientAddressLine2 String?
-  recipientCity       String
-  recipientState      String?
-  recipientAreaId     String?
-  recipientCustomArea String?
-  
+  recipientCity         String
+  recipientState        String?
+  recipientAreaId       String?
+  recipientCustomArea   String?
+
   // Sender details
-  senderName           String
-  
+  senderName String
+
   // Delivery details
-  deliveryDate        DateTime            // The date for delivery (from package if preorder)
-  timeSlot            String               // e.g., "08:00-10:00", "10:00-12:00"
-  
+  deliveryDate DateTime // The date for delivery (from package if preorder)
+  timeSlot     String // e.g., "08:00-10:00", "10:00-12:00"
+
   // Card customization
-  cardType            PackageCardType      @default(CUSTOM)
-  customCardMessage   String?             // User's custom message if cardType is CUSTOM
-  
+  cardType          PackageCardType @default(CUSTOM)
+  customCardMessage String? // User's custom message if cardType is CUSTOM
+
   // Pricing
-  totalAmount         Float
-  currency            String              @default("NGN")
-  deliveryFee         Float               @default(0)
-  serviceFee          Float               @default(0)
-  platformFee         Float              @default(0)
-  productAmount       Float               @default(0)
-  
+  totalAmount   Float
+  currency      String @default("NGN")
+  deliveryFee   Float  @default(0)
+  serviceFee    Float  @default(0)
+  platformFee   Float  @default(0)
+  productAmount Float  @default(0)
+
   // Metadata
-  notes               String?
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
-  
-  package             Package             @relation(fields: [packageId], references: [id])
-  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items               PackageOrderItem[]
-  payment             PackagePayment?
-  addons              PackageOrderAddon[]
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  package Package             @relation(fields: [packageId], references: [id])
+  user    User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items   PackageOrderItem[]
+  payment PackagePayment?
+  addons  PackageOrderAddon[]
 
   @@index([userId])
   @@index([packageId])
@@ -819,32 +821,32 @@ model PackageOrder {
 }
 
 model PackageOrderItem {
-  id              String        @id @default(uuid())
-  packageOrderId  String
-  packageItemId   String
-  quantity        Int           @default(1)
-  unitPrice       Float
-  totalPrice      Float
-  packageOrder    PackageOrder  @relation(fields: [packageOrderId], references: [id], onDelete: Cascade)
-  packageItem     PackageItem   @relation(fields: [packageItemId], references: [id])
+  id             String       @id @default(uuid())
+  packageOrderId String
+  packageItemId  String
+  quantity       Int          @default(1)
+  unitPrice      Float
+  totalPrice     Float
+  packageOrder   PackageOrder @relation(fields: [packageOrderId], references: [id], onDelete: Cascade)
+  packageItem    PackageItem  @relation(fields: [packageItemId], references: [id])
 
   @@index([packageOrderId])
   @@index([packageItemId])
 }
 
 model PackagePayment {
-  id          String        @id @default(uuid())
-  packageOrderId String     @unique
-  userId      String
-  amount      Float
-  currency    String        @default("NGN")
-  provider    String        @default("paystack")
-  providerRef String
-  status      PaymentStatus @default(PENDING)
-  paidAt      DateTime?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  metadata    Json?
+  id             String        @id @default(uuid())
+  packageOrderId String        @unique
+  userId         String
+  amount         Float
+  currency       String        @default("NGN")
+  provider       String        @default("paystack")
+  providerRef    String
+  status         PaymentStatus @default(PENDING)
+  paidAt         DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  metadata       Json?
 
   // Track if notifications have been sent to prevent duplicates
   notificationsSent   Boolean   @default(false)
@@ -859,24 +861,24 @@ model PackagePayment {
 }
 
 model PackageOrderAddon {
-  id             String       @id @default(uuid())
+  id             String @id @default(uuid())
   packageOrderId String
   productItemId  String
-  quantity       Int          @default(1)
+  quantity       Int    @default(1)
   unitPrice      Float
   totalPrice     Float
-  name           String       // Snapshot of name
+  name           String // Snapshot of name
 
-  packageOrder   PackageOrder @relation(fields: [packageOrderId], references: [id], onDelete: Cascade)
-  productItem    ProductItem  @relation(fields: [productItemId], references: [id])
-  
+  packageOrder PackageOrder @relation(fields: [packageOrderId], references: [id], onDelete: Cascade)
+  productItem  ProductItem  @relation(fields: [productItemId], references: [id])
+
   @@index([packageOrderId])
   @@index([productItemId])
 }
 
 enum PackageCardType {
-  ADMIN_CREATED  // Admin creates the card
-  CUSTOM         // User customizes the card themselves
+  ADMIN_CREATED // Admin creates the card
+  CUSTOM // User customizes the card themselves
 }
 
 enum WalletTransactionType {
@@ -900,28 +902,28 @@ enum WalletFundingStatus {
 }
 
 model Wallet {
-  id        String   @id @default(uuid())
-  userId    String   @unique
-  balance   Decimal  @default(0) @db.Decimal(12, 2)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transactions WalletTransaction []
+  id           String              @id @default(uuid())
+  userId       String              @unique
+  balance      Decimal             @default(0) @db.Decimal(12, 2)
+  isActive     Boolean             @default(true)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions WalletTransaction[]
 
   @@map("wallet")
 }
 
 model WalletTransaction {
-  id          String                  @id @default(uuid())
-  walletId    String
-  amount      Decimal                 @db.Decimal(12, 2)
-  type        WalletTransactionType
-  sourceType  WalletTransactionSource
-  sourceId    String?                 // polymorphic id
-  reference   String                  @unique // for idempotency
-  createdAt   DateTime                @default(now())
-  wallet      Wallet                  @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  id         String                  @id @default(uuid())
+  walletId   String
+  amount     Decimal                 @db.Decimal(12, 2)
+  type       WalletTransactionType
+  sourceType WalletTransactionSource
+  sourceId   String? // polymorphic id
+  reference  String                  @unique // for idempotency
+  createdAt  DateTime                @default(now())
+  wallet     Wallet                  @relation(fields: [walletId], references: [id], onDelete: Cascade)
 
   @@index([walletId])
   @@index([reference])
@@ -943,4 +945,3 @@ model WalletFunding {
   @@index([providerRef])
   @@map("wallet_funding")
 }
-

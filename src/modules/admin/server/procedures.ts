@@ -841,7 +841,7 @@ export const adminRouter = createTRPCRouter({
             const items = await ctx.prisma.category.findMany({
                 take: limit + 1,
                 cursor: cursor ? { id: cursor } : undefined,
-                orderBy: { name: "asc" },
+                orderBy: [{ arrangementIndex: "asc" }, { id: "asc" }],
                 include: {
                     _count: {
                         select: {
@@ -868,6 +868,7 @@ export const adminRouter = createTRPCRouter({
             name: z.string(),
             slug: z.string().optional(),
             image: z.string().optional(),
+            arrangementIndex: z.number().optional().default(0),
         }))
         .mutation(({ ctx, input }) => {
             const data = {
@@ -883,6 +884,7 @@ export const adminRouter = createTRPCRouter({
             name: z.string().optional(),
             slug: z.string().optional(),
             image: z.string().optional(),
+            arrangementIndex: z.number().optional(),
         }))
         .mutation(({ ctx, input }) => {
             const { id, ...data } = input;

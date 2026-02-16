@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils';
 import { useOrderingActions } from '@/api-hooks/useOrderingActions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OrderStatus } from '@prisma/client';
+import { motion, AnimatePresence } from 'motion/react';
+import { Check, Loader2 } from 'lucide-react';
 
 const OrderInfoDetailsSection = ({ orderId }: { orderId: string }) => {
 	const { useGetOrder } = useOrderingActions();
@@ -37,40 +39,56 @@ const OrderInfoDetailsSection = ({ orderId }: { orderId: string }) => {
 		const status = order.status;
 		const isPickup = (order as any).deliveryType === 'PICKUP';
 
+		const isDone = (targetStatus: OrderStatus[]) =>
+			targetStatus.includes(status) || status === OrderStatus.DELIVERED;
+
+		const isInProgress = (targetStatus: OrderStatus[]) =>
+			targetStatus.includes(status);
+
 		return [
 			{
 				status: 'done' as const,
 				title: 'Order placed',
 			},
 			{
-				status: (status === OrderStatus.PREPARING ||
-				status === OrderStatus.PAID ||
+				status: (status === OrderStatus.ACCEPTED ||
+				status === OrderStatus.PREPARING ||
+				status === OrderStatus.READY ||
 				status === OrderStatus.ASSIGNED ||
+				status === OrderStatus.OUT_FOR_DELIVERY ||
 				status === OrderStatus.DELIVERED
 					? 'done'
-					: status === OrderStatus.PENDING
+					: status === OrderStatus.PAID
+						? 'in-progress'
+						: 'pending') as 'done' | 'in-progress' | 'pending',
+				title: 'Confirmed by vendor',
+			},
+			{
+				status: (status === OrderStatus.READY ||
+				status === OrderStatus.ASSIGNED ||
+				status === OrderStatus.OUT_FOR_DELIVERY ||
+				status === OrderStatus.DELIVERED
+					? 'done'
+					: status === OrderStatus.ACCEPTED ||
+						  status === OrderStatus.PREPARING
 						? 'in-progress'
 						: 'pending') as 'done' | 'in-progress' | 'pending',
 				title: 'Preparing your order',
 			},
 			{
-				status: (status === OrderStatus.ASSIGNED ||
-				status === OrderStatus.DELIVERED
+				status: (status === OrderStatus.DELIVERED
 					? 'done'
-					: status === OrderStatus.PREPARING
+					: status === OrderStatus.READY ||
+						  status === OrderStatus.ASSIGNED ||
+						  status === OrderStatus.OUT_FOR_DELIVERY
 						? 'in-progress'
 						: 'pending') as 'done' | 'in-progress' | 'pending',
 				title: isPickup
-					? 'Preparing for pickup'
-					: 'Rider is on the way',
-			},
-			{
-				status: (status === OrderStatus.DELIVERED
-					? 'done'
-					: status === OrderStatus.ASSIGNED
-						? 'in-progress'
-						: 'pending') as 'done' | 'in-progress' | 'pending',
-				title: isPickup ? 'Picked up' : 'Delivered',
+					? 'Ready for pickup'
+					: status === OrderStatus.OUT_FOR_DELIVERY ||
+						  status === OrderStatus.DELIVERED
+						? 'Rider is on the way'
+						: 'Rider is being assigned',
 				isLast: true,
 			},
 		];
@@ -103,7 +121,17 @@ const OrderInfoDetailsSection = ({ orderId }: { orderId: string }) => {
 					<p>{getEstimatedTime()}</p>
 				</div>
 
-				<div className='w-full flex flex-col gap-14 px-5'>
+				<motion.div
+					initial='initial'
+					animate='animate'
+					variants={{
+						animate: {
+							transition: {
+								staggerChildren: 0.1,
+							},
+						},
+					}}
+					className='w-full flex flex-col gap-14 px-5'>
 					{statusIndicators.map((indicator, index) => (
 						<StatusIndicator
 							key={index}
@@ -112,7 +140,7 @@ const OrderInfoDetailsSection = ({ orderId }: { orderId: string }) => {
 							isLast={indicator.isLast}
 						/>
 					))}
-				</div>
+				</motion.div>
 
 				<div className='mt-10'>
 					<p className='text-lg mb-5'>Items ordered</p>
@@ -185,42 +213,94 @@ const StatusIndicator = ({
 	title: string;
 	isLast?: boolean;
 }) => {
+	const variants = {
+		initial: { opacity: 0, x: -10 },
+		animate: { opacity: 1, x: 0 },
+	};
+
 	return (
-		<div className='flex gap-2 items-center'>
-			<div
-				className={cn(
-					'w-[25px] h-[25px] border flex items-center justify-center rounded-full relative z-10 bg-background',
-					status === 'done' && 'border-primary',
-					status === 'pending' && 'border-foreground/10',
-					status === 'in-progress' && 'border-destructive',
-				)}>
-				<div
+		<motion.div
+			variants={variants}
+			className='flex gap-4 items-center relative'>
+			<div className='flex flex-col items-center relative h-full'>
+				<motion.div
+					initial={false}
+					animate={{
+						scale: status === 'in-progress' ? [1, 1.05, 1] : 1,
+						borderColor:
+							status === 'done'
+								? 'var(--primary)'
+								: status === 'in-progress'
+									? 'var(--destructive)'
+									: 'var(--border)',
+					}}
+					transition={{
+						scale:
+							status === 'in-progress'
+								? { repeat: Infinity, duration: 2 }
+								: { duration: 0.3 },
+					}}
 					className={cn(
-						'w-[80%] h-[80%] rounded-full',
-						status === 'done' && 'bg-primary',
-						status === 'pending' && 'bg-background',
-						status === 'in-progress' && 'bg-destructive',
-					)}></div>
+						'w-8 h-8 border-2 flex items-center justify-center rounded-full relative z-10 bg-background transition-colors',
+					)}>
+					<AnimatePresence mode='wait'>
+						{status === 'done' ? (
+							<motion.div
+								key='done'
+								initial={{ scale: 0, opacity: 0 }}
+								animate={{ scale: 1, opacity: 1 }}
+								exit={{ scale: 0, opacity: 0 }}>
+								<Check
+									className='w-4 h-4 text-primary'
+									strokeWidth={3}
+								/>
+							</motion.div>
+						) : status === 'in-progress' ? (
+							<motion.div
+								key='in-progress'
+								initial={{ opacity: 0 }}
+								animate={{ opacity: 1 }}
+								exit={{ opacity: 0 }}>
+								<Loader2 className='w-4 h-4 text-destructive animate-spin' />
+							</motion.div>
+						) : (
+							<motion.div
+								key='pending'
+								className='w-2 h-2 rounded-full bg-foreground/10'
+							/>
+						)}
+					</AnimatePresence>
+				</motion.div>
 				{!isLast && (
-					<div
+					<motion.div
+						initial={false}
+						animate={{
+							backgroundColor:
+								status === 'done'
+									? 'var(--primary)'
+									: 'var(--border)',
+						}}
 						className={cn(
-							'absolute w-0.5 h-[60px] z-0 top-6',
-							status === 'done' && 'bg-primary',
-							status === 'pending' && 'bg-foreground/10',
-							status === 'in-progress' && 'bg-foreground/10',
+							'absolute w-0.5 h-[60px] z-0 top-8 left-1/2 -translate-x-1/2',
 						)}
 					/>
 				)}
 			</div>
-			<p
-				className={cn(
-					'text-lg',
-					status === 'done' && 'font-semibold text-foreground',
-					status === 'pending' && 'font-light text-foreground/50',
-					status === 'in-progress' && 'font-semibold text-foreground',
-				)}>
-				{title}
-			</p>
-		</div>
+			<div className='flex flex-col justify-center gap-1'>
+				<motion.p
+					initial={false}
+					animate={{
+						opacity: status === 'pending' ? 0.5 : 1,
+						fontWeight: status === 'pending' ? 400 : 700,
+						color:
+							status === 'in-progress'
+								? 'var(--destructive)'
+								: 'var(--foreground)',
+					}}
+					className={cn('text-lg transition-all')}>
+					{title}
+				</motion.p>
+			</div>
+		</motion.div>
 	);
 };

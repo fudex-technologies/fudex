@@ -6,6 +6,7 @@ import { NotificationService } from "@/modules/notifications/server/service";
 import { PAGES_DATA } from "@/data/pagesData";
 import { WalletService } from "@/modules/wallet/server/service";
 import { RefundService } from "@/modules/wallet/server/refund.service";
+import { toast } from "sonner";
 
 
 export const orderRouter = createTRPCRouter({
@@ -127,19 +128,14 @@ export const orderRouter = createTRPCRouter({
             // Calculate delivery fee based on area and current time
             let deliveryFee = await calculateDeliveryFee(ctx.prisma, address.areaId);
 
-            // Promo check: Free delivery after 3 delivered orders or for users with 5 confirmed referrals
-            const successfulOrdersCount = await ctx.prisma.order.count({
-                where: { userId, status: "DELIVERED" }
-            });
+            // Promo check: Free delivery for users with 5 confirmed referrals
             const confirmedReferredCount = await ctx.prisma.referral.count({
                 where: { referrerUserId: userId, status: "CONFIRMED" }
             });
 
-            // Match frontend logic: length === 3 (of take 3) for orders, and exactly 5 for referrals
-            const orderPromoInitiated = successfulOrdersCount === 3;
+            // Match frontend logic: exactly 5 for referrals
             const referralPromoInitiated = confirmedReferredCount === 5;
-
-            if (orderPromoInitiated || referralPromoInitiated || input.deliveryType === "PICKUP") {
+            if (referralPromoInitiated || input.deliveryType === "PICKUP") {
                 deliveryFee = 0;
             }
 
@@ -252,7 +248,22 @@ export const orderRouter = createTRPCRouter({
                 }
 
                 // return full order with items and addons
-                return prisma.order.findUnique({ where: { id: order.id }, include: { items: { include: { productItem: true, addons: { include: { addonProductItem: true } } } }, payment: true } });
+                return prisma.order.findUnique({
+                    where: { id: order.id },
+                    include: {
+                        items: {
+                            include: {
+                                productItem: true,
+                                addons: {
+                                    include: {
+                                        addonProductItem: true
+                                    }
+                                }
+                            }
+                        },
+                        payment: true
+                    }
+                });
             });
 
             return created;
@@ -665,10 +676,8 @@ export const orderRouter = createTRPCRouter({
 
             if (!order) throw new Error("Order not found");
 
-            // 2. Business Logic: Only allow cancellation if order is PENDING or PAID
-            // Once it's PREPARING, it's usually too late, but we follow the user's specific "not yet accepted or preparing"
             const nonCancellableStates: OrderStatus[] = [
-                "PREPARING", "READY", "ASSIGNED", "OUT_FOR_DELIVERY", "DELIVERED"
+                "PREPARING", "READY", "ASSIGNED", "OUT_FOR_DELIVERY", "DELIVERED", 
             ];
 
             if (nonCancellableStates.includes(order.status)) {
@@ -682,9 +691,12 @@ export const orderRouter = createTRPCRouter({
             });
 
             // 4. Trigger Refund
-            await RefundService.refundOrder(input.orderId).catch(err => {
-                console.error(`[Refund] Error refunding customer cancelled order ${input.orderId}:`, err);
-            });
+            if (order.status === "PAID") {
+                toast.info("Initiating refund...");
+                await RefundService.refundOrder(input.orderId).catch(err => {
+                    console.error(`[Refund] Error refunding customer cancelled order ${input.orderId}:`, err);
+                });
+            }
 
             return updated;
         }),
