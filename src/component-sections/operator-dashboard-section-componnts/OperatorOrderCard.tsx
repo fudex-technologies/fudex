@@ -72,6 +72,7 @@ export default function OperatorOrderCard({
 	const confirmStatusChange = () => {
 		if (statusToUpdate) {
 			updateStatusMutation.mutate({
+				currentStatus: order.status,
 				orderId: order.id,
 				status: statusToUpdate,
 			});
@@ -452,12 +453,13 @@ export default function OperatorOrderCard({
 								{statusToUpdate}
 							</span>
 							?
-							{statusToUpdate === OrderStatus.CANCELLED && (
-								<p className='mt-2 text-destructive font-semibold'>
-									Note: This will trigger an automatic refund
-									to the customer's wallet.
-								</p>
-							)}
+							{statusToUpdate === OrderStatus.CANCELLED &&
+								order.status !== 'PENDING' && (
+									<p className='mt-2 text-destructive font-semibold'>
+										Note: This will trigger an automatic
+										refund to the customer's wallet.
+									</p>
+								)}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

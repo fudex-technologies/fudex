@@ -55,8 +55,9 @@ const CancelOrderModal = ({
 						Cancel order?
 					</DialogTitle>
 					<DialogDescription>
-						Are you sure you want to cancel this order? A full
-						refund will be issued to your wallet immediately.
+						Are you sure you want to cancel this order?{' '}
+						{status === OrderStatus.PAID &&
+							' A full refund will be issued to your wallet immediately.'}
 					</DialogDescription>
 				</DialogHeader>
 				<DialogFooter className='flex flex-col gap-2'>

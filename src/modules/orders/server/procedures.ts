@@ -568,6 +568,7 @@ export const orderRouter = createTRPCRouter({
     // Admin/restaurant update status
     updateStatus: adminProcedure
         .input(z.object({
+            currentStatus: z.enum(Object.values(OrderStatus)),
             id: z.string(),
             status: z.enum(Object.values(OrderStatus))
         })).mutation(async ({ ctx, input }) => {
@@ -577,7 +578,7 @@ export const orderRouter = createTRPCRouter({
             });
 
             // Handle Refund if cancelled
-            if (input.status === "CANCELLED") {
+            if (input.status === "CANCELLED" && input.currentStatus !== "PENDING") {
                 await RefundService.refundOrder(input.id).catch(err => {
                     console.error(`[Refund] Error refunding order ${input.id}:`, err);
                 });
@@ -633,7 +634,7 @@ export const orderRouter = createTRPCRouter({
             });
 
             // Handle Refund if cancelled
-            if (input.status === "CANCELLED") {
+            if (input.status === "CANCELLED" && order.status !== "PENDING") {
                 await RefundService.refundOrder(input.id).catch(err => {
                     console.error(`[Refund] Error refunding order ${input.id}:`, err);
                 });
@@ -677,7 +678,7 @@ export const orderRouter = createTRPCRouter({
             if (!order) throw new Error("Order not found");
 
             const nonCancellableStates: OrderStatus[] = [
-                "PREPARING", "READY", "ASSIGNED", "OUT_FOR_DELIVERY", "DELIVERED", 
+                "PREPARING", "READY", "ASSIGNED", "OUT_FOR_DELIVERY", "DELIVERED",
             ];
 
             if (nonCancellableStates.includes(order.status)) {
