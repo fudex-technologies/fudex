@@ -193,6 +193,7 @@ export const operatorRouter = createTRPCRouter({
 
     updateOrderStatus: operatorProcedure
         .input(z.object({
+            currentStatus: z.nativeEnum(OrderStatus),
             orderId: z.string(),
             status: z.nativeEnum(OrderStatus)
         }))
@@ -203,7 +204,7 @@ export const operatorRouter = createTRPCRouter({
             });
 
             // Handle Refund if cancelled
-            if (input.status === "CANCELLED") {
+            if (input.status === "CANCELLED" && input.currentStatus !== "PENDING") {
                 await RefundService.refundOrder(input.orderId).catch(err => {
                     console.error(`[Refund] Error refunding operator cancelled order ${input.orderId}:`, err);
                 });
