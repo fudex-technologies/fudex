@@ -51,7 +51,7 @@ export function TopVendors({ vendors }: TopVendorsProps) {
 								</p>
 							</div>
 							<div className='text-sm font-bold'>
-								{formatCurency(vendor.revenue)}
+								{formatCurency(vendor.totalRevenue)}
 							</div>
 						</div>
 					))}
