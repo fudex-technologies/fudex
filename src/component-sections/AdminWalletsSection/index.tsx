@@ -276,7 +276,7 @@ function BalancesList({
 					{users.map((user) => (
 						<div
 							key={user.id}
-							className='p-4 bg-white rounded-xl border border-foreground/5 flex items-center justify-between hover:border-foreground/10 transition-colors'>
+							className='p-4 bg-white rounded-xl border border-foreground/5 flex flex-wrap gap-5 items-center justify-between hover:border-foreground/10 transition-colors'>
 							<div className='flex items-center gap-4'>
 								<div className='w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold'>
 									{(user.name || user.email)[0].toUpperCase()}
