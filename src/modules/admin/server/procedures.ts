@@ -469,7 +469,12 @@ export const adminRouter = createTRPCRouter({
         .query(async ({ ctx }) => {
             const [
                 totalRevenue,
+                totalPackageRevenue,
                 totalOrders,
+                deliveredOrders,
+                cancelledOrders,
+                pendingOrders,
+                processingOrders,
                 totalUsers,
                 totalVendors,
                 activeVendors,
@@ -481,7 +486,15 @@ export const adminRouter = createTRPCRouter({
                     _sum: { amount: true },
                     where: { status: "COMPLETED" }
                 }),
+                ctx.prisma.packagePayment.aggregate({
+                    _sum: { amount: true },
+                    where: { status: "COMPLETED" }
+                }),
                 ctx.prisma.order.count(),
+                ctx.prisma.order.count({ where: { status: "DELIVERED" } }),
+                ctx.prisma.order.count({ where: { status: "CANCELLED" } }),
+                ctx.prisma.order.count({ where: { status: "PENDING" } }),
+                ctx.prisma.order.count({ where: { status: { in: ["PAID", "ACCEPTED", "PREPARING", "READY", "OUT_FOR_DELIVERY"] } } }),
                 ctx.prisma.user.count(),
                 ctx.prisma.vendor.count(),
                 ctx.prisma.vendor.count({ where: { approvalStatus: "APPROVED" } }),
@@ -512,9 +525,13 @@ export const adminRouter = createTRPCRouter({
                 : 0;
 
             return {
-                totalRevenue: totalRevenue._sum.amount || 0,
+                totalRevenue: (totalRevenue._sum.amount || 0) + (totalPackageRevenue._sum.amount || 0),
                 revenueTrend: revChange,
-                totalOrders,
+                lifetimeOrders: totalOrders,
+                deliveredOrders,
+                cancelledOrders,
+                pendingOrders,
+                processingOrders,
                 totalUsers,
                 totalVendors,
                 activeVendors,
@@ -584,8 +601,11 @@ export const adminRouter = createTRPCRouter({
                 if (!chartData[key]) {
                     chartData[key] = { date: key, orders: 0, revenue: 0 };
                 }
-                chartData[key].orders++;
-                // Only count revenue for COMPLETED payments
+                // Only count DELIVERED orders in the count to avoid false positives
+                if (order.status === "DELIVERED") {
+                    chartData[key].orders++;
+                }
+                // Only count revenue for COMPLETED payments and non-cancelled orders
                 if (order.status !== "CANCELLED" && order.payment?.status === "COMPLETED") {
                     chartData[key].revenue += order.totalAmount;
                 }
@@ -601,9 +621,24 @@ export const adminRouter = createTRPCRouter({
             const vendors = await ctx.prisma.vendor.findMany({
                 take: input.limit,
                 include: {
-                    _count: { select: { orders: true } },
+                    _count: {
+                        select: {
+                            orders: {
+                                where: { status: "DELIVERED" }
+                            }
+                        }
+                    },
                 },
-                orderBy: { orders: { _count: "desc" } }
+                orderBy: {
+                    orders: {
+                        _count: "desc"
+                    }
+                },
+                where: {
+                    orders: {
+                        some: { status: "DELIVERED" }
+                    }
+                }
             });
 
             // Also get revenue per vendor (simplified, might need more complex aggregation if many orders)
