@@ -1,17 +1,8 @@
-import { getDoodleAvatarUrl, normalizePhoneNumber } from "@/lib/commonFunctions";
+import { getDoodleAvatarUrl, normalizePhoneNumber, generateUniqueReferralCode } from "@/lib/commonFunctions";
 import { createTRPCRouter, publicProcedure, protectedProcedure } from "@/trpc/init";
 import { z } from "zod";
+import { ReferralService } from "@/modules/referral/server/service";
 import { calculateDeliveryFee, getServiceFee } from "@/lib/deliveryFeeCalculator";
-
-// Generate unique 7-character alphanumeric referral code
-function generateUniqueReferralCode(): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let code = '';
-    for (let i = 0; i < 7; i++) {
-        code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return code;
-}
 
 export const userRouter = createTRPCRouter({
     // Return resolved session (null if unauthenticated)
@@ -292,41 +283,22 @@ export const userRouter = createTRPCRouter({
                 };
             }
 
-            // Get all referrals for this user
-            const referrals = await ctx.prisma.referral.findMany({
-                where: { referrerUserId: userId },
-                select: {
-                    id: true,
-                    referred: {
-                        select: {
-                            id: true,
-                            name: true,
-                            email: true,
-                            createdAt: true,
-                        }
-                    },
-                    status: true,
-                    confirmedAt: true,
-                    createdAt: true,
-                },
-                orderBy: { createdAt: 'desc' }
-            });
-
+            // Use the new service for detailed stats
+            const referrals = await ReferralService.getRefereeStats(userId);
             const confirmedCount = referrals.filter(r => r.status === 'CONFIRMED').length;
 
             return {
                 referralCode: user.referralCode,
                 totalReferred: referrals.length,
                 confirmedReferred: confirmedCount,
-                referrals: referrals.map(r => ({
-                    id: r.id,
-                    userName: r.referred.name,
-                    userEmail: r.referred.email,
-                    status: r.status,
-                    confirmedAt: r.confirmedAt,
-                    createdAt: r.createdAt,
-                })),
+                referrals,
             };
+        }),
+
+    // Get the monthly leaderboard
+    getMonthlyLeaderboard: protectedProcedure
+        .query(async () => {
+            return await ReferralService.getMonthlyLeaderboard();
         }),
 
     // Generate a new referral code for user if they don't have one

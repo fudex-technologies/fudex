@@ -191,7 +191,7 @@ const OrderInfoDetailsSection = ({ orderId }: { orderId: string }) => {
 							/>
 							<Button
 								variant={'outline'}
-								className='flex-1 max-w-xs py-6 border-primary text-primary'>
+								className='flex-1 max-w-sm py-6 border-primary text-primary'>
 								Contact support
 							</Button>
 						</div>

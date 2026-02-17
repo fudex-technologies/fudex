@@ -6,6 +6,7 @@ import { NotificationService } from "@/modules/notifications/server/service";
 import { PAGES_DATA } from "@/data/pagesData";
 import { WalletService } from "@/modules/wallet/server/service";
 import { RefundService } from "@/modules/wallet/server/refund.service";
+import { ReferralService } from "@/modules/referral/server/service";
 import { toast } from "sonner";
 
 
@@ -561,6 +562,11 @@ export const orderRouter = createTRPCRouter({
             // Update order payout eligibility
             await ensureOrderPayoutEligibility(ctx.prisma, input.orderId);
 
+            // Trigger referral reward processing
+            await ReferralService.processReferralRewardOnOrder(userId).catch(err => {
+                console.error(`[Referral] Error processing referral reward for user ${userId}:`, err);
+            });
+
             return updated;
         }),
 
@@ -584,9 +590,17 @@ export const orderRouter = createTRPCRouter({
                 });
             }
 
-            // If delivered, check payout eligibility
+            // If delivered, check payout eligibility and referral
             if (input.status === "DELIVERED") {
                 await ensureOrderPayoutEligibility(ctx.prisma, input.id);
+
+                // For referral confirmation, we need the user ID of the order
+                const order = await ctx.prisma.order.findUnique({ where: { id: input.id }, select: { userId: true } });
+                if (order) {
+                    await ReferralService.processReferralRewardOnOrder(order.userId).catch(err => {
+                        console.error(`[Referral] Error processing referral reward for user ${order.userId}:`, err);
+                    });
+                }
             }
 
             // Notify Customer
@@ -643,6 +657,11 @@ export const orderRouter = createTRPCRouter({
             // If delivered, check payout eligibility
             if (input.status === "DELIVERED") {
                 await ensureOrderPayoutEligibility(ctx.prisma, input.id);
+
+                // For referral confirmation, we need the user ID of the order
+                await ReferralService.processReferralRewardOnOrder(order.userId).catch(err => {
+                    console.error(`[Referral] Error processing referral reward for user ${order.userId}:`, err);
+                });
             }
 
             // Notify Customer
@@ -678,7 +697,7 @@ export const orderRouter = createTRPCRouter({
             if (!order) throw new Error("Order not found");
 
             const nonCancellableStates: OrderStatus[] = [
-                "PREPARING", "READY", "ASSIGNED", "OUT_FOR_DELIVERY", "DELIVERED",
+                "PREPARING", "READY", "ASSIGNED", "OUT_FOR_DELIVERY", "DELIVERED", "PAID"
             ];
 
             if (nonCancellableStates.includes(order.status)) {
@@ -692,12 +711,12 @@ export const orderRouter = createTRPCRouter({
             });
 
             // 4. Trigger Refund
-            if (order.status === "PAID") {
-                toast.info("Initiating refund...");
-                await RefundService.refundOrder(input.orderId).catch(err => {
-                    console.error(`[Refund] Error refunding customer cancelled order ${input.orderId}:`, err);
-                });
-            }
+            // if (order.status === "PAID") {
+            //     toast.info("Initiating refund...");
+            //     await RefundService.refundOrder(input.orderId).catch(err => {
+            //         console.error(`[Refund] Error refunding customer cancelled order ${input.orderId}:`, err);
+            //     });
+            // }
 
             return updated;
         }),

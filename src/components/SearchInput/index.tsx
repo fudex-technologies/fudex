@@ -55,7 +55,7 @@ const SearchInput = forwardRef<HTMLInputElement, Props>(
 		return (
 			<label
 				className={cn(
-					'min-w-[180px] w-full rounded-md flex items-center gap-3  p-2 border border-[#DADADA] bg-[#F8F8F8]',
+					'min-w-[180px] w-full rounded-md flex items-center gap-3  px-2 py-1 border border-[#DADADA] bg-[#F8F8F8] text-sm sm:text-base',
 					className
 				)}>
 				<Search width={20} height={20} color='#858585' />
@@ -88,7 +88,7 @@ export const SearchInputSkeleton = ({
 	return (
 		<label
 			className={cn(
-				'min-w-[180px] w-full rounded-md flex items-center gap-3  p-2 border border-[#DADADA] bg-[#F8F8F8]'
+				'min-w-[180px] w-full rounded-md flex items-center gap-3  px-2 py-1 border border-[#DADADA] bg-[#F8F8F8] text-sm sm:text-base'
 			)}>
 			<Search width={20} height={20} color='#858585' />
 			<Input

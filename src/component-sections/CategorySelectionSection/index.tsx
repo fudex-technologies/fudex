@@ -13,8 +13,8 @@ const CategorySelectionSection = () => {
 
 	if (isLoading) {
 		return (
-			<div className='w-full flex flex-col gap-3'>
-				<h2 className='text-xl font-semibold px-5'>Categories</h2>
+			<div className='w-full flex flex-col gap-1'>
+				<h2 className='font-semibold px-5'>Categories</h2>
 				<ScrollArea className='w-screen max-w-[1400px] whitespace-nowrap'>
 					<div className='flex w-max space-x-4 mx-5'>
 						{Array.from({ length: 6 }).map((_, index) => (
@@ -28,8 +28,8 @@ const CategorySelectionSection = () => {
 	}
 
 	return (
-		<div className='w-full flex flex-col gap-3'>
-			<h2 className='text-xl font-semibold px-5'>Categories</h2>
+		<div className='w-full flex flex-col gap-1'>
+			<h2 className='font-semibold px-5'>Categories</h2>
 			{categories.length > 0 ? (
 				<ScrollArea className='w-screen max-w-[1400px] whitespace-nowrap'>
 					<div className='flex w-max space-x-4 mx-5'>

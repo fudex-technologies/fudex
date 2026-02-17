@@ -93,7 +93,7 @@ const VendorListSection = ({ title }: { title?: string }) => {
 		<SectionWrapper className='w-full flex flex-col gap-3'>
 			<div className='flex items-center justify-between'>
 				{/* {title && <h2 className='text-lg font-semibold '>{title}</h2>} */}
-				<div className='flex w-full max-w-sm items-center gap-1 bg-primary/10 p-2 rounded-full relative overflow-hidden'>
+				<div className='flex w-full max-w-sm items-center gap-1 bg-primary/10 p-2 rounded-full relative overflow-hidden text-nowrap'>
 					<button
 						onClick={() => setActiveTab('all')}
 						className={`flex-1 px-5 py-3 text-sm font-medium rounded-full transition-all relative z-10 ${
@@ -187,7 +187,7 @@ export const VendorListSectionSkeleton = ({
 		<SectionWrapper className='w-full flex flex-col gap-3'>
 			<div className='flex items-center justify-between'>
 				{/* {title && <h2 className='text-lg font-semibold '>{title}</h2>} */}
-				<div className='flex w-full max-w-sm items-center gap-1 bg-primary/10 p-2 rounded-full'>
+				<div className='flex w-full max-w-sm items-center gap-1 bg-primary/10 p-2 rounded-full text-nowrap'>
 					<button
 						onClick={() => setActiveTab && setActiveTab('all')}
 						className={`flex-1 px-5 py-3 text-sm font-medium rounded-full transition-all ${
