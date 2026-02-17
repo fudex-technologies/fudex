@@ -376,7 +376,7 @@ export function useAdminActions() {
 
         // ========== WALLET MANAGEMENT ==========
 
-        useInfiniteListWalletTransactions: (input: { limit?: number; userId?: string; sourceType?: any } = {}) =>
+        useInfiniteListWalletTransactions: (input: { limit?: number; userId?: string; q?: string; sourceType?: any } = {}) =>
             useInfiniteQuery(
                 trpc.admin.listWalletTransactionsInfinite.infiniteQueryOptions(
                     { ...input },
@@ -410,5 +410,8 @@ export function useAdminActions() {
                     retry: false,
                 })
             ),
+
+        useGetWalletOverview: () =>
+            useQuery(trpc.admin.getWalletOverview.queryOptions()),
     };
 }

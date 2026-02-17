@@ -84,6 +84,14 @@ export class RefundService {
                 data: { status: "FAILED" } // Or add a REFUNDED status to VendorPayout if needed
             });
 
+            // 8. Update Payment status to REFUNDED if it exists
+            if (order.payment) {
+                await tx.payment.update({
+                    where: { id: order.payment.id },
+                    data: { status: "REFUNDED" }
+                });
+            }
+
             return { success: true, amount: totalRefund };
         });
     }
@@ -148,6 +156,14 @@ export class RefundService {
                 sourceId: packageOrderId,
                 reference: `REFUND-PKG-${packageOrderId}`,
             }, tx as any);
+
+            // 5. Update Payment status to REFUNDED if it exists
+            if (packageOrder.payment) {
+                await tx.payment.update({
+                    where: { id: packageOrder.payment.id },
+                    data: { status: "REFUNDED" }
+                });
+            }
 
             return { success: true, amount: totalRefund };
         });

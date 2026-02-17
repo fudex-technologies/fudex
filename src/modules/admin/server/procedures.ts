@@ -963,16 +963,27 @@ export const adminRouter = createTRPCRouter({
             limit: z.number().min(1).max(100).default(50),
             cursor: z.string().nullish(),
             userId: z.string().optional(),
+            q: z.string().optional(),
             sourceType: z.nativeEnum(WalletTransactionSource).optional(),
         }))
         .query(async ({ ctx, input }) => {
-            const { limit, cursor, userId, sourceType } = input;
-
+            const { limit, cursor, userId, q, sourceType } = input;
             const where: any = {};
+
             if (userId) {
                 const wallet = await ctx.prisma.wallet.findUnique({ where: { userId } });
                 if (wallet) where.walletId = wallet.id;
                 else return { items: [], nextCursor: undefined };
+            } else if (q) {
+                where.wallet = {
+                    user: {
+                        OR: [
+                            { name: { contains: q, mode: 'insensitive' } },
+                            { email: { contains: q, mode: 'insensitive' } },
+                            { phone: { contains: q, mode: 'insensitive' } },
+                        ]
+                    }
+                };
             }
             if (sourceType) where.sourceType = sourceType;
 
@@ -1055,6 +1066,37 @@ export const adminRouter = createTRPCRouter({
                     walletActive: user.wallet?.isActive ?? false,
                 })),
                 nextCursor,
+            };
+        }),
+
+    // Get wallet system overview for admin
+    getWalletOverview: adminProcedure
+        .query(async ({ ctx }) => {
+            const [
+                totalPlatformBalance,
+                totalTransactions,
+                activeWallets,
+                pendingFunding
+            ] = await Promise.all([
+                ctx.prisma.wallet.aggregate({
+                    _sum: { balance: true }
+                }),
+                ctx.prisma.walletTransaction.count(),
+                ctx.prisma.wallet.count({ where: { isActive: true } }),
+                ctx.prisma.payment.count({
+                    where: {
+                        provider: "paystack",
+                        status: "PENDING",
+                        providerRef: { startsWith: "FUDEX-FUND-" } // Custom ref for funding would be better but let's assume standard for now or just check PENDING
+                    }
+                })
+            ]);
+
+            return {
+                totalPlatformBalance: totalPlatformBalance._sum.balance?.toNumber() || 0,
+                totalTransactions,
+                activeWallets,
+                pendingFunding
             };
         }),
 });
