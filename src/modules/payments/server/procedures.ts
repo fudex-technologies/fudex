@@ -499,4 +499,44 @@ export const paymentRouter = createTRPCRouter({
 
 			return { payments, total };
 		}),
+
+	getPaymentStats: adminProcedure
+		.query(async ({ ctx }) => {
+			const today = new Date();
+			today.setHours(0, 0, 0, 0);
+
+			const [
+				totalRevenue,
+				todayRevenue,
+				completedCount,
+				pendingCount,
+				failedCount,
+				refundedCount
+			] = await Promise.all([
+				ctx.prisma.payment.aggregate({
+					_sum: { amount: true },
+					where: { status: 'COMPLETED' }
+				}),
+				ctx.prisma.payment.aggregate({
+					_sum: { amount: true },
+					where: {
+						status: 'COMPLETED',
+						paidAt: { gte: today }
+					}
+				}),
+				ctx.prisma.payment.count({ where: { status: 'COMPLETED' } }),
+				ctx.prisma.payment.count({ where: { status: 'PENDING' } }),
+				ctx.prisma.payment.count({ where: { status: 'FAILED' } }),
+				ctx.prisma.payment.count({ where: { status: 'REFUNDED' } })
+			]);
+
+			return {
+				totalRevenue: totalRevenue._sum.amount || 0,
+				todayRevenue: todayRevenue._sum.amount || 0,
+				completedCount,
+				pendingCount,
+				failedCount,
+				refundedCount
+			};
+		}),
 });

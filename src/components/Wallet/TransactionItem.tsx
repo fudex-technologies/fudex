@@ -21,7 +21,14 @@ interface TransactionItemProps {
 		sourceType: WalletTransactionSource;
 		reference: string;
 		createdAt: Date;
+		wallet?: {
+			user: {
+				name: string | null;
+				email: string | null;
+			};
+		};
 	};
+	showUser?: boolean;
 }
 
 const getSourceIcon = (source: WalletTransactionSource) => {
@@ -48,26 +55,37 @@ const getSourceLabel = (source: WalletTransactionSource) => {
 		.replace(/\b\w/g, (c) => c.toUpperCase());
 };
 
-export default function TransactionItem({ transaction }: TransactionItemProps) {
+export default function TransactionItem({
+	transaction,
+	showUser,
+}: TransactionItemProps) {
 	const isCredit = transaction.type === WalletTransactionType.CREDIT;
 
 	return (
-		<div className='w-full flex items-center justify-between p-4 bg-white rounded-xl border border-foreground/5 hover:border-foreground/10 transition-colors group'>
+		<div className='w-full flex items-center justify-between p-4 bg-card rounded-xl border border-border hover:border-primary/20 transition-colors group'>
 			<div className='flex items-center gap-4'>
 				<div
 					className={cn(
 						'w-12 h-12 rounded-full flex items-center justify-center transition-colors',
 						isCredit
-							? 'bg-green-50 group-hover:bg-green-100'
-							: 'bg-red-50 group-hover:bg-red-100',
+							? 'bg-green-500/10 group-hover:bg-green-500/20'
+							: 'bg-red-500/10 group-hover:bg-red-500/20',
 					)}>
 					{getSourceIcon(transaction.sourceType)}
 				</div>
 				<div className='flex flex-col'>
-					<p className='font-semibold text-sm text-foreground'>
-						{getSourceLabel(transaction.sourceType)}
-					</p>
-					<p className='text-xs text-foreground/50'>
+					<div className='flex items-center gap-2'>
+						<p className='font-semibold text-sm text-foreground'>
+							{getSourceLabel(transaction.sourceType)}
+						</p>
+						{showUser && transaction.wallet?.user && (
+							<span className='text-[10px] bg-muted px-1.5 py-0.5 rounded-full text-muted-foreground'>
+								{transaction.wallet.user.name ||
+									transaction.wallet.user.email}
+							</span>
+						)}
+					</div>
+					<p className='text-xs text-muted-foreground'>
 						{format(
 							new Date(transaction.createdAt),
 							'MMM d, yyyy • h:mm a',
@@ -85,8 +103,8 @@ export default function TransactionItem({ transaction }: TransactionItemProps) {
 					{isCredit ? '+' : '-'}
 					{formatCurency(transaction.amount)}
 				</p>
-				<p className='text-[10px] text-foreground/40 font-mono'>
-					{transaction.reference.split('-').pop()}
+				<p className='text-[10px] text-muted-foreground font-mono'>
+					Ref: {transaction.reference.split('-').pop()}
 				</p>
 			</div>
 		</div>

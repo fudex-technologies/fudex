@@ -24,6 +24,8 @@ import CreditWalletModal from '@/components/Wallet/CreditWalletModal';
 import TransactionItem, {
 	TransactionItemSkeleton,
 } from '@/components/Wallet/TransactionItem';
+import { StatCard } from '@/modules/admin/components/dashboard/StatCard';
+import { CreditCard, Users, History } from 'lucide-react';
 
 export default function AdminWalletsSection() {
 	const [activeSubTab, setActiveSubTab] = useState('transactions');
@@ -34,55 +36,108 @@ export default function AdminWalletsSection() {
 	const {
 		useInfiniteListWalletTransactions,
 		useInfiniteListUsersWithBalances,
+		useGetWalletOverview,
 	} = useAdminActions();
+
+	const { data: stats, isLoading: isStatsLoading } = useGetWalletOverview();
 
 	return (
 		<div className='flex flex-col w-full min-h-screen bg-background pb-20'>
-			<div className='p-5 space-y-4'>
+			<div className='p-5 space-y-6'>
 				<div className='flex items-center justify-between'>
 					<div>
-						<h1 className='text-2xl font-bold'>
+						<h1 className='text-2xl font-bold tracking-tight'>
 							Wallet Management
 						</h1>
-						<p className='text-sm text-foreground/60'>
-							Audit transactions and manage user balances
+						<p className='text-sm text-muted-foreground'>
+							Audit transactions and manage user balances across
+							the platform
 						</p>
 					</div>
 				</div>
 
-				<TabComponent
-					activeTab={activeSubTab}
-					setActiveTab={setActiveSubTab}
-					tabs={[
-						{
-							id: 'transactions',
-							label: 'All Transactions',
-							icon: <ArrowUpDown size={16} />,
-						},
-						{
-							id: 'balances',
-							label: 'User Balances',
-							icon: <User size={16} />,
-						},
-					]}
-					className='border-b'
-				/>
+				{/* Stats Overview */}
+				{isStatsLoading ? (
+					<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
+						{[1, 2, 3, 4].map((i) => (
+							<Skeleton
+								key={i}
+								className='h-24 w-full rounded-xl'
+							/>
+						))}
+					</div>
+				) : (
+					<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
+						<StatCard
+							title='Platform Balance'
+							value={formatCurency(
+								stats?.totalPlatformBalance || 0,
+							)}
+							icon={Wallet}
+							description='Total held in user wallets'
+						/>
+						<StatCard
+							title='Active Wallets'
+							value={stats?.activeWallets || 0}
+							icon={Users}
+							description='Users with active wallet profiles'
+						/>
+						<StatCard
+							title='Total Transactions'
+							value={stats?.totalTransactions || 0}
+							icon={History}
+							description='Lifetime wallet movements'
+						/>
+						<StatCard
+							title='Pending Funding'
+							value={stats?.pendingFunding || 0}
+							icon={CreditCard}
+							description='Pending Paystack fundings'
+							className={
+								stats?.pendingFunding &&
+								stats.pendingFunding > 0
+									? 'border-yellow-500/50'
+									: ''
+							}
+						/>
+					</div>
+				)}
 
-				<div className='relative'>
-					<Search
-						className='absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40'
-						size={18}
+				<div className='space-y-4 pt-2'>
+					<TabComponent
+						activeTab={activeSubTab}
+						setActiveTab={setActiveSubTab}
+						tabs={[
+							{
+								id: 'transactions',
+								label: 'All Transactions',
+								icon: <ArrowUpDown size={16} />,
+							},
+							{
+								id: 'balances',
+								label: 'User Balances',
+								icon: <User size={16} />,
+							},
+						]}
+						className='border-b'
 					/>
-					<Input
-						placeholder={
-							activeSubTab === 'transactions'
-								? 'Search by User ID...'
-								: 'Search users by name, email or phone...'
-						}
-						value={searchQuery}
-						onChange={(e) => setSearchQuery(e.target.value)}
-						className='pl-10 h-11 rounded-xl'
-					/>
+
+					<div className='relative'>
+						<Search
+							className='absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground'
+							size={18}
+						/>
+						<Input
+							placeholder={
+								activeSubTab === 'transactions'
+									? 'Search by name, email or reference...'
+									: 'Search users by name, email or phone...'
+							}
+							value={searchQuery}
+							onChange={(e) => setSearchQuery(e.target.value)}
+							className='pl-10 h-12 rounded-xl border-border bg-card'
+						/>
+					</div>
 				</div>
 
 				{activeSubTab === 'transactions' ? (
@@ -124,7 +179,7 @@ function TransactionsList({ query }: { query: string }) {
 		refetch,
 	} = useInfiniteListWalletTransactions({
 		limit: 20,
-		userId: query.length > 20 ? query : undefined, // Simple check to see if it's likely a UUID
+		q: query,
 	});
 
 	useEffect(() => {
@@ -160,15 +215,11 @@ function TransactionsList({ query }: { query: string }) {
 			{transactions.length > 0 ? (
 				<>
 					{transactions.map((tx) => (
-						<div key={tx.id} className='relative group'>
-							<TransactionItem transaction={tx as any} />
-							<div className='absolute right-4 bottom-2 opacity-0 group-hover:opacity-100 transition-opacity'>
-								<p className='text-[10px] text-foreground/40'>
-									{tx.wallet.user.name ||
-										tx.wallet.user.email}
-								</p>
-							</div>
-						</div>
+						<TransactionItem
+							key={tx.id}
+							transaction={tx as any}
+							showUser={true}
+						/>
 					))}
 					<div ref={ref} className='py-4 flex justify-center'>
 						{isFetchingNextPage && <TransactionItemSkeleton />}
