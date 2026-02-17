@@ -562,6 +562,8 @@ model Referral {
   @@index([referralCode])
   @@index([referrerUserId])
   @@index([status])
+  @@index([createdAt])
+  @@index([confirmedAt])
 }
 
 model PushSubscription {

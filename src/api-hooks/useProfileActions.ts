@@ -158,5 +158,10 @@ export function useProfileActions() {
                     retry: false,
                 })
             ),
+        getMonthlyLeaderboard: () => useQuery(
+            trpc.users.getMonthlyLeaderboard.queryOptions(undefined, {
+                enabled: !!session,
+            })
+        ),
     }
 }
