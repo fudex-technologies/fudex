@@ -468,8 +468,9 @@ export const adminRouter = createTRPCRouter({
     getDashboardOverview: adminProcedure
         .query(async ({ ctx }) => {
             const [
-                totalRevenue,
+                totalRevenueFromDeliveredOrders,
                 totalPackageRevenue,
+                totalFeesFromDeliveredOrders,
                 totalOrders,
                 deliveredOrders,
                 cancelledOrders,
@@ -482,13 +483,17 @@ export const adminRouter = createTRPCRouter({
                 pendingVendorRequests,
                 confirmedReferrals
             ] = await Promise.all([
-                ctx.prisma.payment.aggregate({
-                    _sum: { amount: true },
-                    where: { status: "COMPLETED" }
+                ctx.prisma.order.aggregate({
+                    _sum: { totalAmount: true },
+                    where: { status: "DELIVERED" }
                 }),
-                ctx.prisma.packagePayment.aggregate({
-                    _sum: { amount: true },
-                    where: { status: "COMPLETED" }
+                ctx.prisma.packageOrder.aggregate({
+                    _sum: { totalAmount: true },
+                    where: { status: "DELIVERED" }
+                }),
+                ctx.prisma.order.aggregate({
+                    _sum: { serviceFee: true, deliveryFee: true, platformFee: true },
+                    where: { status: "DELIVERED" }
                 }),
                 ctx.prisma.order.count(),
                 ctx.prisma.order.count({ where: { status: "DELIVERED" } }),
@@ -510,22 +515,22 @@ export const adminRouter = createTRPCRouter({
             sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
 
             const [currentMonthRevenue, previousMonthRevenue] = await Promise.all([
-                ctx.prisma.payment.aggregate({
-                    _sum: { amount: true },
-                    where: { status: "COMPLETED", createdAt: { gte: thirtyDaysAgo } }
+                ctx.prisma.order.aggregate({
+                    _sum: { totalAmount: true },
+                    where: { status: "DELIVERED", createdAt: { gte: thirtyDaysAgo } }
                 }),
-                ctx.prisma.payment.aggregate({
-                    _sum: { amount: true },
-                    where: { status: "COMPLETED", createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } }
+                ctx.prisma.order.aggregate({
+                    _sum: { totalAmount: true },
+                    where: { status: "DELIVERED", createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } }
                 })
             ]);
 
-            const revChange = previousMonthRevenue._sum.amount
-                ? ((currentMonthRevenue._sum.amount || 0) - previousMonthRevenue._sum.amount) / previousMonthRevenue._sum.amount * 100
+            const revChange = previousMonthRevenue._sum.totalAmount
+                ? ((currentMonthRevenue._sum.totalAmount || 0) - previousMonthRevenue._sum.totalAmount) / previousMonthRevenue._sum.totalAmount * 100
                 : 0;
 
             return {
-                totalRevenue: (totalRevenue._sum.amount || 0) + (totalPackageRevenue._sum.amount || 0),
+                totalRevenueFromDeliveredOrders: (totalRevenueFromDeliveredOrders._sum.totalAmount || 0) + (totalPackageRevenue._sum.totalAmount || 0),
                 revenueTrend: revChange,
                 lifetimeOrders: totalOrders,
                 deliveredOrders,
@@ -537,7 +542,8 @@ export const adminRouter = createTRPCRouter({
                 activeVendors,
                 totalRiders,
                 pendingVendorRequests,
-                confirmedReferrals
+                confirmedReferrals,
+                totalFeesFromDeliveredOrders: (totalFeesFromDeliveredOrders._sum.serviceFee || 0) + (totalFeesFromDeliveredOrders._sum.deliveryFee || 0) + (totalFeesFromDeliveredOrders._sum.platformFee || 0)
             };
         }),
 
@@ -643,7 +649,15 @@ export const adminRouter = createTRPCRouter({
 
             // Also get revenue per vendor (simplified, might need more complex aggregation if many orders)
             const vendorsWithRevenue = await Promise.all(vendors.map(async (v) => {
-                const revenue = await ctx.prisma.order.aggregate({
+                const productRevenue = await ctx.prisma.order.aggregate({
+                    _sum: { productAmount: true },
+                    where: {
+                        vendorId: v.id,
+                        status: { not: "CANCELLED" },
+                        payment: { status: "COMPLETED" }
+                    }
+                });
+                const totalRevenue = await ctx.prisma.order.aggregate({
                     _sum: { totalAmount: true },
                     where: {
                         vendorId: v.id,
@@ -653,12 +667,13 @@ export const adminRouter = createTRPCRouter({
                 });
                 return {
                     ...v,
-                    revenue: revenue._sum.totalAmount || 0,
+                    productRevenue: productRevenue._sum.productAmount || 0,
+                    totalRevenue: totalRevenue._sum.totalAmount || 0,
                     orderCount: v._count.orders
                 };
             }));
 
-            return vendorsWithRevenue.sort((a, b) => b.revenue - a.revenue);
+            return vendorsWithRevenue.sort((a, b) => b.totalRevenue - a.totalRevenue);
         }),
 
     // Get recent activity
