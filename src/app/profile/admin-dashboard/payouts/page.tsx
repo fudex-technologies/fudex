@@ -218,7 +218,7 @@ export default function AdminPayoutsPage() {
 						<div className='space-y-4'>
 							{pendingVendors?.map((vendor: any) => {
 								const isExpanded = expandedVendors.includes(
-									vendor.vendorId,
+									vendor.vendor?.id,
 								);
 								const vendorPayoutIds = vendor.payouts.map(
 									(p: any) => p.id,
@@ -234,132 +234,154 @@ export default function AdminPayoutsPage() {
 
 								return (
 									<div
-										key={vendor.vendorId}
-										className='border rounded-lg bg-card overflow-hidden'>
-										<div
-											className='p-4 flex items-center gap-4 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors'
-											onClick={() =>
-												toggleVendorExpansion(
-													vendor.vendorId,
-												)
-											}>
-											<Checkbox
-												checked={
-													allSelected ||
-													(someSelected &&
-														'indeterminate')
-												}
-												onCheckedChange={() =>
-													toggleVendorSelection(
-														vendor.vendorId,
-														vendorPayoutIds,
-													)
-												}
-												onClick={(e) =>
-													e.stopPropagation()
-												}
-											/>
-											<div className='flex-1'>
-												<div className='flex items-center gap-2'>
-													<h3 className='font-semibold text-lg'>
-														{vendor.vendorName}
-													</h3>
-													<span className='text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary'>
-														{vendor.payouts.length}{' '}
-														pending
-													</span>
-												</div>
-												<p className='text-sm text-muted-foreground'>
-													Total Pending:{' '}
-													<span className='font-bold text-foreground'>
-														{formatCurency(
-															vendor.totalAmount,
-														)}
-													</span>
+										key={vendor.vendor?.id}
+										className='space-y-0'>
+										{/* Vendor Name Header */}
+										<div className='px-4 py-2 bg-muted/50 border-b gap-3 flex items-center'>
+											<h3 className='font-bold text-base text-foreground'>
+												{vendor.vendor?.name}
+											</h3>
+											<div className='flex flex-wrap gap-2 text-xs'>
+												<p>{vendor.vendor.bankName}</p>-
+												<p>
+													{
+														vendor.vendor
+															.bankAccountNumber
+													}
 												</p>
 											</div>
-											{isExpanded ? (
-												<ChevronUp size={20} />
-											) : (
-												<ChevronDown size={20} />
-											)}
 										</div>
 
-										{isExpanded && (
-											<div className='border-t divide-y'>
-												{vendor.payouts.map(
-													(p: any) => (
-														<div
-															key={p.id}
-															className='p-4 pl-12 flex items-center justify-between hover:bg-muted/10'>
-															<div className='flex items-center gap-4'>
-																<Checkbox
-																	checked={selectedPayoutIds.includes(
-																		p.id,
-																	)}
-																	onCheckedChange={() =>
-																		togglePayoutSelection(
-																			p.id,
-																		)
-																	}
-																/>
-																<div>
-																	<p className='font-medium'>
-																		Order #
-																		{p.orderId.slice(
-																			0,
-																			8,
-																		)}
-																	</p>
-																	<p className='text-xs text-muted-foreground'>
-																		{new Date(
-																			p.initiatedAt,
-																		).toLocaleDateString()}
-																	</p>
-																</div>
-															</div>
-															<div className='flex items-center gap-4'>
-																<div className='text-right'>
-																	<p className='text-sm font-bold'>
-																		{formatCurency(
-																			p.amount,
-																		)}
-																	</p>
-																	<p className='text-[10px] text-muted-foreground uppercase'>
-																		{
-																			p.status
-																		}
-																	</p>
-																</div>
-																<Button
-																	variant='outline'
-																	size='sm'
-																	className='h-8 text-[10px]'
-																	onClick={() =>
-																		handleMarkPaidManually(
-																			p.id,
-																		)
-																	}
-																	disabled={
-																		markPaidManually.isPending
-																	}>
-																	{markPaidManually.isPending ? (
-																		<Loader2
-																			className='animate-spin'
-																			size={
-																				12
-																			}
-																		/>
-																	) : (
-																		'Mark Paid'
-																	)}
-																</Button>
-															</div>
-														</div>
-													),
+										<div className='border rounded-lg bg-card overflow-hidden'>
+											<div
+												className='p-4 flex items-center gap-4 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors'
+												onClick={() =>
+													toggleVendorExpansion(
+														vendor.vendor?.id,
+													)
+												}>
+												<Checkbox
+													checked={
+														allSelected ||
+														(someSelected &&
+															'indeterminate')
+													}
+													onCheckedChange={() =>
+														toggleVendorSelection(
+															vendor.vendor?.id,
+															vendorPayoutIds,
+														)
+													}
+													onClick={(e) =>
+														e.stopPropagation()
+													}
+												/>
+												<div className='flex-1'>
+													<div className='flex items-center gap-2'>
+														<h3 className='font-semibold text-lg'>
+															{vendor.vendorName}
+														</h3>
+														<span className='text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary'>
+															{
+																vendor.payouts
+																	.length
+															}{' '}
+															pending
+														</span>
+													</div>
+													<p className='text-sm text-muted-foreground'>
+														Total Pending:{' '}
+														<span className='font-bold text-foreground'>
+															{formatCurency(
+																vendor.totalAmount,
+															)}
+														</span>
+													</p>
+												</div>
+												{isExpanded ? (
+													<ChevronUp size={20} />
+												) : (
+													<ChevronDown size={20} />
 												)}
 											</div>
-										)}
+
+											{isExpanded && (
+												<div className='border-t divide-y'>
+													{vendor.payouts.map(
+														(p: any) => (
+															<div
+																key={p.id}
+																className='p-4 pl-12 flex items-center justify-between hover:bg-muted/10'>
+																<div className='flex items-center gap-4'>
+																	<Checkbox
+																		checked={selectedPayoutIds.includes(
+																			p.id,
+																		)}
+																		onCheckedChange={() =>
+																			togglePayoutSelection(
+																				p.id,
+																			)
+																		}
+																	/>
+																	<div>
+																		<p className='font-medium'>
+																			Order
+																			#
+																			{p.orderId.slice(
+																				0,
+																				8,
+																			)}
+																		</p>
+																		<p className='text-xs text-muted-foreground'>
+																			{new Date(
+																				p.initiatedAt,
+																			).toLocaleDateString()}
+																		</p>
+																	</div>
+																</div>
+																<div className='flex items-center gap-4'>
+																	<div className='text-right'>
+																		<p className='text-sm font-bold'>
+																			{formatCurency(
+																				p.amount,
+																			)}
+																		</p>
+																		<p className='text-[10px] text-muted-foreground uppercase'>
+																			{
+																				p.status
+																			}
+																		</p>
+																	</div>
+																	<Button
+																		variant='outline'
+																		size='sm'
+																		className='h-8 text-[10px]'
+																		onClick={() =>
+																			handleMarkPaidManually(
+																				p.id,
+																			)
+																		}
+																		disabled={
+																			markPaidManually.isPending
+																		}>
+																		{markPaidManually.isPending ? (
+																			<Loader2
+																				className='animate-spin'
+																				size={
+																					12
+																				}
+																			/>
+																		) : (
+																			'Mark Paid'
+																		)}
+																	</Button>
+																</div>
+															</div>
+														),
+													)}
+												</div>
+											)}
+										</div>
 									</div>
 								);
 							})}
