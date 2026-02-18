@@ -8,7 +8,8 @@ import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
 import PageWrapper from '@/components/wrapers/PageWrapper';
 import SectionWrapper from '@/components/wrapers/SectionWrapper';
 import { cn } from '@/lib/utils';
-import { RefreshCw, Copy } from 'lucide-react';
+import { RefreshCw, Copy, ChevronRight, ScrollText } from 'lucide-react';
+import Link from 'next/link';
 import { useProfileActions } from '@/api-hooks/useProfileActions';
 import { toast } from 'sonner';
 
@@ -110,6 +111,26 @@ export default function ReferralPage() {
 							</p>
 						</div>
 					</div>
+
+					{/* Rules Link */}
+					<Link
+						href='/profile/referral/rules'
+						className='w-full flex items-center justify-between p-4 rounded-xl border bg-card/60 hover:bg-muted/40 transition-colors group'>
+						<div className='flex items-center gap-3'>
+							<div className='p-2 rounded-lg bg-primary/10'>
+								<ScrollText className='w-4 h-4 text-primary' />
+							</div>
+							<div>
+								<p className='font-semibold text-sm'>
+									Referral Program Rules
+								</p>
+								<p className='text-xs text-muted-foreground'>
+									How it works, eligibility & fair use
+								</p>
+							</div>
+						</div>
+						<ChevronRight className='w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors' />
+					</Link>
 
 					<div className='w-full space-y-3'>
 						<div className='flex items-center justify-between px-1'>
