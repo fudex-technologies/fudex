@@ -88,10 +88,25 @@ const VendorProductsTabSection = ({ vendorId }: { vendorId: string }) => {
 	// Get products for the active tab
 	const activeProducts = useMemo(() => {
 		if (activeTab === 'all') {
-			return products;
+			const sortedProducts: typeof products = [];
+			const seenProductIds = new Set<string>();
+
+			allCategories.forEach((cat) => {
+				const catProducts = categoriesMap[cat.id];
+				if (catProducts) {
+					catProducts.forEach((p) => {
+						if (!seenProductIds.has(p.id)) {
+							sortedProducts.push(p);
+							seenProductIds.add(p.id);
+						}
+					});
+				}
+			});
+
+			return sortedProducts;
 		}
 		return categoriesMap[activeTab] || [];
-	}, [activeTab, products, categoriesMap]);
+	}, [activeTab, products, categoriesMap, allCategories]);
 
 	// Transform products into ProductListItem format
 	const displayItems = useMemo(() => {
