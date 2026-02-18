@@ -41,18 +41,18 @@ export class ReferralService {
                 return;
             }
 
-            const confirmedRank = await tx.referral.count({
-                where: {
-                    referrerUserId: referral.referrerUserId,
-                    status: ReferralStatus.CONFIRMED,
-                    confirmedAt: {
-                        lte: currentReferral.confirmedAt
-                    }
-                }
-            });
+            // const confirmedRank = await tx.referral.count({
+            //                 where: {
+            //                     referrerUserId: referral.referrerUserId,
+            //                     status: ReferralStatus.CONFIRMED,
+            //                     confirmedAt: {
+            //                         lte: currentReferral.confirmedAt
+            //                     }
+            //                 }
+            //             });
 
-            // If this is the 6th+ person to ever be confirmed, they don't generate rewards.
-            if (confirmedRank > 5) return;
+            //             // If this is the 6th+ person to ever be confirmed, they don't generate rewards.
+            //             if (confirmedRank > 5) return;
 
             // Condition B: This referee has not exceeded 5 delivered orders
             if (deliveredOrders > 5) return;
@@ -69,42 +69,58 @@ export class ReferralService {
 
     /**
      * Gets the monthly leaderboard for top referrers.
+     * Ranks by total delivered orders from their referred users.
      */
     static async getMonthlyLeaderboard(limit = 5) {
         const startOfMonth = new Date();
         startOfMonth.setDate(1);
         startOfMonth.setHours(0, 0, 0, 0);
 
-        const leaderboard = await prisma.referral.groupBy({
-            by: ['referrerUserId'],
+        // Get all confirmed referrals from this month
+        const referrals = await prisma.referral.findMany({
             where: {
                 status: ReferralStatus.CONFIRMED,
                 confirmedAt: {
                     gte: startOfMonth
                 }
             },
-            _count: {
-                _all: true
-            },
-            orderBy: {
-                _count: {
-                    referrerUserId: 'desc'
-                }
-            },
-            take: limit
+            select: {
+                referrerUserId: true,
+                referredUserId: true
+            }
         });
 
+        // Count delivered orders for each referrer
+        const referrerOrderCounts = new Map<string, number>();
+
+        for (const referral of referrals) {
+            const deliveredOrderCount = await prisma.order.count({
+                where: {
+                    userId: referral.referredUserId,
+                    status: 'DELIVERED'
+                }
+            });
+
+            const currentCount = referrerOrderCounts.get(referral.referrerUserId) || 0;
+            referrerOrderCounts.set(referral.referrerUserId, currentCount + deliveredOrderCount);
+        }
+
+        // Sort by order count and take top N
+        const sortedReferrers = Array.from(referrerOrderCounts.entries())
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, limit);
+
         // Enrich with user names
-        const enrichedLeaderboard = await Promise.all(leaderboard.map(async (entry) => {
+        const enrichedLeaderboard = await Promise.all(sortedReferrers.map(async ([userId, count]) => {
             const user = await prisma.user.findUnique({
-                where: { id: entry.referrerUserId },
+                where: { id: userId },
                 select: { id: true, name: true, firstName: true, lastName: true, image: true }
             });
             return {
-                userId: entry.referrerUserId,
+                userId,
                 name: user?.name || `${user?.firstName} ${user?.lastName}`.trim() || 'Anonymous',
                 image: getDoodleAvatarUrl(user?.id),
-                count: entry._count._all
+                count
             };
         }));
 

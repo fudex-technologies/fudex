@@ -29,12 +29,6 @@ export default function ReferralPage() {
 	const referralCode = referralData?.referralCode || '';
 	const confirmedReferred = referralData?.confirmedReferred || 0;
 
-	const tiers = [
-		{ count: 2, label: '₦500 Credit' },
-		{ count: 5, label: 'Free Delivery' },
-		{ count: 10, label: '₦5,000 Credit' },
-	];
-
 	const handleGenerateCode = () => {
 		generateCode();
 	};
@@ -113,7 +107,6 @@ export default function ReferralPage() {
 							<p className='text-sm text-balance text-muted-foreground'>
 								Invite your friends to FUDEX. You earn ₦100 for
 								every order they make (up to their 5th order).
-								Valid for your first 5 friends!
 							</p>
 						</div>
 					</div>
@@ -166,31 +159,17 @@ export default function ReferralPage() {
 						)}
 					</div>
 
-					<div className='w-full space-y-6'>
-						<div className='flex items-center justify-between'>
-							<p className='text-lg font-bold'>
-								Referral Capacity
+					<div className='w-full bg-card/50 backdrop-blur-sm border rounded-xl p-4 flex items-center justify-between'>
+						<div>
+							<p className='text-sm text-muted-foreground'>
+								Total Confirmed Referrals
 							</p>
-							<span className='text-sm font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full'>
-								{confirmedReferred}/5 Referrals
-							</span>
+							<p className='text-2xl font-bold'>
+								{confirmedReferred}
+							</p>
 						</div>
-
-						<div className='w-full space-y-2 px-2'>
-							<div className='relative w-full h-4 bg-muted rounded-full overflow-hidden'>
-								<div
-									className='h-full bg-primary transition-all duration-500'
-									style={{
-										width: `${Math.min((confirmedReferred / 5) * 100, 100)}%`,
-									}}
-								/>
-							</div>
-							<p className='text-[10px] text-muted-foreground text-center'>
-								You earn bonuses for your first 5 confirmed
-								referrals.
-								{confirmedReferred >= 5 &&
-									' (Capacity reached!)'}
-							</p>
+						<div className='h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center text-green-600'>
+							<RefreshCw className='w-5 h-5' />
 						</div>
 					</div>
 					<div className='w-full space-y-4'>
@@ -212,7 +191,8 @@ export default function ReferralPage() {
 														<AvatarImage
 															src={
 																referral.user
-																	?.image || ''
+																	?.image ||
+																''
 															}
 														/>
 														<AvatarFallback>

@@ -88,7 +88,7 @@ export const ReferralLeaderboard = () => {
 									{user.name}
 								</p>
 								<p className='text-xs text-muted-foreground'>
-									Confirmed Referrals
+									Referee's Orders
 								</p>
 							</div>
 						</div>
