@@ -60,7 +60,7 @@ export class ReferralService {
             // Award reward
             await WalletService.creditWallet({
                 userId: referral.referrerUserId,
-                amount: 100,
+                amount: 150,
                 sourceType: WalletTransactionSource.REFERRAL_BONUS,
                 reference: `REF-ORDER-${referredUserId}-${deliveredOrders}`,
             }, tx);

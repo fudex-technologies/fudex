@@ -51,14 +51,6 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 	const packs = getVendorPacks(vendorId);
 
 	const { getProfile, getAddresses } = useProfileActions();
-	const { getReferralStats } = useProfileActions();
-
-	const { data: referralData, isLoading: isLoadingReferralData } =
-		getReferralStats();
-	const confirmedReferred = referralData?.confirmedReferred || 0;
-
-	const referralPromoInitiated =
-		!isLoadingReferralData && confirmedReferred === 5;
 
 	// Fetch user information
 	const { data: prodileData, refetch: refetchProfile } = getProfile();
@@ -174,7 +166,7 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 	);
 
 	const deliveryFee =
-		deliveryType === 'PICKUP' || referralPromoInitiated
+		deliveryType === 'PICKUP'
 			? 0
 			: deliveryFeeData?.deliveryFee || 0;
 	const serviceFee = serviceFeeData?.serviceFee || 0;
@@ -190,6 +182,15 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 				clearVendor(vendorId);
 				// Redirect to Paystack checkout page
 				window.location.href = data.checkoutUrl;
+			} else if (data.reference) {
+				// Wallet ONLY payment (no Paystack checkoutUrl)
+				clearVendor(vendorId);
+				// Redirect to internal callback to verify and show success
+				const baseUrl =
+					typeof window !== 'undefined'
+						? window.location.origin
+						: process.env.NEXT_PUBLIC_BASE_URL || '';
+				window.location.href = `${baseUrl}/orders/${data.payment.orderId}/payment-callback?reference=${data.reference}`;
 			} else {
 				toast.error(
 					'Payment initialization failed - no checkout URL received',
@@ -633,8 +634,6 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 								<p className='font-semibold'>
 									{deliveryType === 'PICKUP'
 										? 'Free (Pickup)'
-										: referralPromoInitiated
-											? 'Free (Referral Promo)'
 											: isLoadingDeliveryFeeData
 												? 'Loading...'
 												: formatCurency(deliveryFee)}

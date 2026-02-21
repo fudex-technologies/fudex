@@ -7,7 +7,7 @@ import { PAGES_DATA } from "@/data/pagesData";
 import { WalletService } from "@/modules/wallet/server/service";
 import { RefundService } from "@/modules/wallet/server/refund.service";
 import { ReferralService } from "@/modules/referral/server/service";
-import { toast } from "sonner";
+import { sendOrderOutForDeliveryEmail } from "@/lib/email";
 
 
 export const orderRouter = createTRPCRouter({
@@ -129,14 +129,7 @@ export const orderRouter = createTRPCRouter({
             // Calculate delivery fee based on area and current time
             let deliveryFee = await calculateDeliveryFee(ctx.prisma, address.areaId);
 
-            // Promo check: Free delivery for users with 5 confirmed referrals
-            const confirmedReferredCount = await ctx.prisma.referral.count({
-                where: { referrerUserId: userId, status: "CONFIRMED" }
-            });
-
-            // Match frontend logic: exactly 5 for referrals
-            const referralPromoInitiated = confirmedReferredCount === 5;
-            if (referralPromoInitiated || input.deliveryType === "PICKUP") {
+            if (input.deliveryType === "PICKUP") {
                 deliveryFee = 0;
             }
 
@@ -571,7 +564,7 @@ export const orderRouter = createTRPCRouter({
         }),
 
 
-    // Admin/restaurant update status
+    // Admin update order status
     updateStatus: adminProcedure
         .input(z.object({
             currentStatus: z.enum(Object.values(OrderStatus)),
@@ -605,13 +598,34 @@ export const orderRouter = createTRPCRouter({
 
             // Notify Customer
             if (input.status === "DELIVERED" || input.status === "OUT_FOR_DELIVERY" || input.status === "PREPARING") {
-                const order = await ctx.prisma.order.findUnique({ where: { id: input.id }, select: { userId: true, id: true } });
+                const order = await ctx.prisma.order.findUnique({
+                    where: { id: input.id },
+                    select: {
+                        userId: true,
+                        id: true,
+                        user: { select: { name: true, email: true } },
+                        vendor: { select: { name: true } }
+                    }
+                });
+
                 if (order) {
                     NotificationService.sendToUser(order.userId, {
                         title: `Order Update: ${input.status}`,
                         body: `Your order #${order.id.slice(0, 8)} is now ${input.status.toLowerCase().replace('_', ' ')}.`,
                         url: PAGES_DATA.order_info_page(order.id)
                     }).catch(console.error);
+
+                    if (input.status === "OUT_FOR_DELIVERY" && order.user?.email) {
+                        sendOrderOutForDeliveryEmail(
+                            order.user.email,
+                            order.user.name || "Customer",
+                            order.id,
+                            order.vendor?.name || "the vendor",
+                            "order@fudex.ng"
+                        ).catch(err => {
+                            console.error(`[Email] Error sending out-for-delivery email for order ${order.id}:`, err);
+                        });
+                    }
                 }
             }
 
@@ -666,13 +680,34 @@ export const orderRouter = createTRPCRouter({
 
             // Notify Customer
             if (input.status === "DELIVERED" || input.status === "OUT_FOR_DELIVERY" || input.status === "PREPARING") {
-                const order = await ctx.prisma.order.findUnique({ where: { id: input.id }, select: { userId: true, id: true } });
+                const order = await ctx.prisma.order.findUnique({
+                    where: { id: input.id },
+                    select: {
+                        userId: true,
+                        id: true,
+                        user: { select: { name: true, email: true } },
+                        vendor: { select: { name: true } }
+                    }
+                });
+
                 if (order) {
                     NotificationService.sendToUser(order.userId, {
                         title: `Order Update: ${input.status}`,
                         body: `Your order #${order.id.slice(0, 8)} is now ${input.status.toLowerCase().replace('_', ' ')}.`,
                         url: `/profile/orders/${order.id}`,
                     }).catch(console.error);
+
+                    if (input.status === "OUT_FOR_DELIVERY" && order.user?.email) {
+                        sendOrderOutForDeliveryEmail(
+                            order.user.email,
+                            order.user.name || "Customer",
+                            order.id,
+                            order.vendor?.name || "the vendor",
+                            "order@fudex.ng"
+                        ).catch(err => {
+                            console.error(`[Email] Error sending out-for-delivery email for order ${order.id}:`, err);
+                        });
+                    }
                 }
             }
 
@@ -701,7 +736,7 @@ export const orderRouter = createTRPCRouter({
             ];
 
             if (nonCancellableStates.includes(order.status)) {
-                throw new Error(`Order cannot be cancelled as it is already being ${order.status.toLowerCase().replace('_', ' ')}`);
+                throw new Error(`Order cannot be cancelled as it is already ${order.status.toLowerCase().replace('_', ' ')}`);
             }
 
             // 3. Update order status

@@ -140,13 +140,23 @@ const PackageCheckoutSection = ({ packageSlug }: { packageSlug: string }) => {
 	// Create payment mutation
 	const createPaymentMutation = createPackagePayment({
 		onSuccess: (data: any) => {
-			// Redirect to Paystack checkout
+			// Redirect to Paystack checkout or directly to callback for wallet-only
 			if (data.checkoutUrl) {
 				// Clear cart and checkout state before redirecting
 				clearCart();
 				checkoutStore.clearCheckout();
 				// Redirect to Paystack checkout page
 				window.location.href = data.checkoutUrl;
+			} else if (data.reference) {
+				// Wallet ONLY payment (no Paystack checkoutUrl)
+				clearCart();
+				checkoutStore.clearCheckout();
+				// Redirect to internal callback to verify and show success
+				const baseUrl =
+					typeof window !== 'undefined'
+						? window.location.origin
+						: process.env.NEXT_PUBLIC_BASE_URL || '';
+				window.location.href = `${baseUrl}/packages/orders/${data.payment.packageOrderId}/payment-callback?reference=${data.reference}`;
 			} else {
 				toast.error(
 					'Payment initialization failed - no checkout URL received',

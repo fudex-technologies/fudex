@@ -10,6 +10,7 @@ import { TRPCError } from "@trpc/server";
 import { OrderStatus, WalletTransactionSource } from "@prisma/client";
 import { WalletService } from "@/modules/wallet/server/service";
 import { RefundService } from "@/modules/wallet/server/refund.service";
+import { handlePackagePaymentCompletion } from "@/lib/package-payment-completion";
 
 // ========== ADMIN PROCEDURES ==========
 export const packageAdminRouter = createTRPCRouter({
@@ -536,6 +537,7 @@ export const packageAdminRouter = createTRPCRouter({
                             amount: true,
                             currency: true,
                             paidAt: true,
+                            provider: true,
                         },
                     },
                     _count: {
@@ -543,7 +545,7 @@ export const packageAdminRouter = createTRPCRouter({
                             addons: true
                         }
                     }
-                },
+                }
             });
 
             let nextCursor: typeof cursor | undefined = undefined;
@@ -552,8 +554,39 @@ export const packageAdminRouter = createTRPCRouter({
                 nextCursor = nextItem?.id;
             }
 
+            // Fetch wallet deductions for these orders to compute paymentMethod
+            const orderIds = items.map(item => item.id);
+            const walletDebits = await ctx.prisma.walletTransaction.groupBy({
+                by: ['sourceId'],
+                where: {
+                    sourceId: { in: orderIds },
+                    sourceType: 'PACKAGE_PAYMENT',
+                    type: 'DEBIT',
+                },
+                _sum: { amount: true }
+            });
+
+            const itemsWithPaymentMethod = items.map(item => {
+                const debit = walletDebits.find(wd => wd.sourceId === item.id);
+                const walletUsed = debit?._sum.amount?.toNumber() || 0;
+                let paymentMethod = item.payment?.provider === 'wallet' ? 'Wallet' : 'Paystack';
+
+                if (item.payment?.provider === 'paystack' && walletUsed > 0) {
+                    paymentMethod = 'Wallet + Paystack';
+                } else if (item.payment?.provider === 'paystack') {
+                    paymentMethod = 'Paystack';
+                } else if (item.payment?.provider === 'wallet') {
+                    paymentMethod = 'Wallet';
+                }
+
+                return {
+                    ...item,
+                    paymentMethod
+                };
+            });
+
             return {
-                items,
+                items: itemsWithPaymentMethod,
                 nextCursor,
             };
         }),
@@ -1218,7 +1251,6 @@ export const packagePublicRouter = createTRPCRouter({
                 });
 
                 // Import handlePackagePaymentCompletion
-                const { handlePackagePaymentCompletion } = await import("@/lib/package-payment-completion");
                 await handlePackagePaymentCompletion(payment.id);
 
                 return {
@@ -1346,6 +1378,45 @@ export const packagePublicRouter = createTRPCRouter({
                     message: "Payment already verified",
                     payment,
                     packageOrder: payment.packageOrder,
+                };
+            }
+
+            // If provider is wallet, we don't need to verify with Paystack
+            // It should already be marked as COMPLETED during createPackagePayment, but if it's PENDING, handle it
+            if (payment.provider === "wallet") {
+                const updatedPayment = await ctx.prisma.packagePayment.update({
+                    where: { id: payment.id },
+                    data: { status: "COMPLETED", paidAt: new Date() },
+                    include: {
+                        packageOrder: {
+                            include: {
+                                package: true,
+                                items: {
+                                    include: {
+                                        packageItem: true,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                });
+
+                // Import payment completion handler
+                const { handlePackagePaymentCompletion } = await import(
+                    "@/lib/package-payment-completion"
+                );
+
+                try {
+                    await handlePackagePaymentCompletion(payment.id);
+                } catch (error) {
+                    console.error("[PackagePayment] Payment completion error:", error);
+                }
+
+                return {
+                    success: true,
+                    message: "Payment verified successfully",
+                    payment: updatedPayment,
+                    packageOrder: updatedPayment?.packageOrder,
                 };
             }
 

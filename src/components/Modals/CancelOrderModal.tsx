@@ -37,8 +37,7 @@ const CancelOrderModal = ({
 		cancelMutation.mutate({ orderId });
 	};
 
-	const isCancellable =
-		status === OrderStatus.PENDING || status === OrderStatus.PAID;
+	const isCancellable = status === OrderStatus.PENDING;
 
 	if (!isCancellable && status) return null;
 
@@ -56,8 +55,6 @@ const CancelOrderModal = ({
 					</DialogTitle>
 					<DialogDescription>
 						Are you sure you want to cancel this order?{' '}
-						{status === OrderStatus.PAID &&
-							' A full refund will be issued to your wallet immediately.'}
 					</DialogDescription>
 				</DialogHeader>
 				<DialogFooter className='flex flex-col gap-2'>

@@ -26,9 +26,16 @@ interface ProductItemData {
 	slug?: string;
 	isActive?: boolean;
 	inStock?: boolean;
+	vendorName?: string;
 }
 
-const ProductListItem = ({ productItem }: { productItem: ProductItemData }) => {
+const ProductListItem = ({
+	productItem,
+	showVendor = false,
+}: {
+	productItem: ProductItemData;
+	showVendor?: boolean;
+}) => {
 	// Use product name if available, otherwise fallback to productItem name
 	const displayName = productItem?.product?.name || productItem?.name || '';
 
@@ -95,6 +102,19 @@ const ProductListItem = ({ productItem }: { productItem: ProductItemData }) => {
 						{description && (
 							<p className='text-foreground/50 text-sm'>
 								{shortenText(description, 50)}
+							</p>
+						)}
+						{/* Vendor indicator */}
+						{showVendor && productItem.vendorId && productItem.vendorName && (
+							<p className='text-foreground/60 text-sm mt-1'>
+								From{' '}
+								<Link
+									href={PAGES_DATA.single_vendor_page(
+										productItem.vendorId,
+									)}
+									className='hover:underline'>
+									{productItem.vendorName ?? 'Vendor'}
+								</Link>
 							</p>
 						)}
 					</div>
