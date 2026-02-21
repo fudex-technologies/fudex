@@ -96,6 +96,11 @@ const ProductDetailsSelectionSection = ({
 			vendorId,
 			categorySlug: 'hydration',
 		});
+	const { data: sides = [] } =
+		useVendorProductActions().useGetProductItemsByCategorySlug({
+			vendorId,
+			categorySlug: 'sides',
+		});
 
 	const selectedProteinCount = useMemo(() => {
 		return proteins.reduce((count, protein) => {
@@ -108,6 +113,12 @@ const ProductDetailsSelectionSection = ({
 			return count + (selectedAddons[drink.id] || 0);
 		}, 0);
 	}, [drinks, selectedAddons]);
+
+	const selectedSideCount = useMemo(() => {
+		return sides.reduce((count, side) => {
+			return count + (selectedAddons[side.id] || 0);
+		}, 0);
+	}, [sides, selectedAddons]);
 
 	// Calculate total price based on pricing type
 	const totalPrice = useMemo(() => {
@@ -133,7 +144,8 @@ const ProductDetailsSelectionSection = ({
 		Object.entries(selectedAddons).forEach(([addonId, quantity]) => {
 			const addon =
 				proteins.find((p) => p.id === addonId) ||
-				drinks.find((d) => d.id === addonId);
+				drinks.find((d) => d.id === addonId) ||
+				sides.find((s) => s.id === addonId);
 			if (addon && quantity > 0) {
 				// Addons are NOT multiplied by unitQuantity
 				// If user selects 1 chicken addon, they get 1 chicken regardless of scoop count
@@ -148,11 +160,15 @@ const ProductDetailsSelectionSection = ({
 		selectedAddons,
 		proteins,
 		drinks,
+		sides,
 		numberOfPacks,
 		unitQuantity,
 	]);
 
-	const handleAddonToggle = (addonId: string, type: 'protein' | 'drink') => {
+	const handleAddonToggle = (
+		addonId: string,
+		type: 'protein' | 'drink' | 'side',
+	) => {
 		setSelectedAddons((prev) => {
 			const current = prev[addonId] || 0;
 
@@ -174,6 +190,11 @@ const ProductDetailsSelectionSection = ({
 				return prev;
 			}
 
+			if (type === 'side' && selectedSideCount >= MAX_ADDONS) {
+				toast.error('You can select up to 4 sides');
+				return prev;
+			}
+
 			return { ...prev, [addonId]: 1 };
 		});
 	};
@@ -181,7 +202,7 @@ const ProductDetailsSelectionSection = ({
 	const handleAddonQuantityChange = (
 		addonId: string,
 		quantity: number,
-		type: 'protein' | 'drink',
+		type: 'protein' | 'drink' | 'side',
 	) => {
 		if (quantity <= 0) {
 			setSelectedAddons((prev) => {
@@ -193,7 +214,11 @@ const ProductDetailsSelectionSection = ({
 		}
 
 		const currentTotal =
-			type === 'protein' ? selectedProteinCount : selectedDrinkCount;
+			type === 'protein'
+				? selectedProteinCount
+				: type === 'drink'
+					? selectedDrinkCount
+					: selectedSideCount;
 
 		const currentQuantity = selectedAddons[addonId] || 0;
 
@@ -201,7 +226,11 @@ const ProductDetailsSelectionSection = ({
 		if (quantity > currentQuantity && currentTotal >= MAX_ADDONS) {
 			toast.error(
 				`You can select up to 4 ${
-					type === 'protein' ? 'proteins' : 'drinks'
+					type === 'protein'
+						? 'proteins'
+						: type === 'drink'
+							? 'drinks'
+							: 'sides'
 				}`,
 			);
 			return;
@@ -546,6 +575,97 @@ const ProductDetailsSelectionSection = ({
 												<Separator />
 											)}
 										</>
+									);
+								})}
+							</div>
+						</>
+					)}
+
+				{/* sides selection */}
+				{(selectedProductItem as any)?.categories[0]?.category?.slug !==
+					'sides' &&
+					sides.length > 0 && (
+						<>
+							<div className='w-full bg-muted flex items-center gap-3 p-5 text-lg'>
+								<p>Extra Sides</p>
+								<Badge
+									variant={'outline'}
+									className='border-primary text-primary'>
+									Optional
+								</Badge>
+							</div>
+							<div className='px-5 space-y-3'>
+								<p className='text-lg text-foreground/50'>
+									SELECT UP TO 4 ITEMS
+								</p>
+								{sides.map((side, index) => {
+									const quantity =
+										selectedAddons[side.id] || 0;
+									const isSelected = quantity > 0;
+
+									return (
+										<div key={side.id}>
+											<div className='flex items-center justify-between'>
+												<div className='flex items-center gap-3 flex-1'>
+													<div className='flex-1 cursor-pointer text-start'>
+														<p className='text-base text-foreground/50 font-medium'>
+															{side.name}
+														</p>
+														{side.description && (
+															<p className='text-sm text-foreground/50'>
+																{
+																	side.description
+																}
+															</p>
+														)}
+														<p className='text-sm text-foreground/70'>
+															{formatCurency(
+																side.price,
+															)}
+														</p>
+													</div>
+												</div>
+												{!isSelected && (
+													<Button
+														onClick={() =>
+															handleAddonToggle(
+																side.id,
+																'side',
+															)
+														}
+														variant={'muted'}
+														size={'icon-sm'}
+														className='rounded-full'>
+														<Plus />
+													</Button>
+												)}
+												{isSelected && (
+													<div className='ml-4'>
+														<CounterComponent
+															count={quantity}
+															countChangeEffect={(
+																newCount,
+															) =>
+																handleAddonQuantityChange(
+																	side.id,
+																	newCount,
+																	'side',
+																)
+															}
+															className='w-[120px] py-1'
+															disabledAdd={
+																selectedSideCount >=
+																	MAX_ADDONS &&
+																quantity === 0
+															}
+														/>
+													</div>
+												)}
+											</div>
+											{index < sides.length - 1 && (
+												<Separator className='mt-3 mb-3' />
+											)}
+										</div>
 									);
 								})}
 							</div>
