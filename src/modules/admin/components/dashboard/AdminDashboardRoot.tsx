@@ -39,7 +39,7 @@ export default function AdminDashboardRoot() {
 	);
 
 	const { data: topVendors, isLoading: _isTopVendorsLoading } = useQuery(
-		trpc.admin.getTopVendors.queryOptions({ limit: 5 }),
+		trpc.admin.getTopVendors.queryOptions({ limit: 10 }),
 	);
 
 	const { data: recentActivity, isLoading: _isActivityLoading } = useQuery(
@@ -70,6 +70,78 @@ export default function AdminDashboardRoot() {
 						Monitor your platform&apos;s health and performance.
 					</p>
 				</div>
+			</div>
+
+			{/* Main Performance Cards */}
+			<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
+				<StatCard
+					title='Total Revenue From Delivered Orders'
+					value={formatCurency(
+						overview?.totalRevenueFromDeliveredOrders || 0,
+					)}
+					icon={Banknote}
+					trend={overview?.revenueTrend}
+					description='from last month'
+				/>
+				<StatCard
+					title='Platform fees generated from delivered orders'
+					value={formatCurency(
+						overview?.totalFeesFromDeliveredOrders || 0,
+					)}
+					icon={ShoppingCart}
+					description='Includes service, delivery, and platform fees'
+				/>
+				<StatCard
+					title='Delivered Orders'
+					value={formatNumber(overview?.deliveredOrders || 0)}
+					icon={ShoppingCart}
+					description='Lifetime completed orders'
+				/>
+				<StatCard
+					title='Total Users'
+					value={formatNumber(overview?.totalUsers || 0)}
+					icon={Users}
+					description='registered customers'
+				/>
+				<StatCard
+					title='Active Vendors'
+					value={formatNumber(overview?.activeVendors || 0)}
+					icon={Store}
+					description={`${overview?.totalVendors} total registered`}
+				/>
+			</div>
+
+			{/* Operational & Actionable Cards */}
+			<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
+				<StatCard
+					title='Pending Orders'
+					value={formatNumber(overview?.pendingOrders || 0)}
+					icon={ShoppingCart}
+					description='Awaiting payment/action'
+				/>
+				<StatCard
+					title='Cancelled Orders'
+					value={formatNumber(overview?.cancelledOrders || 0)}
+					icon={ShoppingCart}
+					description='Failed or cancelled'
+				/>
+				<StatCard
+					title='Pending Approvals'
+					value={overview?.pendingVendorRequests || 0}
+					icon={UserPlus}
+					className={
+						overview?.pendingVendorRequests ? 'border-primary' : ''
+					}
+					description='New vendor requests'
+				/>
+				<StatCard
+					title='Lifetime Orders'
+					value={formatNumber(overview?.lifetimeOrders || 0)}
+					icon={ShoppingCart}
+					description='Total attempts made'
+				/>
+			</div>
+
 				<div className='flex items-center gap-2'>
 					<Calendar className='h-4 w-4 text-muted-foreground' />
 					<Select
@@ -89,37 +161,6 @@ export default function AdminDashboardRoot() {
 						</SelectContent>
 					</Select>
 				</div>
-			</div>
-
-			{/* Stat Grid */}
-			<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
-				<StatCard
-					title='Total Revenue'
-					value={formatCurency(overview?.totalRevenue || 0)}
-					icon={Banknote}
-					trend={overview?.revenueTrend}
-					description='from last month'
-				/>
-				<StatCard
-					title='Total Orders'
-					value={formatNumber(overview?.totalOrders || 0)}
-					icon={ShoppingCart}
-					description='lifetime orders'
-				/>
-				<StatCard
-					title='Total Users'
-					value={formatNumber(overview?.totalUsers || 0)}
-					icon={Users}
-					description='registered customers'
-				/>
-				<StatCard
-					title='Total Vendors'
-					value={formatNumber(overview?.totalVendors || 0)}
-					icon={Store}
-					description={`${overview?.activeVendors} active/approved`}
-				/>
-			</div>
-
 			{/* Charts Row */}
 			<div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
 				<OverviewCharts
@@ -130,7 +171,7 @@ export default function AdminDashboardRoot() {
 				<OrdersChart data={chartData || []} />
 			</div>
 
-			{/* Secondary Stats Row */}
+			{/* Secondary & Growth Row */}
 			<div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
 				<StatCard
 					title='Active Riders'
@@ -138,18 +179,16 @@ export default function AdminDashboardRoot() {
 					icon={Bike}
 				/>
 				<StatCard
-					title='Pending Approvals'
-					value={overview?.pendingVendorRequests || 0}
-					icon={UserPlus}
-					className={
-						overview?.pendingVendorRequests ? 'border-primary' : ''
-					}
-				/>
-				<StatCard
-					title='Referrals'
+					title='Confirmed Referrals'
 					value={overview?.confirmedReferrals || 0}
 					icon={UserPlus}
-					description='confirmed conversions'
+					description='platform growth'
+				/>
+				<StatCard
+					title='Processing Orders'
+					value={formatNumber(overview?.processingOrders || 0)}
+					icon={ShoppingCart}
+					description='Currently in pipeline'
 				/>
 			</div>
 

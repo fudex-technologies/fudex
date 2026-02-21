@@ -99,6 +99,27 @@ export async function handlePackagePaymentCompletion(paymentId: string) {
                             'orders@fudex.ng'
                         ).catch((err) => console.error('[PackagePayment] Failed to send email to customer:', err));
 
+                        // Calculate the payment method
+                        const walletDebits = await tx.walletTransaction.aggregate({
+                            where: {
+                                sourceId: packageOrderId,
+                                sourceType: "PACKAGE_PAYMENT",
+                                type: "DEBIT"
+                            },
+                            _sum: { amount: true }
+                        });
+
+                        const walletUsed = walletDebits._sum.amount?.toNumber() || 0;
+                        let paymentMethod = payment.provider === 'wallet' ? 'Wallet' : 'Paystack';
+
+                        if (payment.provider === 'paystack' && walletUsed > 0) {
+                            paymentMethod = 'Wallet + Paystack';
+                        } else if (payment.provider === 'paystack') {
+                            paymentMethod = 'Paystack';
+                        } else if (payment.provider === 'wallet') {
+                            paymentMethod = 'Wallet';
+                        }
+
                         // Send Operator Email
                         await sendOperatorNewPackageOrderEmail(
                             operatorEmails,
@@ -108,8 +129,9 @@ export async function handlePackagePaymentCompletion(paymentId: string) {
                             packageOrder.deliveryDate,
                             packageOrder.timeSlot,
                             packageOrderId,
-                            payment.amount,
+                            packageOrder.totalAmount, // full order total (wallet + Paystack)
                             payment.currency,
+                            paymentMethod,
                             'orders@fudex.ng'
                         );
                         console.log(`[PackagePayment] Email notification sent to ${operatorEmails.length} operator(s)`);

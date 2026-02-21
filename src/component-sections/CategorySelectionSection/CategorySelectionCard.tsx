@@ -3,8 +3,10 @@
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PAGES_DATA } from '@/data/pagesData';
+import { shortenText } from '@/lib/commonFunctions';
 import { cn } from '@/lib/utils';
 import { useSearchQueries } from '@/nuqs-hooks/useSearchQueries';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
 const CategorySelectionCard = ({
@@ -27,10 +29,14 @@ const CategorySelectionCard = ({
 		const maybePromise = setSearch({ cat: newCats });
 		Promise.resolve(maybePromise)
 			.then(() => {
-				router.push(`${PAGES_DATA.search_page}?cat=${newCats.join(',')}`);
+				router.push(
+					`${PAGES_DATA.search_page}?cat=${newCats.join(',')}`,
+				);
 			})
 			.catch(() => {
-				router.push(`${PAGES_DATA.search_page}?cat=${newCats.join(',')}`);
+				router.push(
+					`${PAGES_DATA.search_page}?cat=${newCats.join(',')}`,
+				);
 			});
 	};
 
@@ -39,16 +45,17 @@ const CategorySelectionCard = ({
 		<div
 			onClick={handleCatClick}
 			className={cn(
-				'bg-muted text-muted-foreground flex flex-col gap-2 w-[100px] p-3 rounded-lg shadow-sm border cursor-pointer overflow-hidden',
+				'bg-muted text-muted-foreground flex flex-col gap-2 w-[75px] p-3 rounded-lg shadow-sm border cursor-pointer overflow-hidden',
 				isActive &&
-				'bg-secondary text-secondary-foreground transition-colors ease-linear border-0'
+					'bg-secondary text-secondary-foreground transition-colors ease-linear border-0',
 			)}>
-			<p className=''>{categoryName}</p>
-			<div className='relative w-full'>
-				<ImageWithFallback
+			<p className='text-sm capitalize'>{shortenText(categoryName, 7)}</p>
+			<div className='relative w-full aspect-square'>
+				<Image
 					src={image}
 					alt={categoryName}
-					className='object-contain w-full aspect-square'
+					className='object-cover'
+					fill
 				/>
 			</div>
 		</div>

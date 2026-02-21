@@ -45,8 +45,11 @@ export async function POST(request: NextRequest) {
 				break;
 
 			case "transfer.success":
+				await handleTransferSuccess(event.data);
+				break;
+
 			case "transfer.failed":
-				// Handle transfer events if needed
+				await handleTransferFailed(event.data);
 				break;
 
 			default:
@@ -109,7 +112,7 @@ async function handleSuccessfulPayment(data: any) {
 		}
 
 		// Handle payment completion
-		await handlePaymentCompletion(payment.id).catch(err => {
+		await handlePaymentCompletion(payment.id, 'webhook').catch(err => {
 			console.error(`[Webhook] Error handling payment completion for ${payment.id}:`, err);
 		});
 		return;
@@ -187,6 +190,81 @@ async function handleFailedPayment(data: { reference: string }) {
 			data: { status: "FAILED" },
 		});
 		return;
+	}
+}
+
+/**
+ * Handle successful transfer (Payout)
+ */
+async function handleTransferSuccess(data: any) {
+	const { transfer_code, reference } = data;
+
+	// Find the payout by transfer_code or reference
+	const payout = await prisma.vendorPayout.findFirst({
+		where: {
+			OR: [
+				{ transferCode: transfer_code },
+				{ transferRef: reference }
+			]
+		}
+	});
+
+	if (payout) {
+		await prisma.$transaction(async (tx) => {
+			await tx.vendorPayout.update({
+				where: { id: payout.id },
+				data: {
+					status: "SUCCESS",
+					completedAt: new Date(data.created_at || new Date()),
+				}
+			});
+
+			await tx.order.update({
+				where: { id: payout.orderId },
+				data: { payoutStatus: "PAID" }
+			});
+		});
+		console.log(`[Webhook] Payout ${payout.id} marked as SUCCESS`);
+	} else {
+		console.error(`[Webhook] No Payout record found for transfer_code: ${transfer_code} or reference: ${reference}`);
+	}
+}
+
+/**
+ * Handle failed transfer (Payout)
+ */
+async function handleTransferFailed(data: any) {
+	const { transfer_code, reference } = data;
+
+	const payout = await prisma.vendorPayout.findFirst({
+		where: {
+			OR: [
+				{ transferCode: transfer_code },
+				{ transferRef: reference }
+			]
+		}
+	});
+
+	if (payout) {
+		// As per user request: keep as PENDING for retry
+		await prisma.$transaction(async (tx) => {
+			await tx.vendorPayout.update({
+				where: { id: payout.id },
+				data: {
+					status: "PENDING", // Keep as pending for retry
+					metadata: {
+						lastError: data.reason || "Transfer failed",
+						failedAt: new Date()
+					}
+				}
+			});
+
+			await tx.order.update({
+				where: { id: payout.orderId },
+				data: { payoutStatus: "PENDING" }
+			});
+		});
+		console.log(`[Webhook] Payout ${payout.id} reset to PENDING due to failure`);
 	}
 }
 

@@ -170,7 +170,7 @@ export async function sendVendorApprovalEmail(email: string, businessName: strin
                         </div>
                         
                         <div style="text-align: center; margin: 30px 0;">
-                            <a href="${process.env.NEXT_PUBLIC_APP_URL}${PAGES_DATA.vendor_dashboard_page}" style="display: inline-block; background: ${BRAND_COLOR}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Go to Dashboard</a>
+                            <a href="${process.env.NEXT_PUBLIC_BASE_URL}${PAGES_DATA.vendor_dashboard_page}" style="display: inline-block; background: ${BRAND_COLOR}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Go to Dashboard</a>
                         </div>
                         
                         <p style="font-size: 14px; color: #666; margin-bottom: 20px;">
@@ -244,7 +244,7 @@ export async function sendVendorDeclineEmail(email: string, businessName: string
                         </p>
                         
                         <div style="text-align: center; margin: 30px 0;">
-                            <a href="${process.env.NEXT_PUBLIC_APP_URL}/vendor-onboarding/personal-details" style="display: inline-block; background: ${BRAND_COLOR}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Resubmit Application</a>
+                            <a href="${process.env.NEXT_PUBLIC_BASE_URL}/vendor-onboarding/personal-details" style="display: inline-block; background: ${BRAND_COLOR}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Resubmit Application</a>
                         </div>
                         
                         <p style="font-size: 14px; color: #666; margin-bottom: 20px;">
@@ -316,7 +316,7 @@ export async function sendVendorSubmissionConfirmation(email: string, businessNa
                         </p>
                         
                         <div style="text-align: center; margin: 30px 0;">
-                            <a href="${process.env.NEXT_PUBLIC_APP_URL}${PAGES_DATA.vendor_dashboard_page}" style="display: inline-block; background: ${BRAND_COLOR}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Go to Dashboard</a>
+                            <a href="${process.env.NEXT_PUBLIC_BASE_URL}${PAGES_DATA.vendor_dashboard_page}" style="display: inline-block; background: ${BRAND_COLOR}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Go to Dashboard</a>
                         </div>
                         
                         <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
@@ -374,7 +374,7 @@ export async function sendAdminNewVendorNotification(adminEmail: string, busines
                         </div>
                         
                         <div style="text-align: center; margin: 30px 0;">
-                            <a href="${process.env.NEXT_PUBLIC_APP_URL}/admin/vendors/pending" style="display: inline-block; background: ${BRAND_COLOR}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Review Application</a>
+                            <a href="${process.env.NEXT_PUBLIC_BASE_URL}/admin/vendors/pending" style="display: inline-block; background: ${BRAND_COLOR}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Review Application</a>
                         </div>
                         
                         <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
@@ -439,7 +439,7 @@ export async function sendVendorNewOrderEmail(email: string, businessName: strin
                         </div>
                         
                         <div style="text-align: center; margin: 30px 0;">
-                            <a href="${process.env.NEXT_PUBLIC_APP_URL}${PAGES_DATA.vendor_dashboard_new_orders_page}" style="display: inline-block; background: ${BRAND_COLOR}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">View Order</a>
+                            <a href="${process.env.NEXT_PUBLIC_BASE_URL}${PAGES_DATA.vendor_dashboard_new_orders_page}" style="display: inline-block; background: ${BRAND_COLOR}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">View Order</a>
                         </div>
                         
                         <p style="font-size: 14px; color: #666; margin-bottom: 20px;">
@@ -478,6 +478,7 @@ export async function sendOperatorNewOrderEmail(
     orderId: string,
     amount: number,
     currency: string,
+    paymentMethod: string,
     from: string
 ) {
     try {
@@ -536,13 +537,16 @@ export async function sendOperatorNewOrderEmail(
                             <p style="font-size: 14px; margin: 0 0 5px 0; color: #555;">
                                 Order ID: <strong>#${orderId.slice(0, 8)}</strong>
                             </p>
-                            <p style="font-size: 14px; margin: 0; color: #555;">
+                            <p style="font-size: 14px; margin: 0 0 5px 0; color: #555;">
                                 Amount: <strong>${currency} ${amount.toLocaleString()}</strong>
+                            </p>
+                            <p style="font-size: 14px; margin: 0; color: #555;">
+                                Paid Via: <strong>${paymentMethod}</strong>
                             </p>
                         </div>
                         
                         <div style="text-align: center; margin: 30px 0;">
-                            <a href="${process.env.NEXT_PUBLIC_APP_URL}/operator/dashboard" style="display: inline-block; background: ${BRAND_COLOR}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">View Order</a>
+                            <a href="${process.env.NEXT_PUBLIC_BASE_URL}/operator/dashboard" style="display: inline-block; background: ${BRAND_COLOR}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">View Order</a>
                         </div>
                         
                         <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
@@ -578,6 +582,7 @@ export async function sendOperatorNewPackageOrderEmail(
     orderId: string,
     amount: number,
     currency: string,
+    paymentMethod: string,
     from: string
 ) {
     try {
@@ -646,13 +651,16 @@ export async function sendOperatorNewPackageOrderEmail(
                             <p style="font-size: 14px; margin: 0 0 5px 0; color: #555;">
                                 Order ID: <strong>#${orderId.slice(0, 8)}</strong>
                             </p>
-                            <p style="font-size: 14px; margin: 0; color: #555;">
+                            <p style="font-size: 14px; margin: 0 0 5px 0; color: #555;">
                                 Amount: <strong>${currency} ${amount.toLocaleString()}</strong>
+                            </p>
+                            <p style="font-size: 14px; margin: 0; color: #555;">
+                                Paid Via: <strong>${paymentMethod}</strong>
                             </p>
                         </div>
                         
                         <div style="text-align: center; margin: 30px 0;">
-                            <a href="${process.env.NEXT_PUBLIC_APP_URL}/operator/dashboard" style="display: inline-block; background: #9333ea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">View Order</a>
+                            <a href="${process.env.NEXT_PUBLIC_BASE_URL}/operator/dashboard" style="display: inline-block; background: #9333ea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">View Order</a>
                         </div>
                         
                         <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
@@ -662,6 +670,81 @@ export async function sendOperatorNewPackageOrderEmail(
                             This is an automated email, please do not reply.
                         </p>
                     </div>
+                </body>
+                </html>
+            `,
+        });
+
+        if (error) {
+            throw new Error(error.message);
+        }
+
+        return data;
+    } catch (error) {
+        console.error('Error sending email:', error);
+        throw error;
+    }
+}
+
+export async function sendOrderOutForDeliveryEmail(
+    email: string,
+    customerName: string,
+    orderId: string,
+    vendorName: string,
+    from: string
+) {
+    try {
+        const { data, error } = await resend.emails.send({
+            from: `FUDEX <${from}>`,
+            to: [email],
+            subject: '🚚 Your Order is Out for Delivery!',
+            html: `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Order Out for Delivery</title>
+                </head>
+                <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="background: ${BRAND_GRADIENT}; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                        <h1 style="color: white; margin: 0; font-size: 28px;">Out for Delivery! 🚚</h1>
+                    </div>
+                    
+                    <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
+                        <p style="font-size: 16px; margin-bottom: 20px;">Hello <strong>${customerName}</strong>,</p>
+                        
+                        <p style="font-size: 16px; margin-bottom: 20px;">
+                            Great news! Your order from <strong>${vendorName}</strong> has been picked up by our rider and is currently out for delivery to your address.
+                        </p>
+                        
+                        <div style="background: white; border-left: 4px solid ${BRAND_COLOR}; padding: 20px; margin: 30px 0; border-radius: 4px;">
+                            <p style="font-size: 16px; margin: 0 0 10px 0;">
+                                <strong>Order Information:</strong>
+                            </p>
+                            <p style="font-size: 14px; margin: 0 0 5px 0; color: #555;">
+                                Order ID: <strong>#${orderId.slice(0, 8)}</strong>
+                            </p>
+                            <p style="font-size: 14px; margin: 0 0 5px 0; color: #555;">
+                                Vendor: <strong>${vendorName}</strong>
+                            </p>
+                        </div>
+                        
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="${process.env.NEXT_PUBLIC_BASE_URL}${PAGES_DATA.order_info_page(orderId)}" style="display: inline-block; background: ${BRAND_COLOR}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Track Order Status</a>
+                        </div>
+                        
+                        <p style="font-size: 14px; color: #666; margin-bottom: 20px;">
+                            Please ensure your phone is reachable so the rider can contact you upon arrival.
+                        </p>
+                        
+                        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+                        
+                        <p style="font-size: 12px; color: #999; text-align: center;">
+                            © ${new Date().getFullYear()} FUDEX. All rights reserved.<br>
+                            This is an automated email, please do not reply.
+                        </p>
+                     </div>
                 </body>
                 </html>
             `,
@@ -756,7 +839,7 @@ export async function sendCustomerPackageOrderEmail(
                         </div>
                         
                         <div style="text-align: center; margin: 30px 0;">
-                            <a href="${process.env.NEXT_PUBLIC_APP_URL}/orders" style="display: inline-block; background: ${PACKAGE_BRAND_COLOR}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Track Order</a>
+                            <a href="${process.env.NEXT_PUBLIC_BASE_URL}/orders" style="display: inline-block; background: ${PACKAGE_BRAND_COLOR}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Track Order</a>
                         </div>
                         
                         <p style="font-size: 14px; color: #666; margin-bottom: 20px;">
@@ -853,7 +936,7 @@ export async function sendWalletTransactionEmail(params: {
                         </div>
                         
                         <div style="text-align: center; margin: 30px 0;">
-                            <a href="${process.env.NEXT_PUBLIC_APP_URL}${PAGES_DATA.profile_wallet_page}" style="display: inline-block; background: ${BRAND_COLOR}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">View Wallet History</a>
+                            <a href="${process.env.NEXT_PUBLIC_BASE_URL}${PAGES_DATA.profile_wallet_page}" style="display: inline-block; background: ${BRAND_COLOR}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">View Wallet History</a>
                         </div>
                         
                         <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">

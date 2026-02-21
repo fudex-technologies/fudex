@@ -21,6 +21,9 @@ import {
 	ChevronLeft,
 	ChevronRight,
 	CreditCard,
+	Banknote,
+	CheckCircle2,
+	Clock,
 } from 'lucide-react';
 import {
 	Select,
@@ -30,6 +33,8 @@ import {
 	SelectValue,
 } from '@/components/ui/select';
 import { useQuery } from '@tanstack/react-query';
+import { StatCard } from '@/modules/admin/components/dashboard/StatCard';
+import { formatNumber } from '@/lib/commonFunctions';
 
 export default function AdminPaymentsPage() {
 	const trpc = useTRPC();
@@ -55,6 +60,10 @@ export default function AdminPaymentsPage() {
 			status: status === 'ALL' ? undefined : (status as any),
 			search: debouncedSearch || undefined,
 		}),
+	);
+
+	const { data: stats, isLoading: isStatsLoading } = useQuery(
+		trpc.payments.getPaymentStats.queryOptions(),
 	);
 
 	const totalPages = data ? Math.ceil(data.total / take) : 0;
@@ -86,6 +95,50 @@ export default function AdminPaymentsPage() {
 					</p>
 				</div>
 			</div>
+
+			{isStatsLoading ? (
+				<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-pulse'>
+					{[1, 2, 3, 4].map((i) => (
+						<div
+							key={i}
+							className='h-24 bg-muted rounded-lg border'
+						/>
+					))}
+				</div>
+			) : (
+				<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4'>
+					<StatCard
+						title='Total Revenue'
+						value={formatCurency(stats?.totalRevenue || 0)}
+						icon={Banknote}
+						description='Lifetime completed payments'
+					/>
+					<StatCard
+						title="Today's Revenue"
+						value={formatCurency(stats?.todayRevenue || 0)}
+						icon={Banknote}
+						description='Completed payments today'
+					/>
+					<StatCard
+						title='Completed'
+						value={formatNumber(stats?.completedCount || 0)}
+						icon={CheckCircle2}
+						className='border-green-500/20'
+					/>
+					<StatCard
+						title='Pending'
+						value={formatNumber(stats?.pendingCount || 0)}
+						icon={Clock}
+						className='border-yellow-500/20'
+					/>
+					<StatCard
+						title='Refunded'
+						value={formatNumber(stats?.refundedCount || 0)}
+						icon={Banknote}
+						className='border-red-500/20'
+					/>
+				</div>
+			)}
 
 			<div className='flex flex-col gap-4 md:flex-row md:items-center justify-between bg-card p-4 rounded-lg border'>
 				<div className='relative w-full md:w-96'>

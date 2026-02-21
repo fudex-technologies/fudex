@@ -14,13 +14,11 @@ import { Button } from '@/components/ui/button';
 import { PiSlidersHorizontalFill } from 'react-icons/pi';
 import { PAGES_DATA } from '@/data/pagesData';
 import Link from 'next/link';
-import ValentineSpecialSection from '@/component-sections/ValentineSpecialSection';
-import ValentineTemplate from '@/component-sections/PromoSection/ValentineTemplate';
 
 export default function Home() {
 	return (
 		<PageWrapper>
-			<SectionWrapper className='w-full flex items-center gap-5 justify-between'>
+			<SectionWrapper className='w-full flex items-center gap-5 justify-between '>
 				<LocationDropdown />
 				<Suspense
 					fallback={

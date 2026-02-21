@@ -32,6 +32,7 @@ import AddPhoneNumberDrawer from './AddPhoneNumberDrawer';
 import WalletPaymentSelection from '@/components/Checkout/WalletPaymentSelection';
 import { useProfileActions } from '@/api-hooks/useProfileActions';
 import { isVendorOpen } from '@/lib/vendorUtils';
+import { motion, AnimatePresence } from 'motion/react';
 
 const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 	const router = useRouter();
@@ -50,21 +51,6 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 	const packs = getVendorPacks(vendorId);
 
 	const { getProfile, getAddresses } = useProfileActions();
-	const { useListMyOrders } = useOrderingActions();
-	const { getReferralStats } = useProfileActions();
-
-	const { data: referralData, isLoading: isLoadingReferralData } =
-		getReferralStats();
-	const confirmedReferred = referralData?.confirmedReferred || 0;
-	const { data: successfulOrders, isLoading } = useListMyOrders({
-		take: 3,
-		status: ['DELIVERED'],
-	});
-
-	const referralPromoInitiated =
-		!isLoadingReferralData && confirmedReferred === 5;
-	const orderPromoInitiated =
-		!isLoading && successfulOrders && successfulOrders?.length === 3;
 
 	// Fetch user information
 	const { data: prodileData, refetch: refetchProfile } = getProfile();
@@ -180,14 +166,45 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 	);
 
 	const deliveryFee =
-		deliveryType === 'PICKUP' ||
-		referralPromoInitiated ||
-		orderPromoInitiated
+		deliveryType === 'PICKUP'
 			? 0
 			: deliveryFeeData?.deliveryFee || 0;
 	const serviceFee = serviceFeeData?.serviceFee || 0;
 	const subTotalWithFees = subTotal + deliveryFee + serviceFee;
 	const total = Math.max(0, subTotalWithFees - walletAmount);
+
+	// Create payment mutation
+	const createPaymentMutation = useOrderingActions().createPayment({
+		onSuccess: (data: any) => {
+			// Redirect to Paystack checkout
+			if (data.checkoutUrl) {
+				// Clear cart before redirecting (order is already created)
+				clearVendor(vendorId);
+				// Redirect to Paystack checkout page
+				window.location.href = data.checkoutUrl;
+			} else if (data.reference) {
+				// Wallet ONLY payment (no Paystack checkoutUrl)
+				clearVendor(vendorId);
+				// Redirect to internal callback to verify and show success
+				const baseUrl =
+					typeof window !== 'undefined'
+						? window.location.origin
+						: process.env.NEXT_PUBLIC_BASE_URL || '';
+				window.location.href = `${baseUrl}/orders/${data.payment.orderId}/payment-callback?reference=${data.reference}`;
+			} else {
+				toast.error(
+					'Payment initialization failed - no checkout URL received',
+				);
+			}
+		},
+		onError: (err) => {
+			toast.error('Failed to create payment', {
+				description:
+					err instanceof Error ? err.message : 'Unknown error',
+			});
+		},
+		silent: false,
+	});
 
 	// Create order mutation
 	const createOrderMutation = useOrderingActions().createOrder({
@@ -203,35 +220,10 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 			createPaymentMutation.mutate({
 				orderId: order.id,
 				callbackUrl,
-				// walletAmount,
 			});
 		},
 		onError: (err) => {
 			toast.error('Failed to create order', {
-				description:
-					err instanceof Error ? err.message : 'Unknown error',
-			});
-		},
-		silent: false,
-	});
-
-	// Create payment mutation
-	const createPaymentMutation = useOrderingActions().createPayment({
-		onSuccess: (data: any) => {
-			// Redirect to Paystack checkout
-			if (data.checkoutUrl) {
-				// Clear cart before redirecting (order is already created)
-				clearVendor(vendorId);
-				// Redirect to Paystack checkout page
-				window.location.href = data.checkoutUrl;
-			} else {
-				toast.error(
-					'Payment initialization failed - no checkout URL received',
-				);
-			}
-		},
-		onError: (err) => {
-			toast.error('Failed to create payment', {
 				description:
 					err instanceof Error ? err.message : 'Unknown error',
 			});
@@ -319,7 +311,10 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 
 	if (!session && !isPending) {
 		return (
-			<div className='w-full flex justify-center pb-10'>
+			<motion.div
+				initial={{ opacity: 0 }}
+				animate={{ opacity: 1 }}
+				className='w-full flex justify-center pb-10'>
 				<div className='max-w-lg w-full flex flex-col items-center gap-5 p-10'>
 					<ImageWithFallback
 						src={'/assets/fudex-tackout-pack.png'}
@@ -345,13 +340,16 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 						Login / Sign Up
 					</Link>
 				</div>
-			</div>
+			</motion.div>
 		);
 	}
 
 	if (packs.length === 0) {
 		return (
-			<div className='w-full flex justify-center pb-10'>
+			<motion.div
+				initial={{ opacity: 0 }}
+				animate={{ opacity: 1 }}
+				className='w-full flex justify-center pb-10'>
 				<div className='max-w-lg w-full flex flex-col items-center gap-5 p-10'>
 					<p className='text-center text-foreground/70'>
 						Your tray is empty
@@ -363,16 +361,29 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 						Browse Vendors
 					</Button>
 				</div>
-			</div>
+			</motion.div>
 		);
 	}
+
+	const sectionVariants = {
+		hidden: { opacity: 0, y: 10 },
+		show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+	};
 
 	return (
 		<>
 			<div className='w-full flex justify-center pb-10'>
-				<div className='max-w-lg w-full flex flex-col'>
+				<motion.div
+					initial='hidden'
+					animate='show'
+					variants={{
+						show: { transition: { staggerChildren: 0.05 } },
+					}}
+					className='max-w-lg w-full flex flex-col'>
 					{/* Order Summary */}
-					<div className='w-full flex flex-col'>
+					<motion.div
+						variants={sectionVariants}
+						className='w-full flex flex-col'>
 						<div className='px-5 py-2 bg-muted text-muted-foreground'>
 							<p className='text-lg font-bold'>Your order</p>
 						</div>
@@ -386,15 +397,19 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 							</p>
 							<ChevronRight size={14} />
 						</div>
-					</div>
+					</motion.div>
 
 					{/* Delivery/Pickup Toggle */}
-					<div className='w-full flex flex-col'>
+					<motion.div
+						variants={sectionVariants}
+						className='w-full flex flex-col'>
 						<div className='px-5 py-2 bg-muted text-muted-foreground'>
 							<p className='text-lg font-bold'>Delivery Option</p>
 						</div>
 						<div className='p-5 flex gap-4'>
-							<button
+							<motion.button
+								whileHover={{ scale: 1.02 }}
+								whileTap={{ scale: 0.98 }}
 								onClick={() => setDeliveryType('DELIVERY')}
 								className={cn(
 									'flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all',
@@ -404,8 +419,10 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 								)}>
 								<FaBicycle size={24} />
 								<span className='font-bold'>Delivery</span>
-							</button>
-							<button
+							</motion.button>
+							<motion.button
+								whileHover={{ scale: 1.02 }}
+								whileTap={{ scale: 0.98 }}
 								onClick={() => setDeliveryType('PICKUP')}
 								className={cn(
 									'flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all',
@@ -415,47 +432,55 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 								)}>
 								<PiStorefrontBold size={24} />
 								<span className='font-bold'>Pickup</span>
-							</button>
+							</motion.button>
 						</div>
-					</div>
+					</motion.div>
 
 					{/* Delivery Address - Only show for Delivery */}
-					{deliveryType === 'DELIVERY' && (
-						<div className='w-full flex flex-col'>
-							<div className='px-5 py-2 bg-muted text-muted-foreground'>
-								<p className='text-lg font-bold'>
-									Delivery address
-								</p>
-							</div>
-							<button
-								onClick={() => setIsAddressDialogOpen(true)}
-								className='flex items-center justify-between p-5 hover:bg-muted/50 transition-colors'>
-								<div className='flex gap-2 items-center flex-1'>
-									<PiMapPinAreaBold size={20} />
-									{selectedAddress ? (
-										<p className='text-left'>
-											{shortenText(
-												`${selectedAddress.line1}${
-													selectedAddress.line2
-														? ', ' +
-															selectedAddress.line2
-														: ''
-												}, ${selectedAddress.city}`,
-												40,
-											)}
-										</p>
-									) : (
-										<p className='text-foreground/50'>
-											Select address
-										</p>
-									)}
+					<AnimatePresence>
+						{deliveryType === 'DELIVERY' && (
+							<motion.div
+								initial={{ opacity: 0, height: 0 }}
+								animate={{ opacity: 1, height: 'auto' }}
+								exit={{ opacity: 0, height: 0 }}
+								className='w-full flex flex-col overflow-hidden'>
+								<div className='px-5 py-2 bg-muted text-muted-foreground'>
+									<p className='text-lg font-bold'>
+										Delivery address
+									</p>
 								</div>
-								<ChevronRight size={14} />
-							</button>
-						</div>
-					)}
+								<button
+									onClick={() => setIsAddressDialogOpen(true)}
+									className='flex items-center justify-between p-5 hover:bg-muted/50 transition-colors'>
+									<div className='flex gap-2 items-center flex-1'>
+										<PiMapPinAreaBold size={20} />
+										{selectedAddress ? (
+											<p className='text-left'>
+												{shortenText(
+													`${selectedAddress.line1}${
+														selectedAddress.line2
+															? ', ' +
+																selectedAddress.line2
+															: ''
+													}, ${selectedAddress.city}`,
+													40,
+												)}
+											</p>
+										) : (
+											<p className='text-foreground/50'>
+												Select address
+											</p>
+										)}
+									</div>
+									<ChevronRight size={14} />
+								</button>
+							</motion.div>
+						)}
+					</AnimatePresence>
 					{/* Phone number */}
-					<div className='w-full flex flex-col'>
+					<motion.div
+						variants={sectionVariants}
+						className='w-full flex flex-col'>
 						<div className='px-5 py-2 bg-muted text-muted-foreground'>
 							<p className='text-lg font-bold'>
 								Contact Information
@@ -508,10 +533,12 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 								</Button>
 							)}
 						</div>
-					</div>
+					</motion.div>
 
 					{/* Instructions */}
-					<div className='w-full flex flex-col'>
+					<motion.div
+						variants={sectionVariants}
+						className='w-full flex flex-col'>
 						<div className='px-5 py-2 bg-muted text-muted-foreground'>
 							<p className='text-lg font-bold'>Instructions</p>
 						</div>
@@ -565,10 +592,12 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 								</AccordionItem>
 							</Accordion>
 						</div>
-					</div>
+					</motion.div>
 
-					{/* Payment Summary */}
-					<div className='w-full flex flex-col'>
+					{/* Payment Method */}
+					<motion.div
+						variants={sectionVariants}
+						className='w-full flex flex-col'>
 						<div className='px-5 py-2 bg-muted text-muted-foreground'>
 							<p className='text-lg font-bold'>Payment Method</p>
 						</div>
@@ -581,10 +610,12 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 								}
 							/>
 						</div>
-					</div>
+					</motion.div>
 
 					{/* Payment Summary */}
-					<div className='w-full flex flex-col'>
+					<motion.div
+						variants={sectionVariants}
+						className='w-full flex flex-col'>
 						<div className='px-5 py-2 bg-muted text-muted-foreground'>
 							<p className='text-lg font-bold'>Payment Summary</p>
 						</div>
@@ -603,15 +634,9 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 								<p className='font-semibold'>
 									{deliveryType === 'PICKUP'
 										? 'Free (Pickup)'
-										: referralPromoInitiated
-											? 'Free (Referral Promo)'
-											: orderPromoInitiated
-												? 'Free (4th Order Promo)'
-												: isLoadingDeliveryFeeData
-													? 'Loading...'
-													: formatCurency(
-															deliveryFee,
-														)}
+											: isLoadingDeliveryFeeData
+												? 'Loading...'
+												: formatCurency(deliveryFee)}
 								</p>
 							</div>
 							<div className='flex items-center justify-between px-5'>
@@ -632,10 +657,12 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 								</p>
 							</div>
 						</div>
-					</div>
+					</motion.div>
 
 					{/* Checkout Button */}
-					<div className='px-5 py-2 bg-background sticky bottom-5'>
+					<motion.div
+						variants={sectionVariants}
+						className='px-5 py-2 bg-background sticky bottom-5'>
 						<Button
 							variant={'game'}
 							size={'lg'}
@@ -655,8 +682,8 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 									? 'Vendor is Closed'
 									: 'Make Payment'}
 						</Button>
-					</div>
-				</div>
+					</motion.div>
+				</motion.div>
 			</div>
 			<AddressesDrawer
 				isAddressDialogOpen={isAddressDialogOpen}

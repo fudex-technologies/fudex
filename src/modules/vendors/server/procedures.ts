@@ -82,8 +82,26 @@ export const vendorRouter = createTRPCRouter({
                 take: input.take,
                 skip: input.skip,
                 orderBy: { createdAt: "desc" },
-                include: { openingHours: true }
-            });
+                include: {
+                    openingHours: true,
+                    productItems: {
+                        where: {
+                            isActive: true,
+                            inStock: true
+                        },
+                        orderBy: {
+                            price: 'asc'
+                        },
+                        take: 1,
+                        select: {
+                            price: true
+                        }
+                    }
+                }
+            }).then(vendors => vendors.map(v => ({
+                ...v,
+                minPrice: v.productItems[0]?.price ?? null
+            })));
         }),
 
     listInfinite: publicProcedure
@@ -200,7 +218,14 @@ export const vendorRouter = createTRPCRouter({
                                     ELSE 0
                                 END
                             ELSE 0
-                        END as is_open
+                        END as is_open,
+                        (
+                            SELECT MIN(pi.price)
+                            FROM "ProductItem" pi
+                            WHERE pi."vendorId" = v.id
+                            AND pi."isActive" = true
+                            AND pi."inStock" = true
+                        ) as min_price
                     FROM "Vendor" v
                     WHERE ${conditions.join(' AND ')}
                     ORDER BY
@@ -228,6 +253,7 @@ export const vendorRouter = createTRPCRouter({
                         vendor.reviewsAverage = parseFloat(vendor.reviewsAverage) || 0;
                         vendor.reviewsCount = parseInt(vendor.reviewsCount) || 0;
                         vendor.deliveryFee = vendor.deliveryFee ? parseFloat(vendor.deliveryFee) : null;
+                        vendor.minPrice = vendor.min_price ? parseFloat(vendor.min_price) : null;
 
                         // Parse JSON fields if needed
                         // vendor.someJsonField = vendor.someJsonField ? JSON.parse(vendor.someJsonField) : null;
@@ -281,17 +307,37 @@ export const vendorRouter = createTRPCRouter({
                 take: limit + 1,
                 skip: skip,
                 orderBy: { createdAt: "desc" },
-                include: { openingHours: true }
+                include: {
+                    openingHours: true,
+                    productItems: {
+                        where: {
+                            isActive: true,
+                            inStock: true
+                        },
+                        orderBy: {
+                            price: 'asc'
+                        },
+                        take: 1,
+                        select: {
+                            price: true
+                        }
+                    }
+                }
             });
 
+            const processedItems = items.map(v => ({
+                ...v,
+                minPrice: v.productItems[0]?.price ?? null
+            }));
+
             let nextCursor: number | undefined = undefined;
-            if (items.length > limit) {
-                items.pop();
+            if (processedItems.length > limit) {
+                processedItems.pop();
                 nextCursor = skip + limit;
             }
 
             return {
-                items,
+                items: processedItems,
                 nextCursor,
             };
         }),
@@ -304,7 +350,14 @@ export const vendorRouter = createTRPCRouter({
                 include: {
                     openingHours: true,
                     addresses: true,
-                    products: true,
+                    products: {
+                        include: {
+                            items: {
+                                where: { isActive: true },
+                                orderBy: { price: "asc" }
+                            }
+                        }
+                    },
                     vendorCategories: {
                         include: {
                             category: true
@@ -412,7 +465,7 @@ export const vendorRouter = createTRPCRouter({
                 },
 
                 orderBy: {
-                    createdAt: "desc",
+                    price: "asc",
                 },
             });
         }),
@@ -479,7 +532,7 @@ export const vendorRouter = createTRPCRouter({
             return ctx.prisma.productItem.findMany({
                 where,
                 take: input.take,
-                orderBy: { name: "asc" }
+                orderBy: { price: "asc" }
             });
         }),
 
@@ -519,7 +572,14 @@ export const vendorRouter = createTRPCRouter({
             });
 
             // Filter out products that have no items
-            return products.filter((product) => product.items.length > 0);
+            const filteredProducts = products.filter((product) => product.items.length > 0);
+
+            // Sort products by their cheapest item price
+            return filteredProducts.sort((a, b) => {
+                const aMinPrice = Math.min(...a.items.map(i => i.price));
+                const bMinPrice = Math.min(...b.items.map(i => i.price));
+                return aMinPrice - bMinPrice;
+            });
         }),
 
     // Product item listing for a vendor
@@ -532,7 +592,7 @@ export const vendorRouter = createTRPCRouter({
             return ctx.prisma.productItem.findMany({
                 where: { vendorId: input.vendorId, isActive: true },
                 take: input.take,
-                orderBy: { createdAt: "desc" },
+                orderBy: { price: "asc" },
                 include: {
                     product: true,
                     categories: {
@@ -584,6 +644,9 @@ export const vendorRouter = createTRPCRouter({
                 };
             }
 
+            // Only include products from approved vendors
+            productWhere.vendor = { approvalStatus: 'APPROVED' };
+
             const [vendors, products] = await Promise.all([
                 ctx.prisma.vendor.findMany({
                     where: vendorWhere,
@@ -598,7 +661,8 @@ export const vendorRouter = createTRPCRouter({
                     skip: input.skip,
                     orderBy: { createdAt: "desc" },
                     include: {
-                        product: true
+                        product: true,
+                        vendor: true
                     }
                 }),
             ]);
@@ -646,6 +710,8 @@ export const vendorRouter = createTRPCRouter({
                     some: { categoryId: { in: categoryIds } }
                 };
             }
+            // Only include products from approved vendors
+            productWhere.vendor = { approvalStatus: 'APPROVED' };
 
             const [vendors, products] = await Promise.all([
                 ctx.prisma.vendor.findMany({
@@ -661,7 +727,8 @@ export const vendorRouter = createTRPCRouter({
                     skip: skip,
                     orderBy: { createdAt: "desc" },
                     include: {
-                        product: true
+                        product: true,
+                        vendor: true
                     }
                 }),
             ]);

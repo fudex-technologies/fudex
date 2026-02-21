@@ -938,8 +938,7 @@ export const phoneAuthRouter = createTRPCRouter({
                     referrerUserId: referrer.id,
                     referredUserId: input.newUserId,
                     referralCode: input.referralCode.toUpperCase().trim(),
-                    status: 'CONFIRMED',
-                    confirmedAt: new Date(),
+                    status: 'PENDING',
                 }
             });
 

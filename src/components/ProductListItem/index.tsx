@@ -6,6 +6,7 @@ import { formatCurency, shortenText } from '@/lib/commonFunctions';
 import Link from 'next/link';
 import { PAGES_DATA } from '@/data/pagesData';
 import { cn } from '@/lib/utils';
+import { motion } from 'motion/react';
 
 interface ProductData {
 	id: string;
@@ -25,9 +26,16 @@ interface ProductItemData {
 	slug?: string;
 	isActive?: boolean;
 	inStock?: boolean;
+	vendorName?: string;
 }
 
-const ProductListItem = ({ productItem }: { productItem: ProductItemData }) => {
+const ProductListItem = ({
+	productItem,
+	showVendor = false,
+}: {
+	productItem: ProductItemData;
+	showVendor?: boolean;
+}) => {
 	// Use product name if available, otherwise fallback to productItem name
 	const displayName = productItem?.product?.name || productItem?.name || '';
 
@@ -50,61 +58,82 @@ const ProductListItem = ({ productItem }: { productItem: ProductItemData }) => {
 		productItem?.isActive !== false && productItem?.inStock !== false;
 
 	return (
-		<Link
-			href={url}
-			onClick={(e) => !isAvailable && e.preventDefault()}
-			className={cn(
-				'w-full min-h-[100px] flex relative gap-2 p-5 transition-all',
-				!isAvailable && 'opacity-60 cursor-not-allowed grayscale-[0.5]',
-			)}>
-			<div className='relative w-[100px] h-[100px] shrink-0'>
-				<DynamicCover
-					src={
-						productItem?.images && productItem?.images?.length > 0
-							? productItem?.images[0]
-							: null
-					}
-					alt={displayName}
-					className='w-full h-full rounded-md overflow-hidden'
-					imageClassName='object-cover'
-				/>
-				{!isAvailable && (
-					<div className='absolute inset-0 bg-black/60 z-1 flex items-center justify-center pointer-events-none'>
-						<div className='mx-auto flex flex-col items-center text-white/90 justify-center text-center'>
-							<p className='font-bold text-sm uppercase tracking-wider'>
-								{productItem?.isActive === false
-									? 'Unavailable'
-									: 'Sold Out'}
-							</p>
+		<motion.div
+			whileHover={{ backgroundColor: 'rgba(var(--primary-rgb), 0.02)' }}
+			whileTap={{ scale: 0.995 }}
+			transition={{ duration: 0.2 }}>
+			<Link
+				href={url}
+				onClick={(e) => !isAvailable && e.preventDefault()}
+				className={cn(
+					'w-full min-h-[100px] flex relative gap-2 p-5 transition-all',
+					!isAvailable &&
+						'opacity-60 cursor-not-allowed grayscale-[0.5]',
+				)}>
+				<div className='relative w-[100px] h-[100px] shrink-0'>
+					<DynamicCover
+						src={
+							productItem?.images &&
+							productItem?.images?.length > 0
+								? productItem?.images[0]
+								: null
+						}
+						alt={displayName}
+						className='w-full h-full rounded-md overflow-hidden'
+						imageClassName='object-cover'
+					/>
+					{!isAvailable && (
+						<div className='absolute inset-0 bg-black/60 z-1 flex items-center justify-center pointer-events-none'>
+							<div className='mx-auto flex flex-col items-center text-white/90 justify-center text-center'>
+								<p className='font-bold text-sm uppercase tracking-wider'>
+									{productItem?.isActive === false
+										? 'Unavailable'
+										: 'Sold Out'}
+								</p>
+							</div>
 						</div>
-					</div>
-				)}
-			</div>
-			<div className='flex-1 flex justify-between flex-wrap gap-x-2 py-1'>
-				<div className='flex flex-col'>
-					<p className='font-medium'>
-						{shortenText(
-							`${productItem?.product?.name}`,
-							30,
-						)}
-					</p>
-					{description && (
-						<p className='text-foreground/50 text-sm'>
-							{shortenText(description, 50)}
-						</p>
 					)}
 				</div>
-				<p className=' text-sm'>
-					From {formatCurency(productItem?.price)}
-				</p>
-			</div>
-
-			{isAvailable && (
-				<div className='absolute bottom-5 right-5 p-1 rounded-full flex items-center justify-center bg-primary text-primary-foreground'>
-					<Plus width={15} height={15} />
+				<div className='flex-1 flex justify-between flex-wrap gap-x-2 py-1'>
+					<div className='flex flex-col'>
+						<p className='font-medium'>
+							{shortenText(`${productItem?.product?.name}`, 30)}
+						</p>
+						{description && (
+							<p className='text-foreground/50 text-sm'>
+								{shortenText(description, 50)}
+							</p>
+						)}
+						{/* Vendor indicator */}
+						{showVendor && productItem.vendorId && productItem.vendorName && (
+							<p className='text-foreground/60 text-sm mt-1'>
+								From{' '}
+								<Link
+									href={PAGES_DATA.single_vendor_page(
+										productItem.vendorId,
+									)}
+									className='hover:underline'>
+									{productItem.vendorName ?? 'Vendor'}
+								</Link>
+							</p>
+						)}
+					</div>
+					<p className=' text-sm'>
+						From {formatCurency(productItem?.price)}
+					</p>
 				</div>
-			)}
-		</Link>
+
+				{isAvailable && (
+					<motion.div
+						initial={{ scale: 0.8, opacity: 0 }}
+						animate={{ scale: 1, opacity: 1 }}
+						whileHover={{ scale: 1.1 }}
+						className='absolute bottom-5 right-5 p-1 rounded-full flex items-center justify-center bg-primary text-primary-foreground'>
+						<Plus width={15} height={15} />
+					</motion.div>
+				)}
+			</Link>
+		</motion.div>
 	);
 };
 

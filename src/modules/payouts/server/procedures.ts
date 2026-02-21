@@ -228,4 +228,120 @@ export const payoutRouter = createTRPCRouter({
 
             return payout;
         }),
+
+    // SUPER_ADMIN: Manually mark a payout as paid
+    markPayoutAsPaidManually: adminProcedure
+        .input(z.object({ payoutId: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+            const payout = await ctx.prisma.vendorPayout.findUnique({
+                where: { id: input.payoutId }
+            });
+
+            if (!payout) throw new Error("Payout not found");
+            if (payout.status === "SUCCESS") throw new Error("Payout is already marked as paid");
+
+            return await ctx.prisma.$transaction(async (tx) => {
+                const updatedPayout = await tx.vendorPayout.update({
+                    where: { id: input.payoutId },
+                    data: {
+                        status: "SUCCESS",
+                        completedAt: new Date(),
+                        transferRef: `MANUAL-${uuidv4().substring(0, 8)}`,
+                        transferCode: "MANUAL",
+                    }
+                });
+
+                await tx.order.update({
+                    where: { id: payout.orderId },
+                    data: { payoutStatus: "PAID" }
+                });
+
+                return updatedPayout;
+            });
+        }),
+
+    // SUPER_ADMIN: Get payout statistics
+    getPayoutStats: adminProcedure
+        .query(async ({ ctx }) => {
+            const [
+                totalPending,
+                totalPaidCount,
+                totalPaidAmount,
+                totalFailed
+            ] = await Promise.all([
+                ctx.prisma.vendorPayout.aggregate({
+                    _sum: { amount: true },
+                    _count: true,
+                    where: { status: "PENDING" }
+                }),
+                ctx.prisma.vendorPayout.count({ where: { status: "SUCCESS" } }),
+                ctx.prisma.vendorPayout.aggregate({
+                    _sum: { amount: true },
+                    where: { status: "SUCCESS" }
+                }),
+                ctx.prisma.vendorPayout.count({ where: { status: "FAILED" } })
+            ]);
+
+            return {
+                pendingCount: totalPending._count || 0,
+                pendingAmount: totalPending._sum.amount || 0,
+                paidCount: totalPaidCount,
+                paidAmount: totalPaidAmount._sum.amount || 0,
+                failedCount: totalFailed
+            };
+        }),
+
+    // SUPER_ADMIN: Get all payouts with pagination and filtering
+    getAllPayoutsInfinite: adminProcedure
+        .input(z.object({
+            limit: z.number().min(1).max(100).default(20),
+            cursor: z.string().nullish(),
+            status: z.nativeEnum(PayoutTransferStatus).optional(),
+            vendorId: z.string().optional(),
+            search: z.string().optional(), // Search by order ID or vendor name
+        }))
+        .query(async ({ ctx, input }) => {
+            const { limit, cursor, status, vendorId, search } = input;
+            const where: any = {};
+
+            if (status) where.status = status;
+            if (vendorId) where.vendorId = vendorId;
+            if (search) {
+                where.OR = [
+                    { orderId: { contains: search, mode: 'insensitive' } },
+                    { transferRef: { contains: search, mode: 'insensitive' } },
+                    { vendor: { name: { contains: search, mode: 'insensitive' } } }
+                ];
+            }
+
+            const items = await ctx.prisma.vendorPayout.findMany({
+                take: limit + 1,
+                cursor: cursor ? { id: cursor } : undefined,
+                where,
+                include: {
+                    vendor: {
+                        select: { name: true, email: true }
+                    },
+                    order: {
+                        select: {
+                            id: true,
+                            createdAt: true,
+                            user: { select: { name: true, email: true } }
+                        }
+                    }
+                },
+                orderBy: { initiatedAt: 'desc' }
+            });
+
+            let nextCursor: typeof cursor | undefined = undefined;
+            if (items.length > limit) {
+                const nextItem = items.pop();
+                nextCursor = nextItem!.id;
+            }
+
+            return {
+                items,
+                nextCursor
+            };
+        }),
 });

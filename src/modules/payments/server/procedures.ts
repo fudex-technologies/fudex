@@ -5,10 +5,7 @@ import {
 	initializePaystackTransaction,
 	verifyPaystackTransaction,
 } from "@/lib/paystack";
-import { sendOperatorNewOrderEmail, sendVendorNewOrderEmail } from "@/lib/email";
-import { NotificationService } from "@/modules/notifications/server/service";
-import { PAGES_DATA } from "@/data/pagesData";
-import prisma from "@/lib/prisma";
+// Notifications are sent via handlePaymentCompletion (see @/lib/payment-completion.ts)
 import { handlePaymentCompletion } from "@/lib/payment-completion";
 import { WalletTransactionSource, WalletTransactionType } from "@prisma/client";
 
@@ -74,7 +71,7 @@ export const paymentRouter = createTRPCRouter({
 							}
 
 							// Handle payment completion (updates status and sends notifications if needed)
-							await handlePaymentCompletion(order.payment.id).catch((error) => {
+							await handlePaymentCompletion(order.payment.id, 'create-payment-verify').catch((error) => {
 								console.error('[Payment] Error handling payment completion in createPayment:', error);
 								// Don't throw - payment is already completed, just notification might have failed
 							});
@@ -94,13 +91,11 @@ export const paymentRouter = createTRPCRouter({
 						if (error.message === "Payment already completed for this order") {
 							throw error; // Re-throw for frontend to handle
 						}
-						// If verification errored (e.g. network), we might assume it's safe to retry 
-						// OR fail safe. Let's assume if we can't verify, we shouldn't delete blindly?
-						// But if the user is clicking "Pay Now", they want to pay.
-						// Safest: Delete old and retry.
-						await ctx.prisma.payment.delete({
-							where: { id: order.payment.id },
-						}).catch(() => { }); // Ignore duplicate delete errors
+						// If verification errored (e.g. network), DO NOT delete the existing PENDING payment.
+						// Let the webhook (source-of-truth) reconcile the payment later or the frontend retry verification.
+						throw new Error(
+							`Paystack verification failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+						);
 					}
 				}
 			}
@@ -138,7 +133,7 @@ export const paymentRouter = createTRPCRouter({
 				});
 
 				// Handle payment completion logic
-				await handlePaymentCompletion(payment.id);
+				await handlePaymentCompletion(payment.id, 'wallet-full');
 
 				return {
 					payment,
@@ -244,6 +239,39 @@ export const paymentRouter = createTRPCRouter({
 				throw new Error("Unauthorized: This payment does not belong to you");
 			}
 
+			// If already completed, just return success
+			if (payment.status === "COMPLETED") {
+				return {
+					verified: true,
+					alreadyVerified: true,
+					payment,
+				};
+			}
+
+			// If provider is wallet, we don't need to verify with Paystack
+			// It should already be marked as COMPLETED during createPayment, but if it's PENDING for some reason, we handle it
+			if (payment.provider === "wallet") {
+				await ctx.prisma.payment.update({
+					where: { id: payment.id },
+					data: { status: "COMPLETED", paidAt: new Date() },
+				});
+
+				// Re-fetch to return the updated payment
+				const updatedPayment = await ctx.prisma.payment.findUnique({
+					where: { id: payment.id },
+					include: { order: true },
+				});
+
+
+				await handlePaymentCompletion(payment.id);
+
+				return {
+					verified: true,
+					alreadyVerified: false,
+					payment: updatedPayment,
+				};
+			}
+
 			// Verify with Paystack
 			let verification;
 			try {
@@ -289,7 +317,7 @@ export const paymentRouter = createTRPCRouter({
 			}
 
 			// Update payment status if not already completed
-			if (paymentStatus === "COMPLETED" && payment.status !== "COMPLETED") {
+			if (paymentStatus === "COMPLETED") {
 				await ctx.prisma.payment.update({
 					where: { id: payment.id },
 					data: {
@@ -303,110 +331,13 @@ export const paymentRouter = createTRPCRouter({
 						status: "FAILED",
 					},
 				});
-
-				// SECURITY: Only send notifications if not already sent (idempotency)
-				if (!payment.notificationsSent) {
-					const vendorId = payment?.order?.vendorId
-					const orderId = payment?.orderId
-					// Notify Vendor
-					if (vendorId && orderId) {
-						const vendor = await ctx.prisma.vendor.findUnique({
-							where: { id: vendorId },
-							select: {
-								name: true,
-								owner: {
-									select: {
-										id: true,
-										email: true
-									}
-								}
-							}
-						});
-
-						if (vendor?.owner) {
-							// 1. Notify Vendor (Push)
-							NotificationService.sendToUser(vendor.owner.id, {
-								title: 'New Order Received! 🛍️',
-								body: `You have a new order (#${orderId.slice(0, 8)}) worth ${payment.order?.currency} ${payment.order?.productAmount.toFixed(2)}.`,
-								url: PAGES_DATA.vendor_dashboard_new_orders_page,
-							}).catch(console.error);
-
-							// 2. Notify Vendor (Email)
-							if (vendor.owner.email && payment.order) {
-								sendVendorNewOrderEmail(
-									vendor.owner.email,
-									vendor.name,
-									orderId,
-									payment.order.productAmount,
-									payment.order.currency,
-									'orders@fudex.ng'
-								).catch(console.error);
-							}
-						}
-
-						// 3. Notify Operators (Push)
-						NotificationService.sendToRole('OPERATOR', {
-							title: 'New Order Paid! 💰',
-							body: `Order #${orderId.slice(0, 8)} has been paid and is ready for processing.`,
-							url: PAGES_DATA.operator_dashboard_orders_page // Correct page for operators
-						}).catch(console.error);
-
-						// 4. Notify Operators (Email)
-						const operators = await ctx.prisma.user.findMany({
-							where: {
-								roles: {
-									some: {
-										role: "OPERATOR"
-									}
-								}
-							},
-							select: { email: true }
-						});
-						const operatorEmails = operators.map(op => op.email).filter((email): email is string => !!email);
-
-						if (operatorEmails.length > 0) {
-							const customer = await ctx.prisma.user.findUnique({
-								where: { id: payment.userId }
-							});
-							const customerAddress = await ctx.prisma.address.findUnique(
-								{ where: { id: payment.order.addressId! } }
-							);
-							const vendor = await ctx.prisma.vendor.findUnique(
-								{ where: { id: vendorId }, include: { addresses: true } }
-							);
-
-							if (customer && customerAddress && vendor) {
-								sendOperatorNewOrderEmail(
-									operatorEmails,
-									vendor.name,
-									`${vendor.addresses?.[0]?.line1}, ${vendor.addresses?.[0]?.city}, ${vendor.addresses?.[0]?.state}`,
-									`${customer.firstName} ${customer.lastName}`,
-									`${customerAddress.line1}, ${customerAddress.city}, ${customerAddress.state}`,
-									orderId,
-									payment.amount,
-									payment.currency,
-									'orders@fudex.ng'
-								).catch(console.error);
-							}
-						}
-					}
-
-					// Mark notifications as sent
-					await ctx.prisma.payment.update({
-						where: { id: payment.id },
-						data: {
-							notificationsSent: true,
-							notificationsSentAt: new Date(),
-						},
-					});
-				}
 			}
 
 			// Handle payment completion (updates order status and sends notifications if needed)
 			let alreadyCompleted = false;
 			if (paymentStatus === "COMPLETED") {
 				try {
-					const result = await handlePaymentCompletion(payment.id);
+					const result = await handlePaymentCompletion(payment.id, 'manual-verify');
 					alreadyCompleted = result.alreadyCompleted;
 				} catch (error) {
 					console.error('[Payment] Error handling payment completion:', error);
@@ -498,5 +429,45 @@ export const paymentRouter = createTRPCRouter({
 			const total = await ctx.prisma.payment.count({ where });
 
 			return { payments, total };
+		}),
+
+	getPaymentStats: adminProcedure
+		.query(async ({ ctx }) => {
+			const today = new Date();
+			today.setHours(0, 0, 0, 0);
+
+			const [
+				totalRevenue,
+				todayRevenue,
+				completedCount,
+				pendingCount,
+				failedCount,
+				refundedCount
+			] = await Promise.all([
+				ctx.prisma.payment.aggregate({
+					_sum: { amount: true },
+					where: { status: 'COMPLETED' }
+				}),
+				ctx.prisma.payment.aggregate({
+					_sum: { amount: true },
+					where: {
+						status: 'COMPLETED',
+						paidAt: { gte: today }
+					}
+				}),
+				ctx.prisma.payment.count({ where: { status: 'COMPLETED' } }),
+				ctx.prisma.payment.count({ where: { status: 'PENDING' } }),
+				ctx.prisma.payment.count({ where: { status: 'FAILED' } }),
+				ctx.prisma.payment.count({ where: { status: 'REFUNDED' } })
+			]);
+
+			return {
+				totalRevenue: totalRevenue._sum.amount || 0,
+				todayRevenue: todayRevenue._sum.amount || 0,
+				completedCount,
+				pendingCount,
+				failedCount,
+				refundedCount
+			};
 		}),
 });

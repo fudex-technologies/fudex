@@ -2,8 +2,8 @@ import { createTRPCRouter, operatorProcedure, protectedProcedure } from "@/trpc/
 import { z } from "zod";
 import { OrderStatus, RiderRequestStatus } from "@prisma/client";
 import { normalizePhoneNumber } from "@/lib/commonFunctions";
-import { RefundService } from "@/modules/wallet/server/refund.service";
-
+import { RefundService } from '@/modules/wallet/server/refund.service';
+import { sendOrderOutForDeliveryEmail } from '@/lib/email';
 export const operatorRouter = createTRPCRouter({
     // Check if user is an operator
     checkOperatorRole: protectedProcedure.query(async ({ ctx }) => {
@@ -67,6 +67,14 @@ export const operatorRouter = createTRPCRouter({
                             line2: true,
                             city: true,
                             state: true,
+                            customArea: true,
+                            area: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    state: true,
+                                }
+                            }
                         }
                     },
                     user: {
@@ -113,15 +121,49 @@ export const operatorRouter = createTRPCRouter({
                 }
             });
 
+            // Fetch wallet deductions for these orders to compute paymentMethod
+            const orderIds = items.map(item => item.id);
+            const walletDebits = await ctx.prisma.walletTransaction.groupBy({
+                by: ['sourceId'],
+                where: {
+                    sourceId: { in: orderIds },
+                    sourceType: 'ORDER_PAYMENT',
+                    type: 'DEBIT',
+                },
+                _sum: { amount: true }
+            });
+
             let nextCursor: typeof cursor | undefined = undefined;
             if (items.length > limit) {
                 const nextItem = items.pop();
                 nextCursor = nextItem!.id;
             }
+            // return {
+            //     items,
+            //     nextCursor,
+            // };
+
             return {
-                items,
+                items: items.map(item => {
+                    const debit = walletDebits.find(wd => wd.sourceId === item.id);
+                    const walletUsed = debit?._sum.amount?.toNumber() || 0;
+                    let paymentMethod = item.payment?.provider === 'wallet' ? 'Wallet' : 'Paystack';
+
+                    if (item.payment?.provider === 'paystack' && walletUsed > 0) {
+                        paymentMethod = 'Wallet + Paystack';
+                    } else if (item.payment?.provider === 'paystack') {
+                        paymentMethod = 'Paystack';
+                    } else if (item.payment?.provider === 'wallet') {
+                        paymentMethod = 'Wallet';
+                    }
+
+                    return {
+                        ...item,
+                        paymentMethod
+                    };
+                }),
                 nextCursor,
-            };
+            }
         }),
 
     // Legacy method for backward compatibility
@@ -145,7 +187,7 @@ export const operatorRouter = createTRPCRouter({
                 }
             }
 
-            return ctx.prisma.order.findMany({
+            const rawItems = await ctx.prisma.order.findMany({
                 where,
                 take: input.take,
                 skip: input.skip,
@@ -165,6 +207,14 @@ export const operatorRouter = createTRPCRouter({
                             line2: true,
                             city: true,
                             state: true,
+                            customArea: true,
+                            area: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    state: true,
+                                }
+                            }
                         }
                     },
                     user: {
@@ -180,6 +230,15 @@ export const operatorRouter = createTRPCRouter({
                             quantity: true,
                         }
                     },
+                    payment: {
+                        select: {
+                            id: true,
+                            amount: true,
+                            status: true,
+                            provider: true,
+                            providerRef: true,
+                        }
+                    },
                     assignedRider: {
                         select: {
                             id: true,
@@ -189,21 +248,70 @@ export const operatorRouter = createTRPCRouter({
                     }
                 }
             });
+
+            // Fetch wallet deductions for these orders to compute paymentMethod
+            const orderIds = rawItems.map(item => item.id);
+            const walletDebits = await ctx.prisma.walletTransaction.groupBy({
+                by: ['sourceId'],
+                where: {
+                    sourceId: { in: orderIds },
+                    sourceType: 'ORDER_PAYMENT',
+                    type: 'DEBIT',
+                },
+                _sum: { amount: true }
+            });
+
+            return rawItems.map(item => {
+                const debit = walletDebits.find(wd => wd.sourceId === item.id);
+                const walletUsed = debit?._sum.amount?.toNumber() || 0;
+                let paymentMethod = item.payment?.provider === 'wallet' ? 'Wallet' : 'Paystack';
+
+                if (item.payment?.provider === 'paystack' && walletUsed > 0) {
+                    paymentMethod = 'Wallet + Paystack';
+                } else if (item.payment?.provider === 'paystack') {
+                    paymentMethod = 'Paystack';
+                } else if (item.payment?.provider === 'wallet') {
+                    paymentMethod = 'Wallet';
+                }
+
+                return {
+                    ...item,
+                    paymentMethod
+                };
+            });
         }),
 
     updateOrderStatus: operatorProcedure
         .input(z.object({
+            currentStatus: z.nativeEnum(OrderStatus),
             orderId: z.string(),
             status: z.nativeEnum(OrderStatus)
         }))
         .mutation(async ({ ctx, input }) => {
             const updated = await ctx.prisma.order.update({
                 where: { id: input.orderId },
-                data: { status: input.status }
+                data: { status: input.status },
+                include: {
+                    user: { select: { name: true, email: true } },
+                    vendor: { select: { name: true } }
+                }
             });
 
+            // Notify Customer if Out for Delivery
+            if (input.status === "OUT_FOR_DELIVERY" && updated.user?.email) {
+                sendOrderOutForDeliveryEmail(
+                    updated.user.email,
+                    updated.user.name || "Customer",
+                    updated.id,
+                    updated.vendor?.name || "the vendor",
+                    "order@fudex.ng"
+                ).catch(err => {
+                    console.error(`[Email] Error sending out-for-delivery email for order ${updated.id}:`, err);
+                });
+            }
+
             // Handle Refund if cancelled
-            if (input.status === "CANCELLED") {
+            if (input.status === "CANCELLED" && input.currentStatus !== "PENDING") {
                 await RefundService.refundOrder(input.orderId).catch(err => {
                     console.error(`[Refund] Error refunding operator cancelled order ${input.orderId}:`, err);
                 });

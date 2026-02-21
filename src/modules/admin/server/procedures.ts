@@ -468,8 +468,14 @@ export const adminRouter = createTRPCRouter({
     getDashboardOverview: adminProcedure
         .query(async ({ ctx }) => {
             const [
-                totalRevenue,
+                totalRevenueFromDeliveredOrders,
+                totalPackageRevenue,
+                totalFeesFromDeliveredOrders,
                 totalOrders,
+                deliveredOrders,
+                cancelledOrders,
+                pendingOrders,
+                processingOrders,
                 totalUsers,
                 totalVendors,
                 activeVendors,
@@ -477,11 +483,23 @@ export const adminRouter = createTRPCRouter({
                 pendingVendorRequests,
                 confirmedReferrals
             ] = await Promise.all([
-                ctx.prisma.payment.aggregate({
-                    _sum: { amount: true },
-                    where: { status: "COMPLETED" }
+                ctx.prisma.order.aggregate({
+                    _sum: { totalAmount: true },
+                    where: { status: "DELIVERED" }
+                }),
+                ctx.prisma.packageOrder.aggregate({
+                    _sum: { totalAmount: true },
+                    where: { status: "DELIVERED" }
+                }),
+                ctx.prisma.order.aggregate({
+                    _sum: { serviceFee: true, deliveryFee: true, platformFee: true },
+                    where: { status: "DELIVERED" }
                 }),
                 ctx.prisma.order.count(),
+                ctx.prisma.order.count({ where: { status: "DELIVERED" } }),
+                ctx.prisma.order.count({ where: { status: "CANCELLED" } }),
+                ctx.prisma.order.count({ where: { status: "PENDING" } }),
+                ctx.prisma.order.count({ where: { status: { in: ["PAID", "ACCEPTED", "PREPARING", "READY", "OUT_FOR_DELIVERY"] } } }),
                 ctx.prisma.user.count(),
                 ctx.prisma.vendor.count(),
                 ctx.prisma.vendor.count({ where: { approvalStatus: "APPROVED" } }),
@@ -497,30 +515,35 @@ export const adminRouter = createTRPCRouter({
             sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
 
             const [currentMonthRevenue, previousMonthRevenue] = await Promise.all([
-                ctx.prisma.payment.aggregate({
-                    _sum: { amount: true },
-                    where: { status: "COMPLETED", createdAt: { gte: thirtyDaysAgo } }
+                ctx.prisma.order.aggregate({
+                    _sum: { totalAmount: true },
+                    where: { status: "DELIVERED", createdAt: { gte: thirtyDaysAgo } }
                 }),
-                ctx.prisma.payment.aggregate({
-                    _sum: { amount: true },
-                    where: { status: "COMPLETED", createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } }
+                ctx.prisma.order.aggregate({
+                    _sum: { totalAmount: true },
+                    where: { status: "DELIVERED", createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } }
                 })
             ]);
 
-            const revChange = previousMonthRevenue._sum.amount
-                ? ((currentMonthRevenue._sum.amount || 0) - previousMonthRevenue._sum.amount) / previousMonthRevenue._sum.amount * 100
+            const revChange = previousMonthRevenue._sum.totalAmount
+                ? ((currentMonthRevenue._sum.totalAmount || 0) - previousMonthRevenue._sum.totalAmount) / previousMonthRevenue._sum.totalAmount * 100
                 : 0;
 
             return {
-                totalRevenue: totalRevenue._sum.amount || 0,
+                totalRevenueFromDeliveredOrders: (totalRevenueFromDeliveredOrders._sum.totalAmount || 0) + (totalPackageRevenue._sum.totalAmount || 0),
                 revenueTrend: revChange,
-                totalOrders,
+                lifetimeOrders: totalOrders,
+                deliveredOrders,
+                cancelledOrders,
+                pendingOrders,
+                processingOrders,
                 totalUsers,
                 totalVendors,
                 activeVendors,
                 totalRiders,
                 pendingVendorRequests,
-                confirmedReferrals
+                confirmedReferrals,
+                totalFeesFromDeliveredOrders: (totalFeesFromDeliveredOrders._sum.serviceFee || 0) + (totalFeesFromDeliveredOrders._sum.deliveryFee || 0) + (totalFeesFromDeliveredOrders._sum.platformFee || 0)
             };
         }),
 
@@ -584,8 +607,11 @@ export const adminRouter = createTRPCRouter({
                 if (!chartData[key]) {
                     chartData[key] = { date: key, orders: 0, revenue: 0 };
                 }
-                chartData[key].orders++;
-                // Only count revenue for COMPLETED payments
+                // Only count DELIVERED orders in the count to avoid false positives
+                if (order.status === "DELIVERED") {
+                    chartData[key].orders++;
+                }
+                // Only count revenue for COMPLETED payments and non-cancelled orders
                 if (order.status !== "CANCELLED" && order.payment?.status === "COMPLETED") {
                     chartData[key].revenue += order.totalAmount;
                 }
@@ -601,14 +627,37 @@ export const adminRouter = createTRPCRouter({
             const vendors = await ctx.prisma.vendor.findMany({
                 take: input.limit,
                 include: {
-                    _count: { select: { orders: true } },
+                    _count: {
+                        select: {
+                            orders: {
+                                where: { status: "DELIVERED" }
+                            }
+                        }
+                    },
                 },
-                orderBy: { orders: { _count: "desc" } }
+                orderBy: {
+                    orders: {
+                        _count: "desc"
+                    }
+                },
+                where: {
+                    orders: {
+                        some: { status: "DELIVERED" }
+                    }
+                }
             });
 
             // Also get revenue per vendor (simplified, might need more complex aggregation if many orders)
             const vendorsWithRevenue = await Promise.all(vendors.map(async (v) => {
-                const revenue = await ctx.prisma.order.aggregate({
+                const productRevenue = await ctx.prisma.order.aggregate({
+                    _sum: { productAmount: true },
+                    where: {
+                        vendorId: v.id,
+                        status: { not: "CANCELLED" },
+                        payment: { status: "COMPLETED" }
+                    }
+                });
+                const totalRevenue = await ctx.prisma.order.aggregate({
                     _sum: { totalAmount: true },
                     where: {
                         vendorId: v.id,
@@ -618,12 +667,13 @@ export const adminRouter = createTRPCRouter({
                 });
                 return {
                     ...v,
-                    revenue: revenue._sum.totalAmount || 0,
+                    productRevenue: productRevenue._sum.productAmount || 0,
+                    totalRevenue: totalRevenue._sum.totalAmount || 0,
                     orderCount: v._count.orders
                 };
             }));
 
-            return vendorsWithRevenue.sort((a, b) => b.revenue - a.revenue);
+            return vendorsWithRevenue.sort((a, b) => b.totalRevenue - a.totalRevenue);
         }),
 
     // Get recent activity
@@ -841,7 +891,7 @@ export const adminRouter = createTRPCRouter({
             const items = await ctx.prisma.category.findMany({
                 take: limit + 1,
                 cursor: cursor ? { id: cursor } : undefined,
-                orderBy: { name: "asc" },
+                orderBy: [{ arrangementIndex: "asc" }, { id: "asc" }],
                 include: {
                     _count: {
                         select: {
@@ -868,6 +918,7 @@ export const adminRouter = createTRPCRouter({
             name: z.string(),
             slug: z.string().optional(),
             image: z.string().optional(),
+            arrangementIndex: z.number().optional().default(0),
         }))
         .mutation(({ ctx, input }) => {
             const data = {
@@ -883,6 +934,7 @@ export const adminRouter = createTRPCRouter({
             name: z.string().optional(),
             slug: z.string().optional(),
             image: z.string().optional(),
+            arrangementIndex: z.number().optional(),
         }))
         .mutation(({ ctx, input }) => {
             const { id, ...data } = input;
@@ -911,16 +963,27 @@ export const adminRouter = createTRPCRouter({
             limit: z.number().min(1).max(100).default(50),
             cursor: z.string().nullish(),
             userId: z.string().optional(),
+            q: z.string().optional(),
             sourceType: z.nativeEnum(WalletTransactionSource).optional(),
         }))
         .query(async ({ ctx, input }) => {
-            const { limit, cursor, userId, sourceType } = input;
-
+            const { limit, cursor, userId, q, sourceType } = input;
             const where: any = {};
+
             if (userId) {
                 const wallet = await ctx.prisma.wallet.findUnique({ where: { userId } });
                 if (wallet) where.walletId = wallet.id;
                 else return { items: [], nextCursor: undefined };
+            } else if (q) {
+                where.wallet = {
+                    user: {
+                        OR: [
+                            { name: { contains: q, mode: 'insensitive' } },
+                            { email: { contains: q, mode: 'insensitive' } },
+                            { phone: { contains: q, mode: 'insensitive' } },
+                        ]
+                    }
+                };
             }
             if (sourceType) where.sourceType = sourceType;
 
@@ -1003,6 +1066,37 @@ export const adminRouter = createTRPCRouter({
                     walletActive: user.wallet?.isActive ?? false,
                 })),
                 nextCursor,
+            };
+        }),
+
+    // Get wallet system overview for admin
+    getWalletOverview: adminProcedure
+        .query(async ({ ctx }) => {
+            const [
+                totalPlatformBalance,
+                totalTransactions,
+                activeWallets,
+                pendingFunding
+            ] = await Promise.all([
+                ctx.prisma.wallet.aggregate({
+                    _sum: { balance: true }
+                }),
+                ctx.prisma.walletTransaction.count(),
+                ctx.prisma.wallet.count({ where: { isActive: true } }),
+                ctx.prisma.payment.count({
+                    where: {
+                        provider: "paystack",
+                        status: "PENDING",
+                        providerRef: { startsWith: "FUDEX-FUND-" } // Custom ref for funding would be better but let's assume standard for now or just check PENDING
+                    }
+                })
+            ]);
+
+            return {
+                totalPlatformBalance: totalPlatformBalance._sum.balance?.toNumber() || 0,
+                totalTransactions,
+                activeWallets,
+                pendingFunding
             };
         }),
 });

@@ -6,6 +6,8 @@ import { NotificationService } from "@/modules/notifications/server/service";
 import { PAGES_DATA } from "@/data/pagesData";
 import { WalletService } from "@/modules/wallet/server/service";
 import { RefundService } from "@/modules/wallet/server/refund.service";
+import { ReferralService } from "@/modules/referral/server/service";
+import { sendOrderOutForDeliveryEmail } from "@/lib/email";
 
 
 export const orderRouter = createTRPCRouter({
@@ -127,19 +129,7 @@ export const orderRouter = createTRPCRouter({
             // Calculate delivery fee based on area and current time
             let deliveryFee = await calculateDeliveryFee(ctx.prisma, address.areaId);
 
-            // Promo check: Free delivery after 3 delivered orders or for users with 5 confirmed referrals
-            const successfulOrdersCount = await ctx.prisma.order.count({
-                where: { userId, status: "DELIVERED" }
-            });
-            const confirmedReferredCount = await ctx.prisma.referral.count({
-                where: { referrerUserId: userId, status: "CONFIRMED" }
-            });
-
-            // Match frontend logic: length === 3 (of take 3) for orders, and exactly 5 for referrals
-            const orderPromoInitiated = successfulOrdersCount === 3;
-            const referralPromoInitiated = confirmedReferredCount === 5;
-
-            if (orderPromoInitiated || referralPromoInitiated || input.deliveryType === "PICKUP") {
+            if (input.deliveryType === "PICKUP") {
                 deliveryFee = 0;
             }
 
@@ -252,7 +242,22 @@ export const orderRouter = createTRPCRouter({
                 }
 
                 // return full order with items and addons
-                return prisma.order.findUnique({ where: { id: order.id }, include: { items: { include: { productItem: true, addons: { include: { addonProductItem: true } } } }, payment: true } });
+                return prisma.order.findUnique({
+                    where: { id: order.id },
+                    include: {
+                        items: {
+                            include: {
+                                productItem: true,
+                                addons: {
+                                    include: {
+                                        addonProductItem: true
+                                    }
+                                }
+                            }
+                        },
+                        payment: true
+                    }
+                });
             });
 
             return created;
@@ -550,13 +555,19 @@ export const orderRouter = createTRPCRouter({
             // Update order payout eligibility
             await ensureOrderPayoutEligibility(ctx.prisma, input.orderId);
 
+            // Trigger referral reward processing
+            await ReferralService.processReferralRewardOnOrder(userId).catch(err => {
+                console.error(`[Referral] Error processing referral reward for user ${userId}:`, err);
+            });
+
             return updated;
         }),
 
 
-    // Admin/restaurant update status
+    // Admin update order status
     updateStatus: adminProcedure
         .input(z.object({
+            currentStatus: z.enum(Object.values(OrderStatus)),
             id: z.string(),
             status: z.enum(Object.values(OrderStatus))
         })).mutation(async ({ ctx, input }) => {
@@ -566,26 +577,55 @@ export const orderRouter = createTRPCRouter({
             });
 
             // Handle Refund if cancelled
-            if (input.status === "CANCELLED") {
+            if (input.status === "CANCELLED" && input.currentStatus !== "PENDING") {
                 await RefundService.refundOrder(input.id).catch(err => {
                     console.error(`[Refund] Error refunding order ${input.id}:`, err);
                 });
             }
 
-            // If delivered, check payout eligibility
+            // If delivered, check payout eligibility and referral
             if (input.status === "DELIVERED") {
                 await ensureOrderPayoutEligibility(ctx.prisma, input.id);
+
+                // For referral confirmation, we need the user ID of the order
+                const order = await ctx.prisma.order.findUnique({ where: { id: input.id }, select: { userId: true } });
+                if (order) {
+                    await ReferralService.processReferralRewardOnOrder(order.userId).catch(err => {
+                        console.error(`[Referral] Error processing referral reward for user ${order.userId}:`, err);
+                    });
+                }
             }
 
             // Notify Customer
             if (input.status === "DELIVERED" || input.status === "OUT_FOR_DELIVERY" || input.status === "PREPARING") {
-                const order = await ctx.prisma.order.findUnique({ where: { id: input.id }, select: { userId: true, id: true } });
+                const order = await ctx.prisma.order.findUnique({
+                    where: { id: input.id },
+                    select: {
+                        userId: true,
+                        id: true,
+                        user: { select: { name: true, email: true } },
+                        vendor: { select: { name: true } }
+                    }
+                });
+
                 if (order) {
                     NotificationService.sendToUser(order.userId, {
                         title: `Order Update: ${input.status}`,
                         body: `Your order #${order.id.slice(0, 8)} is now ${input.status.toLowerCase().replace('_', ' ')}.`,
                         url: PAGES_DATA.order_info_page(order.id)
                     }).catch(console.error);
+
+                    if (input.status === "OUT_FOR_DELIVERY" && order.user?.email) {
+                        sendOrderOutForDeliveryEmail(
+                            order.user.email,
+                            order.user.name || "Customer",
+                            order.id,
+                            order.vendor?.name || "the vendor",
+                            "order@fudex.ng"
+                        ).catch(err => {
+                            console.error(`[Email] Error sending out-for-delivery email for order ${order.id}:`, err);
+                        });
+                    }
                 }
             }
 
@@ -622,7 +662,7 @@ export const orderRouter = createTRPCRouter({
             });
 
             // Handle Refund if cancelled
-            if (input.status === "CANCELLED") {
+            if (input.status === "CANCELLED" && order.status !== "PENDING") {
                 await RefundService.refundOrder(input.id).catch(err => {
                     console.error(`[Refund] Error refunding order ${input.id}:`, err);
                 });
@@ -631,17 +671,43 @@ export const orderRouter = createTRPCRouter({
             // If delivered, check payout eligibility
             if (input.status === "DELIVERED") {
                 await ensureOrderPayoutEligibility(ctx.prisma, input.id);
+
+                // For referral confirmation, we need the user ID of the order
+                await ReferralService.processReferralRewardOnOrder(order.userId).catch(err => {
+                    console.error(`[Referral] Error processing referral reward for user ${order.userId}:`, err);
+                });
             }
 
             // Notify Customer
             if (input.status === "DELIVERED" || input.status === "OUT_FOR_DELIVERY" || input.status === "PREPARING") {
-                const order = await ctx.prisma.order.findUnique({ where: { id: input.id }, select: { userId: true, id: true } });
+                const order = await ctx.prisma.order.findUnique({
+                    where: { id: input.id },
+                    select: {
+                        userId: true,
+                        id: true,
+                        user: { select: { name: true, email: true } },
+                        vendor: { select: { name: true } }
+                    }
+                });
+
                 if (order) {
                     NotificationService.sendToUser(order.userId, {
                         title: `Order Update: ${input.status}`,
                         body: `Your order #${order.id.slice(0, 8)} is now ${input.status.toLowerCase().replace('_', ' ')}.`,
                         url: `/profile/orders/${order.id}`,
                     }).catch(console.error);
+
+                    if (input.status === "OUT_FOR_DELIVERY" && order.user?.email) {
+                        sendOrderOutForDeliveryEmail(
+                            order.user.email,
+                            order.user.name || "Customer",
+                            order.id,
+                            order.vendor?.name || "the vendor",
+                            "order@fudex.ng"
+                        ).catch(err => {
+                            console.error(`[Email] Error sending out-for-delivery email for order ${order.id}:`, err);
+                        });
+                    }
                 }
             }
 
@@ -665,14 +731,12 @@ export const orderRouter = createTRPCRouter({
 
             if (!order) throw new Error("Order not found");
 
-            // 2. Business Logic: Only allow cancellation if order is PENDING or PAID
-            // Once it's PREPARING, it's usually too late, but we follow the user's specific "not yet accepted or preparing"
             const nonCancellableStates: OrderStatus[] = [
-                "PREPARING", "READY", "ASSIGNED", "OUT_FOR_DELIVERY", "DELIVERED"
+                "PREPARING", "READY", "ASSIGNED", "OUT_FOR_DELIVERY", "DELIVERED", "PAID"
             ];
 
             if (nonCancellableStates.includes(order.status)) {
-                throw new Error(`Order cannot be cancelled as it is already being ${order.status.toLowerCase().replace('_', ' ')}`);
+                throw new Error(`Order cannot be cancelled as it is already ${order.status.toLowerCase().replace('_', ' ')}`);
             }
 
             // 3. Update order status
@@ -682,9 +746,12 @@ export const orderRouter = createTRPCRouter({
             });
 
             // 4. Trigger Refund
-            await RefundService.refundOrder(input.orderId).catch(err => {
-                console.error(`[Refund] Error refunding customer cancelled order ${input.orderId}:`, err);
-            });
+            // if (order.status === "PAID") {
+            //     toast.info("Initiating refund...");
+            //     await RefundService.refundOrder(input.orderId).catch(err => {
+            //         console.error(`[Refund] Error refunding customer cancelled order ${input.orderId}:`, err);
+            //     });
+            // }
 
             return updated;
         }),

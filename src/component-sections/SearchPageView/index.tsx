@@ -36,11 +36,11 @@ const SearchPageView = () => {
 	// Flatten results
 	const vendors = useMemo(
 		() => data?.pages.flatMap((p) => p.vendors) || [],
-		[data]
+		[data],
 	);
 	const products = useMemo(
 		() => data?.pages.flatMap((p) => p.products) || [],
-		[data]
+		[data],
 	);
 
 	// Intersection observer
@@ -57,7 +57,7 @@ const SearchPageView = () => {
 					fetchNextPage();
 				}
 			},
-			{ threshold: 0.5 }
+			{ threshold: 0.5 },
 		);
 
 		if (observerTarget.current) {
@@ -94,7 +94,7 @@ const SearchPageView = () => {
 												<Skeleton className='h-4 w-3/4' />
 												<Skeleton className='h-4 w-1/2' />
 											</div>
-										)
+										),
 									)}
 								</div>
 							</div>
@@ -160,9 +160,12 @@ const SearchPageView = () => {
 																		product
 																			.product
 																			.description,
-															  }
+																}
 															: null,
+														vendorName:
+															product.vendor.name,
 													}}
+													showVendor={true}
 													key={product.id}
 												/>
 											))}
@@ -179,10 +182,10 @@ const SearchPageView = () => {
 												categoryIds.length > 0
 													? ' in selected categories'
 													: ''
-										  }`
+											}`
 										: categoryIds && categoryIds.length > 0
-										? 'No results found for selected categories'
-										: 'No results found'}
+											? 'No results found for selected categories'
+											: 'No results found'}
 								</p>
 							)}
 

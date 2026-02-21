@@ -1,6 +1,9 @@
+'use client';
+
 import { cn } from '@/lib/utils';
 import React from 'react';
 import { ClassNameValue } from 'tailwind-merge';
+import { motion } from 'motion/react';
 
 const PageWrapper = ({
 	children,
@@ -11,13 +14,16 @@ const PageWrapper = ({
 }) => {
 	return (
 		<div className='w-full flex justify-center'>
-			<main
+			<motion.main
+				initial={{ opacity: 0, y: 10 }}
+				animate={{ opacity: 1, y: 0 }}
+				transition={{ duration: 0.4, ease: 'easeOut' }}
 				className={cn(
 					'w-full max-w-[1400px] min-h-screen h-auto bg-background space-y-5 py-5  overflow-visible',
-					className
+					className,
 				)}>
 				{children}
-			</main>
+			</motion.main>
 		</div>
 	);
 };
