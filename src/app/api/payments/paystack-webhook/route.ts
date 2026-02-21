@@ -112,7 +112,7 @@ async function handleSuccessfulPayment(data: any) {
 		}
 
 		// Handle payment completion
-		await handlePaymentCompletion(payment.id).catch(err => {
+		await handlePaymentCompletion(payment.id, 'webhook').catch(err => {
 			console.error(`[Webhook] Error handling payment completion for ${payment.id}:`, err);
 		});
 		return;

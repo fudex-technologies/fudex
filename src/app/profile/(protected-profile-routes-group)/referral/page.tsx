@@ -103,10 +103,10 @@ export default function ReferralPage() {
 						/>
 						<div className='w-full text-center'>
 							<h3 className='text-2xl font-bold mb-2'>
-								Earn ₦100 Per Order!
+								Earn ₦150 Per Order!
 							</h3>
 							<p className='text-sm text-balance text-muted-foreground'>
-								Invite your friends to FUDEX. You earn ₦100 for
+								Invite your friends to FUDEX. You earn ₦150 for
 								every order they make (up to their 5th order).
 							</p>
 						</div>
@@ -299,7 +299,7 @@ export default function ReferralPage() {
 								</p>
 								<p className='text-xs text-muted-foreground px-10'>
 									Share your unique code with friends to start
-									earning ₦100 per order!
+									earning ₦150 per order!
 								</p>
 							</div>
 						)}

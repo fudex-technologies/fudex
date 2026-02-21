@@ -11,7 +11,6 @@ import { useSession } from '@/lib/auth-client';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import PromoTemplate from './PromoTemplate';
-import ValentineTemplate from './ValentineTemplate';
 
 const PromoSection = () => {
 	const { data: session } = useSession();

@@ -9,13 +9,27 @@ import { PayoutTransferStatus } from "@prisma/client";
  * This ensures idempotency and prevents duplicate notifications
  * Uses database transactions to ensure atomicity
  */
-export async function handlePaymentCompletion(paymentId: string) {
+export async function handlePaymentCompletion(paymentId: string, origin?: string) {
+	// Log origin for debugging/tracing
+	console.log(`[Payment] handlePaymentCompletion invoked by ${origin || 'unknown'} for payment ${paymentId}`);
 	// Use a transaction to ensure atomicity
 	return await prisma.$transaction(async (tx) => {
 		// Re-fetch payment with lock to prevent race conditions
 		const payment = await tx.payment.findUnique({
 			where: { id: paymentId },
-			include: { order: true },
+			include: {
+				order: {
+					select: {
+						id: true,
+						vendorId: true,
+						addressId: true,
+						status: true,
+						currency: true,
+						productAmount: true,
+						totalAmount: true, // full amount including wallet portion
+					}
+				}
+			},
 		});
 
 		if (!payment) {
@@ -92,7 +106,7 @@ export async function handlePaymentCompletion(paymentId: string) {
 						body: `You have a new order (#${orderId.slice(0, 8)}) worth ${payment.order?.currency} ${payment.order?.productAmount.toFixed(2)}.`,
 						url: PAGES_DATA.vendor_dashboard_new_orders_page,
 					}).catch((error) => {
-						console.error('[Payment] Failed to send push notification to vendor:', error);
+						console.error(`[Payment][${origin || 'unknown'}] Failed to send push notification to vendor:`, error);
 					});
 
 					// 2. Notify Vendor (Email)
@@ -116,7 +130,7 @@ export async function handlePaymentCompletion(paymentId: string) {
 					body: `Order #${orderId.slice(0, 8)} has been paid and is ready for processing.`,
 					url: PAGES_DATA.operator_dashboard_orders_page
 				}).catch((error) => {
-					console.error('[Payment] Failed to send push notification to operators:', error);
+					console.error(`[Payment][${origin || 'unknown'}] Failed to send push notification to operators:`, error);
 				});
 
 				// 4. Notify Operators (Email)
@@ -155,6 +169,27 @@ export async function handlePaymentCompletion(paymentId: string) {
 							const customerAddressStr = `${customerAddress.line1 || ''}, ${customerAddress.city || ''}, ${customerAddress.state || ''}`.replace(/^,\s*|,\s*$/g, '');
 							const customerName = `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || 'Customer';
 
+							// Calculate the payment method
+							const walletDebits = await tx.walletTransaction.aggregate({
+								where: {
+									sourceId: orderId,
+									sourceType: "ORDER_PAYMENT",
+									type: "DEBIT"
+								},
+								_sum: { amount: true }
+							});
+
+							const walletUsed = walletDebits._sum.amount?.toNumber() || 0;
+							let paymentMethod = payment.provider === 'wallet' ? 'Wallet' : 'Paystack';
+
+							if (payment.provider === 'paystack' && walletUsed > 0) {
+								paymentMethod = 'Wallet + Paystack';
+							} else if (payment.provider === 'paystack') {
+								paymentMethod = 'Paystack';
+							} else if (payment.provider === 'wallet') {
+								paymentMethod = 'Wallet';
+							}
+
 							await sendOperatorNewOrderEmail(
 								operatorEmails,
 								vendor.name || 'Vendor',
@@ -162,11 +197,12 @@ export async function handlePaymentCompletion(paymentId: string) {
 								customerName,
 								customerAddressStr,
 								orderId,
-								payment.amount,
+								payment.order.totalAmount, // full order total (wallet + Paystack)
 								payment.currency,
+								paymentMethod,
 								'orders@fudex.ng'
 							);
-							console.log(`[Payment] Email notification sent to ${operatorEmails.length} operator(s)`);
+							console.log(`[Payment][${origin || 'unknown'}] Email notification sent to ${operatorEmails.length} operator(s)`);
 						} else {
 							console.warn('[Payment] Missing data for operator email notification:', {
 								hasCustomer: !!customer,

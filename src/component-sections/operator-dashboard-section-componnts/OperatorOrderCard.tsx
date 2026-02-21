@@ -160,7 +160,7 @@ export default function OperatorOrderCard({
 						{formatCurency(order.totalAmount)}
 					</p>
 					<p className='text-xs text-muted-foreground'>
-						via {order.payment?.provider || 'Bank Transfer'}
+						via {order.paymentMethod}
 					</p>
 				</div>
 			</div>
@@ -204,6 +204,11 @@ export default function OperatorOrderCard({
 									{order.address?.line2 &&
 										`, ${order.address.line2}`}
 									<br />
+									{order.address?.customArea ||
+										order.address?.area?.name}
+									{(order.address?.customArea ||
+										order.address?.area?.name) &&
+										', '}
 									{order.address?.city},{' '}
 									{order.address?.state}
 								</p>
@@ -266,7 +271,24 @@ export default function OperatorOrderCard({
 															productItem?.price ||
 																0,
 														)}{' '}
-														per {unitName}
+														per {unitName} (
+														{formatCurency(
+															(productItem?.price ||
+																0) *
+																item.quantity,
+														)}
+														)
+														{productItem?.packagingFee &&
+														productItem.packagingFee >
+															0 ? (
+															<span className='ml-1 text-orange-500/80 font-medium'>
+																+{' '}
+																{formatCurency(
+																	productItem.packagingFee,
+																)}{' '}
+																pack fee
+															</span>
+														) : null}
 													</p>
 												)}
 											</div>
@@ -295,32 +317,17 @@ export default function OperatorOrderCard({
 																		.addonProductItem
 																		?.name
 																}
-																{isPerUnit && (
-																	<span className='ml-1'>
-																		x
-																		{
-																			addon.quantity
-																		}{' '}
-																		per{' '}
-																		{
-																			unitName
-																		}
-																	</span>
-																)}
-																{!isPerUnit && (
-																	<span className='ml-1'>
-																		x
-																		{
-																			addon.quantity
-																		}
-																	</span>
-																)}
+																<span className='ml-1'>
+																	x
+																	{
+																		addon.quantity
+																	}
+																</span>
 															</span>
 															<span>
 																{formatCurency(
 																	addon.unitPrice *
-																		addon.quantity *
-																		item.quantity,
+																		addon.quantity,
 																)}
 															</span>
 														</div>

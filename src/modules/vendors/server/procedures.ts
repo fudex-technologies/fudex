@@ -644,6 +644,9 @@ export const vendorRouter = createTRPCRouter({
                 };
             }
 
+            // Only include products from approved vendors
+            productWhere.vendor = { approvalStatus: 'APPROVED' };
+
             const [vendors, products] = await Promise.all([
                 ctx.prisma.vendor.findMany({
                     where: vendorWhere,
@@ -658,7 +661,8 @@ export const vendorRouter = createTRPCRouter({
                     skip: input.skip,
                     orderBy: { createdAt: "desc" },
                     include: {
-                        product: true
+                        product: true,
+                        vendor: true
                     }
                 }),
             ]);
@@ -706,6 +710,8 @@ export const vendorRouter = createTRPCRouter({
                     some: { categoryId: { in: categoryIds } }
                 };
             }
+            // Only include products from approved vendors
+            productWhere.vendor = { approvalStatus: 'APPROVED' };
 
             const [vendors, products] = await Promise.all([
                 ctx.prisma.vendor.findMany({
@@ -721,7 +727,8 @@ export const vendorRouter = createTRPCRouter({
                     skip: skip,
                     orderBy: { createdAt: "desc" },
                     include: {
-                        product: true
+                        product: true,
+                        vendor: true
                     }
                 }),
             ]);
