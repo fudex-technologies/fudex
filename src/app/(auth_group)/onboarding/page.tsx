@@ -63,7 +63,7 @@ export default function OnboardingSignUpPage() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 
-	const { requestPhoneOtp } = useAuthActions();
+	const { requestEmailFallbackOtp } = useAuthActions();
 	const trpc = useTRPC();
 
 	// Check referral code validity
@@ -111,7 +111,7 @@ export default function OnboardingSignUpPage() {
 			},
 		),
 	);
-	const { mutate, isPending } = requestPhoneOtp({
+	const { mutate, isPending } = requestEmailFallbackOtp({
 		silent: false,
 		onSuccess: () => {
 			// persist temporarily
@@ -207,7 +207,7 @@ export default function OnboardingSignUpPage() {
 			referralCode: true,
 		});
 		if (!isFormValid) return;
-		mutate({ phone: form.phone });
+		mutate({ email: form.email, phone: form.phone });
 	}
 
 	const handleChange =
