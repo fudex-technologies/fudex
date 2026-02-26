@@ -180,7 +180,10 @@ export default function OngoingOrdersPage() {
 						return (
 							<OngoingOrderItem
 								key={order.id}
-								estimatedTime={getEstimatedTime(order.status)}
+								estimatedTime={
+									// getEstimatedTime(order.status)
+									'NILL'
+								}
 								itemCount={itemCount}
 								orderId={order.id}
 								vendorName={order.vendor?.name || 'Vendor'}

@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { ImageWithFallback } from '../ui/ImageWithFallback';
 import PageWrapper from './PageWrapper';
 import { PAGES_DATA } from '@/data/pagesData';
+import SkipAuthPageComponent from './SkipAuthPageComponent';
+import { Suspense } from 'react';
 
 const AuthPageWrapper = ({
 	children,
@@ -26,13 +28,9 @@ const AuthPageWrapper = ({
 								className='w-[100px] md:w-[200px]'
 							/>
 						</Link>
-						{canSkip && (
-							<Link
-								href={skip || PAGES_DATA.home_page}
-								className='text-white text-xl md:hidden'>
-								Skip
-							</Link>
-						)}
+						<Suspense fallback={<div>loading...</div>}>
+							{canSkip && <SkipAuthPageComponent skip={skip} />}
+						</Suspense>
 					</div>
 				</div>
 				<div className='flex-2 w-full min-h-[90vh] md:min-h-screen flex justify-center md:items-center bg-background rounded-t-4xl md:rounded-4xl px-5 py-10'>

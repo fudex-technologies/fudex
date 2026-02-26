@@ -74,11 +74,11 @@ export default function AddPhoneNumberDrawer({
 	const { mutate, isPending } = updateProfile({
 		onSuccess: () => {
 			onClose();
-			router.push(
-				`${
-					PAGES_DATA.profile_verify_phone_page
-				}?redirect=${encodeURIComponent(redirectUrl)}`,
-			);
+			// router.push(
+			// 	`${
+			// 		PAGES_DATA.profile_verify_phone_page
+			// 	}?redirect=${encodeURIComponent(redirectUrl)}`,
+			// );
 		},
 	});
 
