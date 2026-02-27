@@ -1,6 +1,8 @@
 import prisma from '@/lib/prisma';
 import { Prisma, WalletTransactionType, WalletTransactionSource, WalletFundingStatus } from '@prisma/client';
 import { sendWalletTransactionEmail } from '@/lib/email';
+import { NotificationService } from '@/modules/notifications/server/service';
+import { PAGES_DATA } from '@/data/pagesData';
 
 export class WalletService {
     /**
@@ -201,17 +203,29 @@ export class WalletService {
                 select: { email: true, name: true }
             });
 
-            if (!user || !user.email) return;
+            if (!user) return;
 
-            await sendWalletTransactionEmail({
-                email: user.email,
-                userName: user.name || 'Fudex User',
-                amount: amount.toString(),
-                type: type,
-                source: source,
-                reference: reference,
-                from: process.env.MAIL_SENDER || 'no-reply@fudex.ng'
-            });
+            if (user.email) {
+                await sendWalletTransactionEmail({
+                    email: user.email,
+                    userName: user.name || 'Fudex User',
+                    amount: amount.toString(),
+                    type: type,
+                    source: source,
+                    reference: reference,
+                    from: process.env.MAIL_SENDER || 'no-reply@fudex.ng'
+                }).catch(e => console.error('[WalletService] Failed to send email:', e));
+            }
+
+            // Send Push Notification
+            const actionTarget = type === 'CREDIT' ? 'credited with' : 'debited by';
+            const title = type === 'CREDIT' ? 'Wallet Credited 💳' : 'Wallet Debited 💳';
+
+            NotificationService.sendToUser(userId, {
+                title,
+                body: `Your wallet has been ${actionTarget} ₦${amount.toString()}.`,
+                url: PAGES_DATA.profile_wallet_page,
+            }).catch(e => console.error('[WalletService] Failed to send push:', e));
         } catch (error) {
             console.error('[WalletService] Failed to send transaction email:', error);
         }

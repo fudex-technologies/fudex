@@ -9,6 +9,7 @@ import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import GoogleAnalytics from '@/components/GoogleAnalytics';
 import { Suspense } from 'react';
+import PushNotificationPrompt from '@/components/pwa/PushNotificationPrompt';
 
 export default function Providers({
 	children,
@@ -26,6 +27,7 @@ export default function Providers({
 					<RequirePhoneModal />
 					<PwaInstallPrompt />
 					<PWAUpdateToast />
+					<PushNotificationPrompt />
 					<OnboardingRedirect />
 					<Toaster position='top-center' />
 				</NuqsAdapter>

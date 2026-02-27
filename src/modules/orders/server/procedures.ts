@@ -694,7 +694,7 @@ export const orderRouter = createTRPCRouter({
                     NotificationService.sendToUser(order.userId, {
                         title: `Order Update: ${input.status}`,
                         body: `Your order #${order.id.slice(0, 8)} is now ${input.status.toLowerCase().replace('_', ' ')}.`,
-                        url: `/profile/orders/${order.id}`,
+                        url: PAGES_DATA.order_info_page(order.id)
                     }).catch(console.error);
 
                     if (input.status === "OUT_FOR_DELIVERY" && order.user?.email) {

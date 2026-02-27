@@ -99,6 +99,13 @@ export async function handlePackagePaymentCompletion(paymentId: string) {
                             'orders@fudex.ng'
                         ).catch((err) => console.error('[PackagePayment] Failed to send email to customer:', err));
 
+                        // Send Customer Push Notification
+                        NotificationService.sendToUser(payment.userId, {
+                            title: 'Order Confirmed! 📦',
+                            body: `Your package order #${packageOrderId.slice(0, 8)} for ${packageOrder.package.name} has been paid and confirmed.`,
+                            url: PAGES_DATA.orders_page,
+                        }).catch((error) => console.error('[PackagePayment] Failed to send push notification to customer:', error));
+
                         // Calculate the payment method
                         const walletDebits = await tx.walletTransaction.aggregate({
                             where: {
