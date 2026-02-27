@@ -25,6 +25,7 @@ interface PackEditSectionProps {
 		name: string;
 		price: number;
 		vendorId: string;
+		productId: string | null;
 		pricingType?: 'FIXED' | 'PER_UNIT';
 		unitName?: string | null;
 		minQuantity?: number;
@@ -55,11 +56,12 @@ const PackEditSection = ({
 		) || {},
 	);
 
-	// Fetch product items for selection
-	const { data: productItems = [] } =
-		useVendorProductActions().useListProductItems({
-			vendorId,
+	// Fetch product items for selection associated with the same product
+	const { data: productData } =
+		useVendorProductActions().useGetProductWithItems({
+			id: mainItem?.productId || '',
 		});
+	const productItems = productData?.items || (mainItem ? [mainItem] : []);
 
 	// Fetch addon items (proteins and drinks)
 	const { data: proteins = [] } =
@@ -71,6 +73,11 @@ const PackEditSection = ({
 		useVendorProductActions().useGetProductItemsByCategorySlug({
 			vendorId,
 			categorySlug: 'hydration',
+		});
+	const { data: sides = [] } =
+		useVendorProductActions().useGetProductItemsByCategorySlug({
+			vendorId,
+			categorySlug: 'sides',
 		});
 
 	const selectedItem = productItems.find(
@@ -128,9 +135,18 @@ const PackEditSection = ({
 		}, 0);
 	}, [drinks, selectedAddons]);
 
+	const selectedSideCount = useMemo(() => {
+		return sides.reduce((count, side) => {
+			return count + (selectedAddons[side.id] || 0);
+		}, 0);
+	}, [sides, selectedAddons]);
+
 	const MAX_ADDONS = 4;
 
-	const handleAddonToggle = (addonId: string, type: 'protein' | 'drink') => {
+	const handleAddonToggle = (
+		addonId: string,
+		type: 'protein' | 'drink' | 'side',
+	) => {
 		setSelectedAddons((prev) => {
 			const current = prev[addonId] || 0;
 
@@ -148,6 +164,10 @@ const PackEditSection = ({
 				return prev;
 			}
 
+			if (type === 'side' && selectedSideCount >= MAX_ADDONS) {
+				return prev;
+			}
+
 			return { ...prev, [addonId]: 1 };
 		});
 	};
@@ -155,7 +175,7 @@ const PackEditSection = ({
 	const handleAddonQuantityChange = (
 		addonId: string,
 		quantity: number,
-		type: 'protein' | 'drink',
+		type: 'protein' | 'drink' | 'side',
 	) => {
 		if (quantity <= 0) {
 			setSelectedAddons((prev) => {
@@ -167,7 +187,11 @@ const PackEditSection = ({
 		}
 
 		const currentTotal =
-			type === 'protein' ? selectedProteinCount : selectedDrinkCount;
+			type === 'protein'
+				? selectedProteinCount
+				: type === 'drink'
+					? selectedDrinkCount
+					: selectedSideCount;
 		const currentQuantity = selectedAddons[addonId] || 0;
 
 		if (quantity > currentQuantity && currentTotal >= MAX_ADDONS) {
@@ -451,6 +475,90 @@ const PackEditSection = ({
 										)}
 									</div>
 									{index < drinks.length - 1 && (
+										<Separator className='mt-3' />
+									)}
+								</div>
+							);
+						})}
+					</div>
+				</>
+			)}
+
+			{/* Sides Selection */}
+			{sides.length > 0 && (
+				<>
+					<div className='w-full bg-muted flex items-center gap-3 p-3 text-base rounded'>
+						<p>Extra Sides</p>
+						<Badge
+							variant={'outline'}
+							className='border-primary text-primary'>
+							Optional
+						</Badge>
+					</div>
+					<div className='px-2 space-y-3'>
+						<p className='text-sm text-foreground/50'>
+							SELECT UP TO 4 ITEMS
+						</p>
+						{sides.map((side, index) => {
+							const quantity = selectedAddons[side.id] || 0;
+							const isSelected = quantity > 0;
+
+							return (
+								<div key={side.id}>
+									<div className='flex items-center justify-between'>
+										<div className='flex items-center gap-3 flex-1'>
+											<div className='flex-1 cursor-pointer text-start'>
+												<p className='text-sm text-foreground/50 font-medium'>
+													{side.name}
+												</p>
+												{side.description && (
+													<p className='text-xs text-foreground/50'>
+														{side.description}
+													</p>
+												)}
+												<p className='text-xs text-foreground/70'>
+													{formatCurency(side.price)}
+												</p>
+											</div>
+										</div>
+										{!isSelected && (
+											<Button
+												onClick={() =>
+													handleAddonToggle(
+														side.id,
+														'side',
+													)
+												}
+												variant={'muted'}
+												size={'icon-sm'}
+												className='rounded-full'>
+												<Plus size={14} />
+											</Button>
+										)}
+										{isSelected && (
+											<div className='ml-4'>
+												<CounterComponent
+													count={quantity}
+													countChangeEffect={(
+														newCount,
+													) =>
+														handleAddonQuantityChange(
+															side.id,
+															newCount,
+															'side',
+														)
+													}
+													className='w-[100px] py-1'
+													disabledAdd={
+														selectedSideCount >=
+															MAX_ADDONS &&
+														quantity === 0
+													}
+												/>
+											</div>
+										)}
+									</div>
+									{index < sides.length - 1 && (
 										<Separator className='mt-3' />
 									)}
 								</div>

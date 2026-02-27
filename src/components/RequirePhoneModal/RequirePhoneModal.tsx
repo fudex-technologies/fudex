@@ -8,6 +8,7 @@ import { useProfileActions } from '@/api-hooks/useProfileActions';
 import { localStorageStrings } from '@/constants/localStorageStrings';
 import { PAGES_DATA } from '@/data/pagesData';
 import { usePathname, useRouter } from 'next/navigation';
+import { usePopupStore } from '@/store/popup-store';
 import {
 	Dialog,
 	DialogContent,
@@ -79,6 +80,8 @@ export default function RequirePhoneModal() {
 		}
 	}, [phoneCheckData]);
 
+	const { enqueuePopup, dequeuePopup, activePopup } = usePopupStore();
+
 	useEffect(() => {
 		if (
 			pathname === '/' &&
@@ -94,24 +97,27 @@ export default function RequirePhoneModal() {
 				const now = new Date().getTime();
 				const oneHour = 60 * 60 * 1000;
 				if (now - lastShown > oneHour) {
-					setOpen(true);
+					enqueuePopup('require_phone');
 				}
 			} else {
-				setOpen(true);
+				enqueuePopup('require_phone');
 			}
 		} else {
-			setOpen(false);
+			dequeuePopup('require_phone');
 		}
-	}, [session, pathname]);
+	}, [session, pathname, enqueuePopup, dequeuePopup]);
 
 	useEffect(() => {
-		if (open) {
+		if (activePopup === 'require_phone') {
+			setOpen(true);
 			localStorage.setItem(
 				localStorageStrings.requirePhoneModalLastShown,
 				new Date().toISOString(),
 			);
+		} else {
+			setOpen(false);
 		}
-	}, [open]);
+	}, [activePopup]);
 
 	const { updateProfile } = useProfileActions();
 	const { mutate: updateProfileMutate, isPending } = updateProfile({
@@ -188,7 +194,12 @@ export default function RequirePhoneModal() {
 				</div>
 				<DialogFooter>
 					<DialogClose asChild>
-						<Button variant='ghost' onClick={() => setOpen(false)}>
+						<Button
+							variant='ghost'
+							onClick={() => {
+								setOpen(false);
+								dequeuePopup('require_phone');
+							}}>
 							Cancel
 						</Button>
 					</DialogClose>

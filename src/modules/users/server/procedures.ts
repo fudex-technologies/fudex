@@ -89,6 +89,14 @@ export const userRouter = createTRPCRouter({
             return created;
         }),
 
+    getAddress: protectedProcedure
+        .input(z.object({ id: z.string() }))
+        .query(({ ctx, input }) => {
+            return ctx.prisma.address.findUnique({
+                where: { id: input.id, userId: ctx.user!.id }
+            });
+        }),
+
     updateAddress: protectedProcedure
         .input(z.object({
             id: z.string(),

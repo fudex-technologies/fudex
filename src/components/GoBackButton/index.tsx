@@ -2,10 +2,12 @@
 
 import { cn } from '@/lib/utils';
 import { ChevronLeft } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ClassNameValue } from 'tailwind-merge';
+import { Suspense } from 'react';
+import { Skeleton } from '../ui/skeleton';
 
-const GoBackButton = ({
+const GoBackButtonContent = ({
 	className,
 	link,
 }: {
@@ -13,15 +15,44 @@ const GoBackButton = ({
 	link?: string;
 }) => {
 	const router = useRouter();
+	const searchParams = useSearchParams();
+	const redirectTo = searchParams.get('redirectTo');
+
+	const handleGoBack = () => {
+		if (link) {
+			router.replace(link);
+		} else if (redirectTo) {
+			router.replace(redirectTo);
+		} else {
+			router.back();
+		}
+	};
+
 	return (
 		<div
-			onClick={() => (link ? router.replace(link) : router.back())}
+			onClick={handleGoBack}
 			className={cn(
-				'w-10 aspect-square flex justify-center items-center  rounded-full bg-foreground/5',
-				className
+				'w-10 aspect-square flex justify-center items-center rounded-full bg-foreground/5 cursor-pointer',
+				className,
 			)}>
 			<ChevronLeft className='text-current' width={20} height={20} />
 		</div>
+	);
+};
+
+const GoBackButton = (props: { className?: ClassNameValue; link?: string }) => {
+	return (
+		<Suspense
+			fallback={
+				<Skeleton
+					className={cn(
+						'w-10 aspect-square rounded-full',
+						props.className,
+					)}
+				/>
+			}>
+			<GoBackButtonContent {...props} />
+		</Suspense>
 	);
 };
 

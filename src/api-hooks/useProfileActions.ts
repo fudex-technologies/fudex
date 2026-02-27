@@ -102,6 +102,11 @@ export function useProfileActions() {
                 enabled: !!session,
             })
         ),
+        getAddress: (id: string) => useQuery(
+            trpc.users.getAddress.queryOptions({ id }, {
+                enabled: !!session && !!id,
+            })
+        ),
         getAllAreasInEkiti: () => useQuery(
             trpc.users.listAreas.queryOptions({ state: "ekiti" })
         ),

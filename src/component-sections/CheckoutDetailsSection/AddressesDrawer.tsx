@@ -19,6 +19,7 @@ interface AddressesDrawerProps {
 	addresses: Address[];
 	selectedAddressId: string | null;
 	setSelectedAddressId: (id: string) => void;
+	vendorId: string;
 }
 
 const AddressesDrawer = ({
@@ -27,6 +28,7 @@ const AddressesDrawer = ({
 	addresses,
 	selectedAddressId,
 	setSelectedAddressId,
+	vendorId,
 }: AddressesDrawerProps) => {
 	const router = useRouter();
 	return (
@@ -53,7 +55,7 @@ const AddressesDrawer = ({
 								onClick={() => {
 									setIsAddressDialogOpen(false);
 									router.push(
-										PAGES_DATA.profile_addresses_page,
+										`${PAGES_DATA.profile_set_address_manually}?redirectTo=${PAGES_DATA.checkout_page(vendorId)}`,
 									);
 								}}
 								className='w-full'>
@@ -110,7 +112,7 @@ const AddressesDrawer = ({
 								onClick={() => {
 									setIsAddressDialogOpen(false);
 									router.push(
-										PAGES_DATA.profile_set_address_manually,
+										`${PAGES_DATA.profile_set_address_manually}?redirectTo=${PAGES_DATA.checkout_page(vendorId)}`,
 									);
 								}}
 								className='w-full'>

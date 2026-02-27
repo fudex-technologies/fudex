@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { createTRPCRouter, protectedProcedure } from '@/trpc/init';
 import { NotificationService } from './service';
 import prisma from '@/lib/prisma';
+import { PAGES_DATA } from '@/data/pagesData';
 
 export const notificationRouter = createTRPCRouter({
     subscribe: protectedProcedure
@@ -77,7 +78,7 @@ export const notificationRouter = createTRPCRouter({
             await NotificationService.sendToUser(targetUserId, {
                 title: 'Test Notification',
                 body: 'This is a test notification from Fudex.',
-                url: '/profile',
+                url: PAGES_DATA.profile_page,
             });
 
             return { success: true };

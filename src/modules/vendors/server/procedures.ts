@@ -19,6 +19,8 @@ import {
 } from '@/lib/email';
 import { createPaystackRecipient, getPaystackBanks } from "@/lib/paystack";
 import { verifyVerificationToken } from '@/modules/auth-phone/server/procedures';
+import { NotificationService } from "@/modules/notifications/server/service";
+import { PAGES_DATA } from '@/data/pagesData';
 
 const generateUniqueSlug = async (prisma: any, name: string, vendorId: string): Promise<string> => {
     const baseSlug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
@@ -2091,6 +2093,12 @@ export const vendorRouter = createTRPCRouter({
                     vendor.name,
                     process.env.FUDEX_ONBOARDING_EMAIL as string
                 );
+
+                NotificationService.sendToUser(userId, {
+                    title: 'Application Received!',
+                    body: `Your vendor application for ${vendor.name} has been received and is under review.`,
+                    url: PAGES_DATA.vendor_dashboard_page,
+                }).catch((error) => console.error('[Vendor] Failed to send submission push notification:', error));
             } catch (e) {
                 console.error('Failed to send submission confirmation email:', e);
             }
@@ -2106,6 +2114,12 @@ export const vendorRouter = createTRPCRouter({
                         process.env.FUDEX_ONBOARDING_EMAIL as string
                     );
                 }
+
+                NotificationService.sendToRole('ADMIN', {
+                    title: 'New Vendor Application 🏪',
+                    body: `${vendor.name} has submitted an application for review.`,
+                    url: PAGES_DATA.admin_dashboard_vendor_requests_page,
+                }).catch((error) => console.error('[Vendor] Failed to send admin push notification:', error));
             } catch (e) {
                 console.error('Failed to send admin notification email:', e);
             }
@@ -2281,6 +2295,14 @@ export const vendorRouter = createTRPCRouter({
                     vendor.name,
                     process.env.FUDEX_ONBOARDING_EMAIL as string
                 );
+
+                if (vendor.ownerId) {
+                    NotificationService.sendToUser(vendor.ownerId, {
+                        title: 'Vendor Account Approved! 🎉',
+                        body: `Your vendor account "${vendor.name}" has been approved. You can now start selling!`,
+                        url: PAGES_DATA.vendor_dashboard_page,
+                    }).catch((error) => console.error('[Vendor] Failed to send approval push notification:', error));
+                }
             } catch (e) {
                 console.error('Failed to send approval email:', e);
             }
@@ -2327,6 +2349,14 @@ export const vendorRouter = createTRPCRouter({
                     input.reason,
                     process.env.FUDEX_ONBOARDING_EMAIL as string
                 );
+
+                if (vendor.ownerId) {
+                    NotificationService.sendToUser(vendor.ownerId, {
+                        title: 'Vendor Account Update',
+                        body: `Your vendor application for "${vendor.name}" requires attention.`,
+                        url: PAGES_DATA.vendor_onboarding_progress_page,
+                    }).catch((error) => console.error('[Vendor] Failed to send decline push notification:', error));
+                }
             } catch (e) {
                 console.error('Failed to send decline email:', e);
             }

@@ -50,20 +50,62 @@ export function usePushNotifications() {
                 setPermission(currentPermission);
 
                 try {
-                    console.log('[Push] Waiting for service worker...');
-                    const registration = await navigator.serviceWorker.ready;
-                    console.log('[Push] Service worker ready:', registration);
+                    // Check all registrations for debugging
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    console.log('[Push] Currently registered service workers:', registrations.length);
+                    registrations.forEach((reg, i) => {
+                        console.log(`[Push] SW ${i}:`, {
+                            scriptURL: reg.active?.scriptURL || reg.installing?.scriptURL || reg.waiting?.scriptURL,
+                            state: reg.active ? 'active' : reg.installing ? 'installing' : reg.waiting ? 'waiting' : 'unknown'
+                        });
+                    });
 
-                    const existingSub = await registration.pushManager.getSubscription();
-                    console.log('[Push] Existing subscription:', existingSub ? 'Found' : 'None');
+                    console.log('[Push] Waiting for service worker (with 5s timeout)...');
 
-                    if (existingSub) {
-                        console.log('[Push] Subscription endpoint:', existingSub.endpoint);
+                    // Race the ready promise against a timeout to prevent endless loading
+                    const swReadyPromise = navigator.serviceWorker.ready;
+                    const timeoutPromise = new Promise<null>((_, reject) =>
+                        setTimeout(() => reject(new Error('Service worker ready timeout')), 5000)
+                    );
+
+                    let registration;
+                    try {
+                        registration = await Promise.race([swReadyPromise, timeoutPromise]) as ServiceWorkerRegistration;
+                        console.log('[Push] Service worker ready:', registration);
+                    } catch (raceError) {
+                        console.warn('[Push] serviceWorker.ready timed out or failed:', raceError);
+
+                        // If no registration was found, try to see if we can find any active one
+                        if (registrations.length > 0) {
+                            registration = registrations[0];
+                            console.log('[Push] Falling back to first found registration:', registration);
+                        }
                     }
 
-                    setSubscription(existingSub);
+                    if (registration) {
+                        const existingSub = await registration.pushManager.getSubscription();
+                        console.log('[Push] Existing subscription:', existingSub ? 'Found' : 'None');
+
+                        if (existingSub) {
+                            console.log('[Push] Subscription endpoint:', existingSub.endpoint);
+                        }
+
+                        setSubscription(existingSub);
+                    } else {
+                        console.log('[Push] No active registration found, attempting manual registration with /sw-custom.js...');
+                        try {
+                            const manualReg = await navigator.serviceWorker.register('/sw-custom.js', { scope: '/' });
+                            console.log('[Push] Manual registration successful:', manualReg);
+
+                            // Check for subscription on the new registration
+                            const existingSub = await manualReg.pushManager.getSubscription();
+                            setSubscription(existingSub);
+                        } catch (regError) {
+                            console.error('[Push] Manual registration failed:', regError);
+                        }
+                    }
                 } catch (error) {
-                    console.error('[Push] Error checking existing subscription:', error);
+                    console.error('[Push] Error during initialization:', error);
                 }
             }
 
@@ -105,9 +147,36 @@ export function usePushNotifications() {
             }
 
             // Step 2: Wait for service worker
-            console.log('[Push] Waiting for service worker...');
-            const registration = await navigator.serviceWorker.ready;
-            console.log('[Push] Service worker ready:', registration);
+            console.log('[Push] Waiting for service worker (with 5s timeout)...');
+            const swReadyPromise = navigator.serviceWorker.ready;
+            const timeoutPromise = new Promise<null>((_, reject) =>
+                setTimeout(() => reject(new Error('Service worker ready timeout')), 5000)
+            );
+
+            let registration;
+            try {
+                registration = await Promise.race([swReadyPromise, timeoutPromise]) as ServiceWorkerRegistration;
+                console.log('[Push] Service worker ready:', registration);
+            } catch (raceError) {
+                console.warn('[Push] serviceWorker.ready timed out or failed, checking for existing or manual registration:', raceError);
+
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                if (registrations.length > 0) {
+                    registration = registrations[0];
+                    console.log('[Push] Using existing registration fallback:', registration);
+                } else {
+                    console.log('[Push] No registration found, attempting manual registration with /sw-custom.js before subscribing...');
+                    try {
+                        registration = await navigator.serviceWorker.register('/sw-custom.js', { scope: '/' });
+                        console.log('[Push] Manual registration successful during subscribe:', registration);
+                    } catch (regError) {
+                        console.error('[Push] Manual registration failed during subscribe:', regError);
+                        toast.error('Could not register service worker. Push notifications unavailable.');
+                        setIsSubscribing(false);
+                        return;
+                    }
+                }
+            }
 
             // Step 3: Check for existing subscription
             let sub = await registration.pushManager.getSubscription();
@@ -233,7 +302,7 @@ export function usePushNotifications() {
 
         try {
             const endpoint = subscription.endpoint;
-            
+
             console.log('[Push] Unsubscribing from push...');
             await subscription.unsubscribe();
             console.log('[Push] Unsubscribed from push manager');

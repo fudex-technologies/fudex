@@ -11,11 +11,13 @@ import {
 import { Plus, Share, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { usePopupStore } from '@/store/popup-store';
 
 const PwaInstallPrompt = () => {
 	const [isOpen, setIsOpen] = useState(false);
 	const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 	const [isIos, setIsIos] = useState(false);
+	const { enqueuePopup, dequeuePopup, activePopup } = usePopupStore();
 
 	useEffect(() => {
 		const handleBeforeInstallPrompt = (e: any) => {
@@ -25,7 +27,7 @@ const PwaInstallPrompt = () => {
 
 		window.addEventListener(
 			'beforeinstallprompt',
-			handleBeforeInstallPrompt
+			handleBeforeInstallPrompt,
 		);
 
 		const userAgent = window.navigator.userAgent.toLowerCase();
@@ -35,7 +37,7 @@ const PwaInstallPrompt = () => {
 		return () => {
 			window.removeEventListener(
 				'beforeinstallprompt',
-				handleBeforeInstallPrompt
+				handleBeforeInstallPrompt,
 			);
 		};
 	}, []);
@@ -49,7 +51,7 @@ const PwaInstallPrompt = () => {
 		if (isStandalone) return;
 
 		const lastDismissed = localStorage.getItem(
-			'pwa_install_toast_dismissed'
+			'pwa_install_toast_dismissed',
 		);
 		const now = Date.now();
 		const oneDay = 24 * 60 * 60 * 1000;
@@ -60,17 +62,24 @@ const PwaInstallPrompt = () => {
 
 		if (isIos || deferredPrompt) {
 			const timer = setTimeout(() => {
-				showInstallToast();
+				enqueuePopup('pwa_install');
 			}, 5000);
 			return () => clearTimeout(timer);
 		}
-	}, [isIos, deferredPrompt]);
+	}, [isIos, deferredPrompt, enqueuePopup]);
+
+	useEffect(() => {
+		if (activePopup === 'pwa_install') {
+			showInstallToast();
+		}
+	}, [activePopup]);
 
 	const dismissToast = () => {
 		localStorage.setItem(
 			'pwa_install_toast_dismissed',
-			Date.now().toString()
+			Date.now().toString(),
 		);
+		dequeuePopup('pwa_install');
 	};
 
 	const handleInstallClick = () => {
@@ -127,7 +136,7 @@ const PwaInstallPrompt = () => {
 				duration: Infinity,
 				position: 'bottom-center',
 				id: 'pwa-install-toast',
-			}
+			},
 		);
 	};
 
@@ -172,7 +181,10 @@ const PwaInstallPrompt = () => {
 				<div className='flex justify-end'>
 					<Button
 						variant='game'
-						onClick={() => setIsOpen(false)}>
+						onClick={() => {
+							setIsOpen(false);
+							dequeuePopup('pwa_install');
+						}}>
 						Close
 					</Button>
 				</div>

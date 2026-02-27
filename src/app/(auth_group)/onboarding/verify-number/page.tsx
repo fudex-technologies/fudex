@@ -24,7 +24,7 @@ export default function VerifyPhonePage() {
 	const [email, setEmail] = useState('');
 	const [countdown, setCountdown] = useState(60);
 	const [isCounting, setIsCounting] = useState(true);
-	const [method, setMethod] = useState<'sms' | 'email'>('sms');
+	const [method, setMethod] = useState<'sms' | 'email'>('email');
 
 	const {
 		verifyPhoneOtp,
