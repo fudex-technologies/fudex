@@ -5,13 +5,13 @@ import { Input } from '@/components/ui/input';
 import PageWrapper from '@/components/wrapers/PageWrapper';
 import SectionWrapper from '@/components/wrapers/SectionWrapper';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { savedAddressIcons } from '../page';
 import InputField, { SelectField } from '@/components/InputComponent';
 import { nigeriaStatesData } from '@/lib/staticData/nigeriaStatesData';
 import { Button } from '@/components/ui/button';
 import ConfirmLocationModal from './ConfirmLocationModal';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { PAGES_DATA } from '@/data/pagesData';
 import { useProfileActions } from '@/api-hooks/useProfileActions';
 
@@ -32,7 +32,7 @@ const initialFormData = {
 	country: 'Nigeria',
 };
 
-export default function SetAddressManually() {
+function SetAddressManuallyContent() {
 	const [form, setForm] = useState<IFormData>(initialFormData);
 	const [touched, setTouched] = useState<IFormTouchedData>({});
 	const [selectedLabel, setSelectedabel] = useState<
@@ -40,22 +40,69 @@ export default function SetAddressManually() {
 	>('home');
 	const [customLabel, setCustomLabel] = useState('');
 	const [confirmOpen, setConfirmOpen] = useState(false);
-	const [selectedAreaId, setSelectedAreaId] = useState<string | undefined>();
+	const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
 	const router = useRouter();
+	const searchParams = useSearchParams();
+	const addressId = searchParams.get('addressId');
+	const redirectTo = searchParams.get('redirectTo');
 
-	const { addAddress, getAllAreasInEkiti, getAddresses } =
-		useProfileActions();
+	const {
+		addAddress,
+		updateAddress,
+		getAllAreasInEkiti,
+		getAddresses,
+		getAddress,
+	} = useProfileActions();
 	const { refetch } = getAddresses();
 	const { data: listOfAreasInEkiti, isLoading: loadingAreas } =
 		getAllAreasInEkiti();
+
+	const { data: existingAddress, isLoading: loadingAddress } = getAddress(
+		addressId || '',
+	);
+
+	useEffect(() => {
+		if (existingAddress) {
+			setForm({
+				address: existingAddress.line1,
+				city: existingAddress.city,
+				country: existingAddress.country || 'Nigeria',
+			});
+			setSelectedAreaId(existingAddress.areaId);
+			const label = existingAddress.label?.toLowerCase();
+			if (
+				label === 'home' ||
+				label === 'school' ||
+				label === 'work' ||
+				label === 'other'
+			) {
+				setSelectedabel(label as any);
+			} else {
+				setSelectedabel('other');
+				setCustomLabel(existingAddress.label || '');
+			}
+		}
+	}, [existingAddress]);
 
 	const { mutate: addAddressMutate, isPending: addingAddress } = addAddress({
 		onSuccess: () => {
 			refetch();
 			setConfirmOpen(false);
-			router.push(PAGES_DATA.profile_addresses_page);
+			router.push(redirectTo || PAGES_DATA.profile_addresses_page);
 		},
 	});
+
+	const { mutate: updateAddressMutate, isPending: updatingAddress } =
+		updateAddress({
+			onSuccess: () => {
+				refetch();
+				setConfirmOpen(false);
+				router.push(redirectTo || PAGES_DATA.profile_addresses_page);
+			},
+		});
+
+	const isEditing = !!addressId;
+	const isPending = addingAddress || updatingAddress;
 
 	const validate = () => {
 		const newErrors: any = {};
@@ -95,7 +142,9 @@ export default function SetAddressManually() {
 		<PageWrapper className='flex flex-col items-center px-5'>
 			<div className='flex items-center gap-10 w-full '>
 				<GoBackButton />
-				<h1 className='font-semibold text-xl'>Set Location Manually</h1>
+				<h1 className='font-semibold text-xl'>
+					{isEditing ? 'Edit Address' : 'Set Location Manually'}
+				</h1>
 			</div>
 
 			<SectionWrapper className='flex flex-col items-center max-w-lg gap-5 mt-10 sm:mt-0 px-0!'>
@@ -161,7 +210,7 @@ export default function SetAddressManually() {
 								className={cn(
 									'py-4 flex-1 cursor-pointer flex flex-col gap-2 items-center justify-center  rounded-xl border  text-foreground',
 									selectedLabel === 'home' &&
-										'border-primary text-primary'
+										'border-primary text-primary',
 								)}>
 								{savedAddressIcons['home'].icon}
 								<p className=''>
@@ -173,7 +222,7 @@ export default function SetAddressManually() {
 								className={cn(
 									'py-4 flex-1 cursor-pointer flex flex-col gap-2 items-center justify-center  rounded-xl border  text-foreground',
 									selectedLabel === 'school' &&
-										'border-primary text-primary'
+										'border-primary text-primary',
 								)}>
 								{savedAddressIcons['school'].icon}
 								<p className=''>
@@ -185,7 +234,7 @@ export default function SetAddressManually() {
 								className={cn(
 									'py-4 flex-1 cursor-pointer flex flex-col gap-2 items-center justify-center  rounded-xl border  text-foreground',
 									selectedLabel === 'work' &&
-										'border-primary text-primary'
+										'border-primary text-primary',
 								)}>
 								{savedAddressIcons['work'].icon}
 								<p className=''>
@@ -197,7 +246,7 @@ export default function SetAddressManually() {
 								className={cn(
 									'py-4 flex-1 cursor-pointer flex flex-col gap-2 items-center justify-center  rounded-xl border  text-foreground',
 									selectedLabel === 'other' &&
-										'border-primary text-primary'
+										'border-primary text-primary',
 								)}>
 								{savedAddressIcons['other'].icon}
 								<p className=''>
@@ -219,8 +268,8 @@ export default function SetAddressManually() {
 					<Button
 						variant={'game'}
 						className='w-full py-5 my-3'
-						disabled={!isFormValid}>
-						Continue
+						disabled={!isFormValid || loadingAddress || isPending}>
+						{isEditing ? 'Update Address' : 'Continue'}
 					</Button>
 				</form>
 			</SectionWrapper>
@@ -231,7 +280,7 @@ export default function SetAddressManually() {
 				locationData={form}
 				handleAddAddress={() => {
 					if (!selectedAreaId) return;
-					addAddressMutate({
+					const addressData = {
 						city: form.city,
 						country: form.country,
 						line1: form.address,
@@ -240,10 +289,27 @@ export default function SetAddressManually() {
 								? customLabel || 'Other'
 								: selectedLabel,
 						areaId: selectedAreaId,
-					});
+					};
+
+					if (isEditing && addressId) {
+						updateAddressMutate({
+							id: addressId,
+							data: addressData,
+						});
+					} else {
+						addAddressMutate(addressData);
+					}
 				}}
-				pending={addingAddress}
+				pending={isPending}
 			/>
 		</PageWrapper>
+	);
+}
+
+export default function SetAddressManually() {
+	return (
+		<Suspense fallback={<div>Loading...</div>}>
+			<SetAddressManuallyContent />
+		</Suspense>
 	);
 }
