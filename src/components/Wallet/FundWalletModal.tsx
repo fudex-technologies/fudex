@@ -10,7 +10,7 @@ import {
 	DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
 import { usePaystackPayment } from 'react-paystack';
 
@@ -24,17 +24,141 @@ export default function FundWalletModal({
 	setOpen,
 }: FundWalletModalProps) {
 	const [amount, setAmount] = useState<string>('');
+	const lastTriggeredRef = useRef<string | null>(null);
+
 	const {
 		initializeFunding,
 		useGetBalance,
 		useVerifyFunding,
 		useGetTransactions,
 	} = useWalletActions();
+
 	const { refetch: refetchBalance } = useGetBalance();
 	// Also get transactions refetch
 	const { refetch: refetchTransactions } = useGetTransactions();
 	const initFundingMutation = initializeFunding();
 	const verifyFundingMutation = useVerifyFunding();
+
+	// Reset state when modal closes
+	useEffect(() => {
+		if (!open) {
+			initFundingMutation.reset();
+			verifyFundingMutation.reset();
+			setAmount('');
+			lastTriggeredRef.current = null;
+			refetchTransactions()
+		}
+	}, [open]);
+
+	const paystackConfig = useMemo(() => {
+		const providerRef = initFundingMutation.data?.providerRef;
+		const email = initFundingMutation.data?.email;
+		const numAmount = parseFloat(amount) || 0;
+
+		return {
+			reference: providerRef || '',
+			email: email || '',
+			amount: Math.round(numAmount * 100),
+			publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
+		};
+	}, [
+		initFundingMutation.data?.providerRef,
+		initFundingMutation.data?.email,
+		amount,
+	]);
+
+	const initializePayment = usePaystackPayment(paystackConfig);
+
+	const handlePaymentSuccess = useCallback(
+		(response: any) => {
+			toast.success('Payment successful! Verifying with server...');
+			setAmount('');
+			initFundingMutation.reset(); // Clear data so it doesn't re-trigger
+
+			const reference = response.reference;
+			verifyFundingMutation.mutate(
+				{ reference },
+				{
+					onSuccess: () => {
+						toast.success('Wallet funded successfully!');
+						// Poll for updates
+						let attempts = 0;
+						const maxAttempts = 5;
+						const interval = setInterval(async () => {
+							attempts++;
+							await Promise.all([
+								refetchBalance(),
+								refetchTransactions(),
+							]);
+							if (attempts >= maxAttempts) {
+								clearInterval(interval);
+								setOpen(false);
+							}
+						}, 2000);
+					},
+					onError: () => {
+						// Try polling anyway
+						let attempts = 0;
+						const maxAttempts = 5;
+						const interval = setInterval(async () => {
+							attempts++;
+							await Promise.all([
+								refetchBalance(),
+								refetchTransactions(),
+							]);
+							if (attempts >= maxAttempts) {
+								clearInterval(interval);
+								setOpen(false);
+							}
+						}, 2000);
+					},
+				},
+			);
+		},
+		[
+			verifyFundingMutation,
+			refetchBalance,
+			refetchTransactions,
+			setOpen,
+			initFundingMutation,
+		],
+	);
+
+	const handlePaymentClose = useCallback(() => {
+		toast.info('Payment cancelled');
+		initFundingMutation.reset();
+		lastTriggeredRef.current = null; // Allow retry
+	}, [initFundingMutation]);
+
+	// Trigger Paystack when providerRef is ready
+	useEffect(() => {
+		const providerRef = initFundingMutation.data?.providerRef;
+		const email = initFundingMutation.data?.email;
+		const numAmount = parseFloat(amount);
+
+		if (open && providerRef && email && numAmount > 0) {
+			if (lastTriggeredRef.current === providerRef) {
+				return;
+			}
+
+			console.log(
+				`[FundWalletModal] Triggering Paystack: ${providerRef}`,
+			);
+			lastTriggeredRef.current = providerRef;
+
+			initializePayment({
+				onSuccess: handlePaymentSuccess,
+				onClose: handlePaymentClose,
+			});
+		}
+	}, [
+		open,
+		initFundingMutation.data,
+		amount,
+		initializePayment,
+		handlePaymentSuccess,
+		handlePaymentClose,
+	]);
 
 	const handleProceedToPayment = () => {
 		const numAmount = parseFloat(amount);
@@ -43,14 +167,7 @@ export default function FundWalletModal({
 			return;
 		}
 
-		initFundingMutation.mutate(
-			{ amount: numAmount },
-			{
-				onSuccess: (data) => {
-					console.log('Funding initialized:', data.providerRef);
-				},
-			},
-		);
+		initFundingMutation.mutate({ amount: numAmount });
 	};
 
 	return (
@@ -97,134 +214,22 @@ export default function FundWalletModal({
 						))}
 					</div>
 
-					<PaystackWrapper
-						amount={parseFloat(amount)}
-						providerRef={initFundingMutation.data?.providerRef}
-						email={initFundingMutation.data?.email}
-						onSuccess={(response: any) => {
-							toast.success(
-								'Payment successful! Verifying with server...',
-							);
-							setAmount('');
-
-							const reference = response.reference;
-
-							verifyFundingMutation.mutate(
-								{ reference },
-								{
-									onSuccess: () => {
-										toast.success(
-											'Wallet funded successfully!',
-										);
-										// Poll for balance and transactions update to be sure
-										let attempts = 0;
-										const maxAttempts = 5;
-										const interval = setInterval(
-											async () => {
-												attempts++;
-												await Promise.all([
-													refetchBalance(),
-													refetchTransactions(),
-												]);
-												if (attempts >= maxAttempts) {
-													clearInterval(interval);
-													setOpen(false);
-												}
-											},
-											2000,
-										);
-									},
-									onError: () => {
-										// Even if verification mutation fails, still poll
-										// as the webhook might have worked
-										let attempts = 0;
-										const maxAttempts = 5;
-										const interval = setInterval(
-											async () => {
-												attempts++;
-												await Promise.all([
-													refetchBalance(),
-													refetchTransactions(),
-												]);
-												if (attempts >= maxAttempts) {
-													clearInterval(interval);
-													setOpen(false);
-												}
-											},
-											2000,
-										);
-									},
-								},
-							);
-						}}
-						onClose={() => {
-							toast.info('Payment cancelled');
-						}}>
-						<Button
-							onClick={handleProceedToPayment}
-							disabled={
-								initFundingMutation.isPending ||
-								verifyFundingMutation.isPending
-							}
-							className='w-full h-12 rounded-xl bg-primary text-primary-foreground font-bold text-lg'>
-							{initFundingMutation.isPending ||
-							verifyFundingMutation.isPending
-								? 'Processing...'
-								: 'Proceed to Payment'}
-						</Button>
-					</PaystackWrapper>
+					<Button
+						onClick={handleProceedToPayment}
+						disabled={
+							initFundingMutation.isPending ||
+							verifyFundingMutation.isPending ||
+							!!initFundingMutation.data?.providerRef
+						}
+						className='w-full h-12 rounded-xl bg-primary text-primary-foreground font-bold text-lg'>
+						{initFundingMutation.isPending ||
+						verifyFundingMutation.isPending ||
+						!!initFundingMutation.data?.providerRef
+							? 'Processing...'
+							: 'Proceed to Payment'}
+					</Button>
 				</div>
 			</DialogContent>
 		</Dialog>
 	);
-}
-
-function PaystackWrapper({
-	amount,
-	providerRef,
-	email,
-	children,
-	onSuccess,
-	onClose,
-}: any) {
-	const config = {
-		reference: providerRef || '',
-		email: email || '',
-		amount: Math.round(amount * 100),
-		publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
-	};
-
-	const initializePayment = usePaystackPayment(config);
-
-	const handleSuccess = useCallback(
-		(reference: any) => {
-			onSuccess(reference);
-		},
-		[onSuccess],
-	);
-
-	const handleClose = useCallback(() => {
-		onClose();
-	}, [onClose]);
-
-	useEffect(() => {
-		if (providerRef && amount > 0 && email) {
-			console.log(
-				`[PaystackWrapper] Triggering payment for ref: ${providerRef}`,
-			);
-			initializePayment({
-				onSuccess: handleSuccess,
-				onClose: handleClose,
-			});
-		}
-	}, [
-		providerRef,
-		amount,
-		email,
-		initializePayment,
-		handleSuccess,
-		handleClose,
-	]);
-
-	return children;
 }
