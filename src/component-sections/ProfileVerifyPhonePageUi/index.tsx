@@ -85,7 +85,7 @@ const ProfileVerifyPhonePageUi = () => {
 	return (
 		<div className='flex flex-col gap-5 w-full max-w-md'>
 			<div className='w-full'>
-				<GoBackButton />
+				<GoBackButton link={redirectUrl ? redirectUrl : undefined} />
 			</div>
 
 			<div className='w-full space-y-2 text-center'>
