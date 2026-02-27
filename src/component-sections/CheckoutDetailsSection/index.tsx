@@ -166,9 +166,7 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 	);
 
 	const deliveryFee =
-		deliveryType === 'PICKUP'
-			? 0
-			: deliveryFeeData?.deliveryFee || 0;
+		deliveryType === 'PICKUP' ? 0 : deliveryFeeData?.deliveryFee || 0;
 	const serviceFee = serviceFeeData?.serviceFee || 0;
 	const subTotalWithFees = subTotal + deliveryFee + serviceFee;
 	const total = Math.max(0, subTotalWithFees - walletAmount);
@@ -634,9 +632,9 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 								<p className='font-semibold'>
 									{deliveryType === 'PICKUP'
 										? 'Free (Pickup)'
-											: isLoadingDeliveryFeeData
-												? 'Loading...'
-												: formatCurency(deliveryFee)}
+										: isLoadingDeliveryFeeData
+											? 'Loading...'
+											: formatCurency(deliveryFee)}
 								</p>
 							</div>
 							<div className='flex items-center justify-between px-5'>
@@ -691,6 +689,7 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 				addresses={addresses}
 				selectedAddressId={selectedAddressId}
 				setSelectedAddressId={setSelectedAddressId}
+				vendorId={vendorId}
 			/>
 			<AddPhoneNumberDrawer
 				isOpen={isAddPhoneDrawerOpen}
