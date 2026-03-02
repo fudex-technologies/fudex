@@ -47,6 +47,7 @@ export const PAGES_DATA = {
     admin_dashboard_packages_page: `/profile/admin-dashboard/packages`,
     admin_dashboard_package_page: (id: string) => `/profile/admin-dashboard/packages/${id}`,
     admin_dashboard_wallets_page: `/profile/admin-dashboard/wallets`,
+    admin_dashboard_discounts_page: `/profile/admin-dashboard/discounts`,
 
     // operator dashboard pages
     operator_dashboard_page: `/profile/operator-dashboard`,

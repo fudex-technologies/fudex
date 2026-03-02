@@ -22,10 +22,16 @@ export default async function VendorSingleProductPage({ params }: Props) {
 		);
 	}
 
-	const minPrice =
+	const cheapestItem =
 		product.items.length > 0
-			? Math.min(...product.items.map((item) => item.price))
-			: 0;
+			? product.items.reduce((min: any, item: any) =>
+					item.finalPrice < min.finalPrice ? item : min,
+				)
+			: null;
+
+	const minPrice = cheapestItem?.finalPrice ?? 0;
+	const hasDiscount = cheapestItem?.hasDiscount ?? false;
+	const basePrice = (cheapestItem as any)?.basePrice ?? 0;
 
 	return (
 		<>
@@ -39,9 +45,16 @@ export default async function VendorSingleProductPage({ params }: Props) {
 					<p className='text-foreground/50'>{product.description}</p>
 				)}
 				{minPrice > 0 && (
-					<p className='text-foreground/70'>
-						From {formatCurency(minPrice)}
-					</p>
+					<div className='flex items-center gap-2'>
+						<p className='text-foreground/70'>
+							From {formatCurency(minPrice)}
+						</p>
+						{hasDiscount && basePrice > minPrice && (
+							<p className='text-sm text-foreground/30 line-through'>
+								{formatCurency(basePrice)}
+							</p>
+						)}
+					</div>
 				)}
 			</div>
 

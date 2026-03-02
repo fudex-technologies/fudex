@@ -129,7 +129,9 @@ const ProductDetailsSelectionSection = ({
 		// Base price calculation for ONE pack
 		if (selectedItem.pricingType === 'PER_UNIT') {
 			// For PER_UNIT: price * unitQuantity (for one pack)
-			singlePackTotal = selectedItem.price * unitQuantity;
+			singlePackTotal =
+				((selectedItem as any).finalPrice ?? selectedItem.price) *
+				unitQuantity;
 
 			// Add packaging fee for PER_UNIT items (once per pack)
 			if (selectedItem.packagingFee) {
@@ -137,7 +139,8 @@ const ProductDetailsSelectionSection = ({
 			}
 		} else {
 			// For FIXED: just the price (for one pack)
-			singlePackTotal = selectedItem.price;
+			singlePackTotal =
+				(selectedItem as any).finalPrice ?? selectedItem.price;
 		}
 
 		// Add addon prices (for ONE pack)
@@ -149,7 +152,8 @@ const ProductDetailsSelectionSection = ({
 			if (addon && quantity > 0) {
 				// Addons are NOT multiplied by unitQuantity
 				// If user selects 1 chicken addon, they get 1 chicken regardless of scoop count
-				singlePackTotal += addon.price * quantity;
+				singlePackTotal +=
+					((addon as any).finalPrice ?? addon.price) * quantity;
 			}
 		});
 
@@ -318,8 +322,22 @@ const ProductDetailsSelectionSection = ({
 											<p className='text-lg text-foreground/50'>
 												{item.name}
 											</p>
-											<p className='text-foreground/50'>
-												{formatCurency(item.price)}
+											<p className='text-foreground/50 flex items-center gap-2'>
+												{formatCurency(
+													(item as any).finalPrice ??
+														item.price,
+												)}
+												{(item as any).hasDiscount &&
+													(item as any).basePrice >
+														(item as any)
+															.finalPrice && (
+														<span className='text-xs line-through opacity-50'>
+															{formatCurency(
+																(item as any)
+																	.basePrice,
+															)}
+														</span>
+													)}
 												{item.pricingType ===
 													'PER_UNIT' &&
 													item.unitName && (
@@ -369,7 +387,9 @@ const ProductDetailsSelectionSection = ({
 												<div className='text-xs text-foreground/50'>
 													<p>
 														{formatCurency(
-															item.price *
+															((item as any)
+																.finalPrice ??
+																item.price) *
 																unitQuantity,
 														)}{' '}
 														total
@@ -434,10 +454,29 @@ const ProductDetailsSelectionSection = ({
 																}
 															</p>
 														)}
-														<p className='text-sm text-foreground/70'>
+														<p className='text-sm text-foreground/70 flex items-center gap-2'>
 															{formatCurency(
-																protein.price,
+																(protein as any)
+																	.finalPrice ??
+																	protein.price,
 															)}
+															{(protein as any)
+																.hasDiscount &&
+																(protein as any)
+																	.basePrice >
+																	(
+																		protein as any
+																	)
+																		.finalPrice && (
+																	<span className='text-xs line-through opacity-50'>
+																		{formatCurency(
+																			(
+																				protein as any
+																			)
+																				.basePrice,
+																		)}
+																	</span>
+																)}
 														</p>
 													</div>
 												</div>
@@ -527,10 +566,29 @@ const ProductDetailsSelectionSection = ({
 																}
 															</p>
 														)}
-														<p className='text-sm text-foreground/70'>
+														<p className='text-sm text-foreground/70 flex items-center gap-2'>
 															{formatCurency(
-																drink.price,
+																(drink as any)
+																	.finalPrice ??
+																	drink.price,
 															)}
+															{(drink as any)
+																.hasDiscount &&
+																(drink as any)
+																	.basePrice >
+																	(
+																		drink as any
+																	)
+																		.finalPrice && (
+																	<span className='text-xs line-through opacity-50'>
+																		{formatCurency(
+																			(
+																				drink as any
+																			)
+																				.basePrice,
+																		)}
+																	</span>
+																)}
 														</p>
 													</div>
 												</div>
@@ -618,10 +676,29 @@ const ProductDetailsSelectionSection = ({
 																}
 															</p>
 														)}
-														<p className='text-sm text-foreground/70'>
+														<p className='text-sm text-foreground/70 flex items-center gap-2'>
 															{formatCurency(
-																side.price,
+																(side as any)
+																	.finalPrice ??
+																	side.price,
 															)}
+															{(side as any)
+																.hasDiscount &&
+																(side as any)
+																	.basePrice >
+																	(
+																		side as any
+																	)
+																		.finalPrice && (
+																	<span className='text-xs line-through opacity-50'>
+																		{formatCurency(
+																			(
+																				side as any
+																			)
+																				.basePrice,
+																		)}
+																	</span>
+																)}
 														</p>
 													</div>
 												</div>

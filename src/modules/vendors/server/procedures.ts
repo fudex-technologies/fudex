@@ -18,9 +18,10 @@ import {
     sendAdminNewVendorNotification
 } from '@/lib/email';
 import { createPaystackRecipient, getPaystackBanks } from "@/lib/paystack";
-import { verifyVerificationToken } from '@/modules/auth-phone/server/procedures';
 import { NotificationService } from "@/modules/notifications/server/service";
 import { PAGES_DATA } from '@/data/pagesData';
+import { DiscountService } from '@/modules/discounts/server/service';
+import { verifyVerificationToken } from '@/modules/auth-phone/server/procedures';
 
 const generateUniqueSlug = async (prisma: any, name: string, vendorId: string): Promise<string> => {
     const baseSlug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
@@ -384,29 +385,51 @@ export const vendorRouter = createTRPCRouter({
     // Get a single product item by ID
     getProductItemById: publicProcedure
         .input(z.object({ id: z.string() }))
-        .query(({ ctx, input }) => {
-            return ctx.prisma.productItem.findUnique({
+        .query(async ({ ctx, input }) => {
+            const item = await ctx.prisma.productItem.findUnique({
                 where: { id: input.id },
                 include: { product: true, vendor: true }
             });
+            if (!item) return null;
+
+            const calc = await DiscountService.getCalculatedPrice(ctx.prisma, item.id, item.vendorId, item.price);
+
+            return {
+                ...item,
+                basePrice: calc.originalPrice,
+                finalPrice: calc.finalPrice,
+                hasDiscount: calc.appliedDiscountId !== null,
+                discountAmount: calc.discountAmount,
+            };
         }),
 
     // Get multiple product items by IDs (for batch fetching)
     getProductItemsByIds: publicProcedure
         .input(z.object({ ids: z.array(z.string()) }))
-        .query(({ ctx, input }) => {
+        .query(async ({ ctx, input }) => {
             if (input.ids.length === 0) return [];
-            return ctx.prisma.productItem.findMany({
+            const items = await ctx.prisma.productItem.findMany({
                 where: { id: { in: input.ids } },
                 include: { product: true, vendor: true }
             });
+
+            return Promise.all(items.map(async (item) => {
+                const calc = await DiscountService.getCalculatedPrice(ctx.prisma, item.id, item.vendorId, item.price);
+                return {
+                    ...item,
+                    basePrice: calc.originalPrice,
+                    finalPrice: calc.finalPrice,
+                    hasDiscount: calc.appliedDiscountId !== null,
+                    discountAmount: calc.discountAmount,
+                };
+            }));
         }),
 
     // Get product by ID with all its items (variants)
     getProductWithItems: publicProcedure
         .input(z.object({ id: z.string() }))
-        .query(({ ctx, input }) => {
-            return ctx.prisma.product.findUnique({
+        .query(async ({ ctx, input }) => {
+            const product = await ctx.prisma.product.findUnique({
                 where: { id: input.id },
                 include: {
                     items: {
@@ -423,6 +446,24 @@ export const vendorRouter = createTRPCRouter({
                     vendor: true
                 }
             });
+
+            if (!product) return null;
+
+            const structuredItems = await Promise.all(product.items.map(async (item) => {
+                const calc = await DiscountService.getCalculatedPrice(ctx.prisma, item.id, item.vendorId, item.price);
+                return {
+                    ...item,
+                    basePrice: calc.originalPrice,
+                    finalPrice: calc.finalPrice,
+                    hasDiscount: calc.appliedDiscountId !== null,
+                    discountAmount: calc.discountAmount,
+                };
+            }));
+
+            return {
+                ...product,
+                items: structuredItems
+            };
         }),
 
     getProductItemsByCategorySlug: publicProcedure
@@ -436,7 +477,7 @@ export const vendorRouter = createTRPCRouter({
         .query(async ({ ctx, input }) => {
             const { categorySlug, vendorId, includeOutOfStock } = input;
 
-            return ctx.prisma.productItem.findMany({
+            const results = await ctx.prisma.productItem.findMany({
                 where: {
                     isActive: true,
                     ...(includeOutOfStock ? {} : { inStock: true }),
@@ -470,6 +511,17 @@ export const vendorRouter = createTRPCRouter({
                     price: "asc",
                 },
             });
+
+            return Promise.all(results.map(async (item) => {
+                const calc = await DiscountService.getCalculatedPrice(ctx.prisma, item.id, item.vendorId, item.price);
+                return {
+                    ...item,
+                    basePrice: calc.originalPrice,
+                    finalPrice: calc.finalPrice,
+                    hasDiscount: calc.appliedDiscountId !== null,
+                    discountAmount: calc.discountAmount,
+                };
+            }));
         }),
 
     getVendorOpeningHours: publicProcedure
@@ -573,13 +625,27 @@ export const vendorRouter = createTRPCRouter({
                 },
             });
 
-            // Filter out products that have no items
-            const filteredProducts = products.filter((product) => product.items.length > 0);
+            // Sort products by their cheapest item price (using discounted prices)
+            const resolvedProducts = await Promise.all(products.map(async (product: any) => {
+                const resolvedItems = await Promise.all(product.items.map(async (item: any) => {
+                    const calc = await DiscountService.getCalculatedPrice(ctx.prisma, item.id, item.vendorId, item.price);
+                    return {
+                        ...item,
+                        basePrice: calc.originalPrice,
+                        finalPrice: calc.finalPrice,
+                        hasDiscount: calc.appliedDiscountId !== null,
+                        discountAmount: calc.discountAmount,
+                    };
+                }));
+                return {
+                    ...product,
+                    items: resolvedItems
+                };
+            }));
 
-            // Sort products by their cheapest item price
-            return filteredProducts.sort((a, b) => {
-                const aMinPrice = Math.min(...a.items.map(i => i.price));
-                const bMinPrice = Math.min(...b.items.map(i => i.price));
+            return resolvedProducts.sort((a: any, b: any) => {
+                const aMinPrice = Math.min(...a.items.map((i: any) => i.finalPrice));
+                const bMinPrice = Math.min(...b.items.map((i: any) => i.finalPrice));
                 return aMinPrice - bMinPrice;
             });
         }),
@@ -590,8 +656,8 @@ export const vendorRouter = createTRPCRouter({
             vendorId: z.string(),
             take: z.number().optional().default(50)
         }))
-        .query(({ ctx, input }) => {
-            return ctx.prisma.productItem.findMany({
+        .query(async ({ ctx, input }) => {
+            const items = await ctx.prisma.productItem.findMany({
                 where: { vendorId: input.vendorId, isActive: true },
                 take: input.take,
                 orderBy: { price: "asc" },
@@ -604,6 +670,17 @@ export const vendorRouter = createTRPCRouter({
                     }
                 }
             });
+
+            return Promise.all(items.map(async (item) => {
+                const calc = await DiscountService.getCalculatedPrice(ctx.prisma, item.id, item.vendorId, item.price);
+                return {
+                    ...item,
+                    basePrice: calc.originalPrice,
+                    finalPrice: calc.finalPrice,
+                    hasDiscount: calc.appliedDiscountId !== null,
+                    discountAmount: calc.discountAmount,
+                };
+            }));
         }),
 
     // Combined search for vendors and product items

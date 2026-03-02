@@ -39,6 +39,7 @@ model User {
   packagePayments   PackagePayment[]
   wallet            Wallet?
   walletFundings    WalletFunding[]
+  createdDiscounts  Discount[]         @relation("DiscountCreatedBy")
 
   @@map("user")
 }
@@ -263,6 +264,7 @@ model Vendor {
   openingHours          VendorOpeningHour[]
   vendorPayouts         VendorPayout[]
   documents             VendorVerificationDocument[]
+  discounts             Discount[]                   @relation("VendorDiscounts")
 
   @@index([name])
   @@index([areaId])
@@ -352,6 +354,7 @@ model ProductItem {
   categories         ProductItemCategory[]
   packageAddons      PackageAddon[]
   packageOrderAddons PackageOrderAddon[]
+  discounts          Discount[]
 
   @@index([vendorId])
   @@index([price])
@@ -430,6 +433,9 @@ model Order {
   payoutStatus    PayoutStatus  @default(NOT_ELIGIBLE)
   platformFee     Float         @default(0)
   productAmount   Float         @default(0)
+  discountAmount  Float         @default(0)
+  discountId      String?
+  discount        Discount?     @relation("OrderDiscount", fields: [discountId], references: [id])
   address         Address       @relation(fields: [addressId], references: [id])
   assignedRider   Rider?        @relation(fields: [assignedRiderId], references: [id])
   operator        Operator?     @relation(fields: [operatorId], references: [id])
@@ -450,8 +456,10 @@ model OrderItem {
   orderId       String
   productItemId String
   quantity      Int              @default(1)
-  unitPrice     Float
-  totalPrice    Float
+  originalUnitPrice Float        @default(0) // Snapshot of price before discount
+  discountAmount    Float        @default(0) // Amount discounted per unit
+  unitPrice     Float                        // Final price after discount
+  totalPrice    Float                        // quantity * unitPrice
   groupKey      String?
   order         Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productItem   ProductItem      @relation(fields: [productItemId], references: [id])
@@ -685,6 +693,55 @@ enum SettlementStatus {
 enum PricingType {
   FIXED // Traditional: price is for the whole item
   PER_UNIT // New: price is per unit (scoop, wrap, etc.)
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+enum DiscountScope {
+  PRODUCT_ITEM
+  VENDOR
+  PLATFORM
+  CART
+}
+
+model Discount {
+  id              String        @id @default(uuid())
+  name            String
+  description     String?
+
+  type            DiscountType
+  value           Float
+
+  scope           DiscountScope
+
+  productItemId   String?
+  vendorId        String?
+
+  usageLimit      Int?
+  usageCount      Int           @default(0)
+
+  startAt         DateTime
+  endAt           DateTime
+
+  isActive        Boolean       @default(true)
+
+  createdById     String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  productItem     ProductItem?  @relation(fields: [productItemId], references: [id], onDelete: Cascade)
+  vendor          Vendor?       @relation("VendorDiscounts", fields: [vendorId], references: [id], onDelete: Cascade)
+  createdBy       User?         @relation("DiscountCreatedBy", fields: [createdById], references: [id])
+  orders          Order[]       @relation("OrderDiscount")
+
+  @@index([scope])
+  @@index([vendorId])
+  @@index([productItemId])
+  @@index([startAt, endAt])
+  @@index([isActive])
 }
 
 // ========== PACKAGE SYSTEM MODELS ==========
