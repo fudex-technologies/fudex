@@ -6,7 +6,7 @@ import RequirePhoneModal from '@/components/RequirePhoneModal/RequirePhoneModal'
 import OnboardingRedirect from './OnboardingRedirect';
 import PwaInstallPrompt from '@/components/pwa/PwaInstallPrompt';
 import { Analytics } from '@vercel/analytics/next';
-import { SpeedInsights } from '@vercel/speed-insights/next';
+// import { SpeedInsights } from '@vercel/speed-insights/next';
 import GoogleAnalytics from '@/components/GoogleAnalytics';
 import { Suspense } from 'react';
 import PushNotificationPrompt from '@/components/pwa/PushNotificationPrompt';
@@ -33,7 +33,7 @@ export default function Providers({
 				</NuqsAdapter>
 			</TRPCReactProvider>
 			<Analytics />
-			<SpeedInsights />
+			{/* <SpeedInsights /> */}
 		</>
 	);
 }
