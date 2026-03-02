@@ -77,7 +77,8 @@ export default function PushNotificationPrompt() {
 							<Button
 								variant='outline'
 								className='flex-1'
-								onClick={() => {
+								onClick={async () => {
+									await subscribe();
 									localStorage.setItem(
 										'push_notification_prompt_dismissed',
 										Date.now().toString(),
@@ -85,7 +86,7 @@ export default function PushNotificationPrompt() {
 									toast.dismiss(t);
 									dequeuePopup('push_notification');
 								}}>
-								Not Now
+								{isLoading ? 'Loading...' : 'Not Now'}
 							</Button>
 							<Button
 								className='flex-1'

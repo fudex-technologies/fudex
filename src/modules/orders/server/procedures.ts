@@ -8,7 +8,7 @@ import { WalletService } from "@/modules/wallet/server/service";
 import { RefundService } from "@/modules/wallet/server/refund.service";
 import { ReferralService } from "@/modules/referral/server/service";
 import { sendOrderOutForDeliveryEmail } from "@/lib/email";
-
+import { DiscountService } from "@/modules/discounts/server/service";
 
 export const orderRouter = createTRPCRouter({
     // Create an order: supports item-level addons and optional grouping (groupKey) for "packs".
@@ -139,12 +139,27 @@ export const orderRouter = createTRPCRouter({
             // Build create data for order items and compute totals (include addon pricing)
             let orderSubTotal = 0;
             const orderItemsCreate: any[] = [];
+            const discountsToIncrement: string[] = [];
 
             for (const it of input.items) {
                 const mainPi = piMap[it.productItemId];
                 const unit = mainPi.price;
+
+                // Get discount calculation directly from the DB for this item
+                const calculatedPrice = await DiscountService.getCalculatedPrice(
+                    ctx.prisma,
+                    it.productItemId,
+                    mainPi.vendorId,
+                    unit
+                );
+
+                if (calculatedPrice.appliedDiscountId) {
+                    discountsToIncrement.push(calculatedPrice.appliedDiscountId);
+                }
+
                 // Main item: price * quantity (works for both FIXED and PER_UNIT)
-                let totalPrice = unit * it.quantity;
+                // Use the finalPrice AFTER discount
+                let totalPrice = calculatedPrice.finalPrice * it.quantity;
 
                 // Add packaging fee for PER_UNIT items (once per pack)
                 if (mainPi.pricingType === 'PER_UNIT' && mainPi.packagingFee) {
@@ -156,7 +171,7 @@ export const orderRouter = createTRPCRouter({
                     for (const a of it.addons) {
                         const addonPi = piMap[a.addonProductItemId];
                         const addonUnit = addonPi.price;
-                        // Addons are per pack, not per unit of the main item
+                        // Addons DO NOT get discounted individually in this scope logic without explicitly designing it
                         const addonTotal = addonUnit * a.quantity;
                         totalPrice += addonTotal;
                         addonsToCreate.push({
@@ -172,7 +187,9 @@ export const orderRouter = createTRPCRouter({
                 orderItemsCreate.push({
                     productItemId: it.productItemId,
                     quantity: it.quantity,
-                    unitPrice: unit,
+                    originalUnitPrice: calculatedPrice.originalPrice,
+                    discountAmount: calculatedPrice.discountAmount,
+                    unitPrice: calculatedPrice.finalPrice,
                     totalPrice,
                     groupKey: it.groupKey,
                     // addons handled after orderItem creation in transaction
@@ -180,8 +197,23 @@ export const orderRouter = createTRPCRouter({
                 });
             }
 
+            // Calculate cart-level discount (applied to subtotal, not per-item)
+            const cartDiscountResult = await DiscountService.getCalculatedCartDiscount(
+                ctx.prisma,
+                vendorId ?? "",
+                orderSubTotal
+            );
+
+            // Final product amount uses either item-discounted or cart-discounted subtotal
+            const finalProductAmount = cartDiscountResult.finalSubTotal;
+
+            // Include cart discount in the increment tracking list
+            if (cartDiscountResult.appliedDiscountId) {
+                discountsToIncrement.push(cartDiscountResult.appliedDiscountId);
+            }
+
             // Calculate total amount including delivery and service fees
-            const totalAmount = orderSubTotal + deliveryFee + serviceFee;
+            const totalAmount = finalProductAmount + deliveryFee + serviceFee;
 
             if (input.walletAmount > totalAmount) {
                 throw new Error("Wallet amount cannot exceed total order amount");
@@ -199,10 +231,37 @@ export const orderRouter = createTRPCRouter({
                         serviceFee,
                         currency: "NGN",
                         notes: input.notes,
-                        productAmount: orderSubTotal,
+                        productAmount: finalProductAmount,
+                        discountAmount: cartDiscountResult.discountAmount,
+                        discountId: cartDiscountResult.appliedDiscountId ?? undefined,
                         deliveryType: input.deliveryType
                     },
                 });
+
+                // Update usage counts safely under transaction
+                // Aggregate usage increments
+                const discountCounts = discountsToIncrement.reduce((acc, curr) => {
+                    acc[curr] = (acc[curr] || 0) + 1;
+                    return acc;
+                }, {} as Record<string, number>);
+
+                for (const [discountId, incAmount] of Object.entries(discountCounts)) {
+                    const discount = await prisma.discount.findUnique({
+                        where: { id: discountId }
+                    });
+
+                    if (!discount) continue;
+
+                    if (discount.usageLimit !== null && (discount.usageCount + incAmount) > discount.usageLimit) {
+                        // Race condition caught
+                        throw new Error(`Discount limit exhausted for ${discount.name} during checkout processing.`);
+                    }
+
+                    await prisma.discount.update({
+                        where: { id: discountId },
+                        data: { usageCount: { increment: incAmount } },
+                    });
+                }
 
                 // create order items and related addons
                 for (const oi of orderItemsCreate) {
@@ -211,6 +270,8 @@ export const orderRouter = createTRPCRouter({
                             orderId: order.id,
                             productItemId: oi.productItemId,
                             quantity: oi.quantity,
+                            originalUnitPrice: oi.originalUnitPrice,
+                            discountAmount: oi.discountAmount,
                             unitPrice: oi.unitPrice,
                             totalPrice: oi.totalPrice,
                             groupKey: oi.groupKey,

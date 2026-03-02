@@ -249,8 +249,22 @@ const PackEditSection = ({
 										<p className='text-base text-foreground/50'>
 											{item.name}
 										</p>
-										<p className='text-foreground/50 text-sm'>
-											{formatCurency(item.price)}
+										<p className='text-foreground/50 text-sm flex items-center gap-2'>
+											{formatCurency(
+												(item as any).finalPrice ??
+													item.price,
+											)}
+											{(item as any).hasDiscount &&
+												(item as any).basePrice >
+													(item as any)
+														.finalPrice && (
+													<span className='text-xs line-through opacity-50'>
+														{formatCurency(
+															(item as any)
+																.basePrice,
+														)}
+													</span>
+												)}
 											{item.pricingType === 'PER_UNIT' &&
 												item.unitName && (
 													<span className='text-xs ml-1'>
@@ -297,7 +311,9 @@ const PackEditSection = ({
 											<div className='text-xs text-foreground/50'>
 												<p>
 													{formatCurency(
-														item.price *
+														((item as any)
+															.finalPrice ??
+															item.price) *
 															unitQuantity,
 													)}{' '}
 													total
@@ -346,10 +362,26 @@ const PackEditSection = ({
 														{protein.description}
 													</p>
 												)}
-												<p className='text-xs text-foreground/70'>
+												<p className='text-xs text-foreground/70 flex items-center gap-2'>
 													{formatCurency(
-														protein.price,
+														(protein as any)
+															.finalPrice ??
+															protein.price,
 													)}
+													{(protein as any)
+														.hasDiscount &&
+														(protein as any)
+															.basePrice >
+															(protein as any)
+																.finalPrice && (
+															<span className='text-xs line-through opacity-50'>
+																{formatCurency(
+																	(
+																		protein as any
+																	).basePrice,
+																)}
+															</span>
+														)}
 												</p>
 											</div>
 										</div>
@@ -432,8 +464,26 @@ const PackEditSection = ({
 														{drink.description}
 													</p>
 												)}
-												<p className='text-xs text-foreground/70'>
-													{formatCurency(drink.price)}
+												<p className='text-xs text-foreground/70 flex items-center gap-2'>
+													{formatCurency(
+														(drink as any)
+															.finalPrice ??
+															drink.price,
+													)}
+													{(drink as any)
+														.hasDiscount &&
+														(drink as any)
+															.basePrice >
+															(drink as any)
+																.finalPrice && (
+															<span className='text-xs line-through opacity-50'>
+																{formatCurency(
+																	(
+																		drink as any
+																	).basePrice,
+																)}
+															</span>
+														)}
 												</p>
 											</div>
 										</div>
@@ -516,8 +566,26 @@ const PackEditSection = ({
 														{side.description}
 													</p>
 												)}
-												<p className='text-xs text-foreground/70'>
-													{formatCurency(side.price)}
+												<p className='text-xs text-foreground/70 flex items-center gap-2'>
+													{formatCurency(
+														(side as any)
+															.finalPrice ??
+															side.price,
+													)}
+													{(side as any)
+														.hasDiscount &&
+														(side as any)
+															.basePrice >
+															(side as any)
+																.finalPrice && (
+															<span className='text-xs line-through opacity-50'>
+																{formatCurency(
+																	(
+																		side as any
+																	).basePrice,
+																)}
+															</span>
+														)}
 												</p>
 											</div>
 										</div>
@@ -624,14 +692,17 @@ const OrderSummaryItem = ({
 
 		let total = 0;
 		if (mainItem.pricingType === 'PER_UNIT') {
-			total = mainItem.price * unitQuantity * packs;
+			total =
+				((mainItem as any).finalPrice ?? mainItem.price) *
+				unitQuantity *
+				packs;
 
 			// Add packaging fee for PER_UNIT items (once per pack)
 			if (mainItem.packagingFee) {
 				total += mainItem.packagingFee * packs;
 			}
 		} else {
-			total = mainItem.price * packs;
+			total = ((mainItem as any).finalPrice ?? mainItem.price) * packs;
 		}
 
 		// Add addon prices
@@ -643,7 +714,10 @@ const OrderSummaryItem = ({
 				if (addonItem) {
 					// Addons are multiplied by addon quantity and number of packs
 					// For PER_UNIT items, addons are per pack, not per unit
-					total += addonItem.price * addon.quantity * packs;
+					total +=
+						((addonItem as any).finalPrice ?? addonItem.price) *
+						addon.quantity *
+						packs;
 				}
 			});
 		}
@@ -687,11 +761,20 @@ const OrderSummaryItem = ({
 				<div className='flex-1'>
 					<div className='flex gap-1 items-center'>
 						<span className='w-2 h-2 rounded-full bg-foreground' />{' '}
-						<p className='text-lg'>
+						<p className='text-lg flex flex-wrap items-center gap-x-2'>
 							{mainItem.name}
+							{(mainItem as any).hasDiscount &&
+								(mainItem as any).basePrice >
+									(mainItem as any).finalPrice && (
+									<span className='text-sm line-through opacity-30'>
+										{formatCurency(
+											(mainItem as any).basePrice,
+										)}
+									</span>
+								)}
 							{mainItem.pricingType === 'PER_UNIT' &&
 								mainItem.unitName && (
-									<span className='text-sm text-foreground/50 ml-1'>
+									<span className='text-sm text-foreground/50'>
 										({pack.quantity} {mainItem.unitName}
 										{pack.quantity !== 1 ? 's' : ''})
 									</span>
