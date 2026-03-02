@@ -962,3 +962,76 @@ export async function sendWalletTransactionEmail(params: {
         return null;
     }
 }
+
+export async function sendOperatorRiderRequestEmail(
+    email: string,
+    vendorName: string,
+    customerCount: number,
+    requestId: string,
+    from: string
+) {
+    try {
+        const { data, error } = await resend.emails.send({
+            from: `FUDEX <${from}>`,
+            to: [email],
+            subject: `New Bike Request from ${vendorName}`,
+            html: `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>New Bike Request</title>
+                </head>
+                <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="background: ${BRAND_GRADIENT}; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                        <h1 style="color: white; margin: 0; font-size: 28px;">New Bike Request 🛵</h1>
+                    </div>
+                    
+                    <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
+                        <p style="font-size: 16px; margin-bottom: 20px;">Hello Operator,</p>
+                        
+                        <p style="font-size: 16px; margin-bottom: 20px;">
+                            <strong>${vendorName}</strong> has just submitted a request for a rider to handle deliveries.
+                        </p>
+                        
+                        <div style="background: white; border-left: 4px solid ${BRAND_COLOR}; padding: 15px; margin: 20px 0; border-radius: 0 4px 4px 0;">
+                            <p style="margin: 0 0 10px 0;"><strong>Request Details:</strong></p>
+                            <ul style="margin: 0; padding-left: 20px; color: #555;">
+                                <li><strong>Vendor:</strong> ${vendorName}</li>
+                                <li><strong>Total Drop-offs:</strong> ${customerCount}</li>
+                                <li><strong>Request ID:</strong> #${requestId.slice(0, 8)}</li>
+                            </ul>
+                        </div>
+                        
+                        <div style="text-align: center; margin: 40px 0;">
+                            <a href="${process.env.NEXT_PUBLIC_BASE_URL}${PAGES_DATA.operator_dashboard_rider_requests_page}" 
+                               style="background: ${BRAND_COLOR}; color: white; padding: 14px 32px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+                                View Request Details
+                            </a>
+                        </div>
+                        
+                        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+                        
+                        <p style="font-size: 12px; color: #999; text-align: center;">
+                            © ${new Date().getFullYear()} FUDEX. All rights reserved.<br>
+                            This is an automated email to the operator team.
+                        </p>
+                    </div>
+                </body>
+                </html>
+            `,
+        });
+
+        if (error) {
+            console.error('[Resend Error]', error);
+            throw new Error(error.message);
+        }
+
+        return data;
+    } catch (error) {
+        console.error('Error sending operator rider request email:', error);
+        throw error;
+    }
+}
+

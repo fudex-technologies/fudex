@@ -118,7 +118,9 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 			let singlePackPrice = 0;
 
 			// Main item price * quantity (works for both FIXED and PER_UNIT)
-			const packPrice = mainItem.price * pack.quantity;
+			const packPrice =
+				((mainItem as any).finalPrice ?? mainItem.price) *
+				pack.quantity;
 			singlePackPrice += packPrice;
 
 			// Add packaging fee for PER_UNIT items (once per pack)
@@ -134,7 +136,9 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 					);
 					if (addonItem) {
 						// Addons are per pack, not per unit of the main item
-						singlePackPrice += addonItem.price * addon.quantity;
+						singlePackPrice +=
+							((addonItem as any).finalPrice ?? addonItem.price) *
+							addon.quantity;
 					}
 				}
 			}
@@ -165,10 +169,27 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 		trpc.users.getServiceFee.queryOptions(undefined),
 	);
 
+	// Fetch cart discount
+	const { data: cartDiscountData, isLoading: isLoadingCartDiscount } =
+		useQuery(
+			trpc.discounts.getCalculatedCartDiscount.queryOptions(
+				{
+					vendorId,
+					subTotal,
+				},
+				{
+					enabled: subTotal > 0,
+				} as any,
+			),
+		);
+
 	const deliveryFee =
 		deliveryType === 'PICKUP' ? 0 : deliveryFeeData?.deliveryFee || 0;
 	const serviceFee = serviceFeeData?.serviceFee || 0;
-	const subTotalWithFees = subTotal + deliveryFee + serviceFee;
+	const cartDiscountAmount = cartDiscountData?.discountAmount || 0;
+
+	const subTotalWithFees =
+		subTotal + deliveryFee + serviceFee - cartDiscountAmount;
 	const total = Math.max(0, subTotalWithFees - walletAmount);
 
 	// Create payment mutation
@@ -645,7 +666,32 @@ const CheckoutDetailsSection = ({ vendorId }: { vendorId: string }) => {
 										: formatCurency(serviceFee)}
 								</p>
 							</div>
-							<div className='flex items-center justify-between px-5 font-bold text-primary'>
+							{cartDiscountAmount > 0 && (
+								<div className='flex items-center justify-between px-5 text-green-600'>
+									<p>
+										Discount{' '}
+										{cartDiscountData?.discount?.name && (
+											<span className='text-xs opacity-70'>
+												(
+												{shortenText(
+													cartDiscountData.discount
+														.name,
+													25,
+												)}
+												)
+											</span>
+										)}
+									</p>
+									<p className='font-semibold'>
+										{isLoadingCartDiscount
+											? 'Loading...'
+											: `- ${formatCurency(
+													cartDiscountAmount,
+												)}`}
+									</p>
+								</div>
+							)}
+							<div className='flex items-center justify-between px-5 font-bold text-primary border-t pt-2'>
 								<p>Total to Pay</p>
 								<p>
 									{isLoadingDeliveryFeeData ||

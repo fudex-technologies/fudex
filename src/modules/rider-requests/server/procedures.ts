@@ -3,6 +3,9 @@ import { z } from "zod";
 import { RiderRequestStatus, SettlementStatus } from "@prisma/client";
 import { calculateDeliveryFee } from "@/lib/deliveryFeeCalculator";
 import { TRPCError } from "@trpc/server";
+import { sendOperatorRiderRequestEmail } from "@/lib/email";
+import { NotificationService } from "@/modules/notifications/server/service";
+import { PAGES_DATA } from "@/data/pagesData";
 
 export const riderRequestRouter = createTRPCRouter({
     requestRider: vendorProcedure
@@ -70,6 +73,43 @@ export const riderRequestRouter = createTRPCRouter({
                 });
                 return request;
             });
+
+            // Notify operators via email and push
+            try {
+                const operators = await ctx.prisma.user.findMany({
+                    where: {
+                        roles: {
+                            some: { role: 'OPERATOR' }
+                        },
+                        email: { not: '' }
+                    },
+                    select: { email: true }
+                });
+
+                const operatorEmails = operators.map(o => o.email!).filter(Boolean);
+
+                if (operatorEmails.length > 0) {
+                    await Promise.all(
+                        operatorEmails.map(email =>
+                            sendOperatorRiderRequestEmail(
+                                email,
+                                vendor.name,
+                                itemsWithFees.length,
+                                riderRequest.id,
+                                process.env.MAIL_SENDER || 'no-reply@fudex.ng'
+                            )
+                        )
+                    );
+                }
+
+                NotificationService.sendToRole('OPERATOR', {
+                    title: 'New Bike Request 🛵',
+                    body: `${vendor.name} has requested a rider for ${itemsWithFees.length} drop-off(s).`,
+                    url: PAGES_DATA.operator_dashboard_rider_requests_page
+                }).catch(err => console.error('[RiderRequest] Failed to send push notification to operators:', err));
+            } catch (notificationError) {
+                console.error('[RiderRequest] Failed to send notifications:', notificationError);
+            }
 
             return riderRequest;
         }),

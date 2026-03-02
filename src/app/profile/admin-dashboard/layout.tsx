@@ -65,6 +65,8 @@ export default function AdminDashboardLayout({
 				setActiveTab('vendors');
 			} else if (path.includes('/wallets')) {
 				setActiveTab('wallets');
+			} else if (path.includes('/discounts')) {
+				setActiveTab('discounts');
 			} else if (path.includes('/areas')) {
 				setActiveTab('areas');
 			} else {
@@ -150,6 +152,11 @@ export default function AdminDashboardLayout({
 							icon: <Wallet size={18} />,
 						},
 						{
+							id: 'discounts',
+							label: 'Discounts',
+							icon: <Gift size={18} />,
+						},
+						{
 							id: 'categories',
 							label: 'Categories',
 							icon: <Tag size={18} />,
@@ -185,6 +192,10 @@ export default function AdminDashboardLayout({
 							);
 						} else if (id === 'wallets') {
 							router.push('/profile/admin-dashboard/wallets');
+						} else if (id === 'discounts') {
+							router.push(
+								PAGES_DATA.admin_dashboard_discounts_page,
+							);
 						} else if (id === 'areas') {
 							router.push(PAGES_DATA.admin_dashboard_areas_page);
 						} else if (id === 'categories') {

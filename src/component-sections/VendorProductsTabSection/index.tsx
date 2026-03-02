@@ -28,9 +28,9 @@ const VendorProductsTabSection = ({ vendorId }: { vendorId: string }) => {
 			// Check if any of the product items have categories
 			const productCategories = new Set<string>();
 
-			product.items?.forEach((item) => {
+			product.items?.forEach((item: any) => {
 				if (item.categories && item.categories.length > 0) {
-					item.categories.forEach(({ category }) => {
+					item.categories.forEach(({ category }: any) => {
 						productCategories.add(category.id);
 						if (!map[category.id]) {
 							map[category.id] = [];
@@ -110,7 +110,7 @@ const VendorProductsTabSection = ({ vendorId }: { vendorId: string }) => {
 
 	// Transform products into ProductListItem format
 	const displayItems = useMemo(() => {
-		return activeProducts.flatMap((product) => {
+		return (activeProducts as any[]).flatMap((product: any) => {
 			if (!product.items || product.items.length === 0) {
 				return [];
 			}
@@ -207,7 +207,7 @@ const VendorProductsTabSection = ({ vendorId }: { vendorId: string }) => {
 						exit='hidden'
 						variants={containerVariants}
 						className='w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3'>
-						{displayItems.map((item, index) => (
+						{displayItems.map((item: any, index: number) => (
 							<motion.div
 								key={`${item.id}-${index}`}
 								variants={itemVariants}

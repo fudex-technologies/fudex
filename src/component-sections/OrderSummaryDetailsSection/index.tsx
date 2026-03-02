@@ -64,7 +64,9 @@ const OrderSummaryDetailsSection = ({ vendorId }: { vendorId: string }) => {
 			let singlePackPrice = 0;
 
 			// Main item price * quantity (this handles both FIXED and PER_UNIT correctly)
-			const packPrice = mainItem.price * pack.quantity;
+			const packPrice =
+				((mainItem as any).finalPrice ?? mainItem.price) *
+				pack.quantity;
 			singlePackPrice += packPrice;
 
 			// Add packaging fee for PER_UNIT items (once per pack)
@@ -80,7 +82,9 @@ const OrderSummaryDetailsSection = ({ vendorId }: { vendorId: string }) => {
 					);
 					if (addonItem) {
 						// Addons are per pack, not per unit
-						singlePackPrice += addonItem.price * addon.quantity;
+						singlePackPrice +=
+							((addonItem as any).finalPrice ?? addonItem.price) *
+							addon.quantity;
 					}
 				}
 			}
